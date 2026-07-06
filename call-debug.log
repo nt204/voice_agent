@@ -1,0 +1,57 @@
+2026-07-06T16:58:07 [signalwire] WebSocket connected
+2026-07-06T16:58:07 [mock-signalwire-call] SignalWire stream started: mock-stream audio/x-mulaw 8000Hz
+2026-07-06T16:58:07 [mock-signalwire-call] Gemini Live connected
+2026-07-06T16:58:08 [mock-signalwire-call] Gemini: Dạ em
+2026-07-06T16:58:08 [mock-signalwire-call] SignalWire outbound media 1 (160 bytes audio/x-mulaw)
+2026-07-06T16:58:08 [mock-signalwire-call] Sent audio frame 1 (320 bytes PCM)
+2026-07-06T16:58:08 [mock-signalwire-call] SignalWire outbound media 2 (160 bytes audio/x-mulaw)
+2026-07-06T16:58:08 [mock-signalwire-call] Sent audio frame 2 (320 bytes PCM)
+2026-07-06T16:58:08 [mock-signalwire-call] SignalWire outbound media 3 (160 bytes audio/x-mulaw)
+2026-07-06T16:58:08 [mock-signalwire-call] Sent audio frame 3 (320 bytes PCM)
+2026-07-06T16:58:08 [mock-signalwire-call] Gemini:  chào
+2026-07-06T16:58:09 [mock-signalwire-call] Gemini:  anh
+2026-07-06T16:58:09 [mock-signalwire-call] Gemini:  chị,
+2026-07-06T16:58:09 [mock-signalwire-call] SignalWire outbound media 50 (160 bytes audio/x-mulaw)
+2026-07-06T16:58:09 [mock-signalwire-call] Sent audio frame 50 (320 bytes PCM)
+2026-07-06T16:58:09 [mock-signalwire-call] Gemini:  em
+2026-07-06T16:58:10 [mock-signalwire-call] Gemini:  là tư
+2026-07-06T16:58:10 [mock-signalwire-call] Gemini:  vấn
+2026-07-06T16:58:10 [mock-signalwire-call] SignalWire outbound media 100 (160 bytes audio/x-mulaw)
+2026-07-06T16:58:10 [mock-signalwire-call] Sent audio frame 100 (320 bytes PCM)
+2026-07-06T16:58:10 [mock-signalwire-call] Gemini:  viên
+2026-07-06T16:58:10 [mock-signalwire-call] Gemini:  AI
+2026-07-06T16:58:11 [mock-signalwire-call] Gemini:  của Mekong
+2026-07-06T16:58:11 [mock-signalwire-call] SignalWire outbound media 150 (160 bytes audio/x-mulaw)
+2026-07-06T16:58:11 [mock-signalwire-call] Sent audio frame 150 (320 bytes PCM)
+2026-07-06T16:58:11 [mock-signalwire-call] Gemini:  Sale.
+2026-07-06T16:58:12 [mock-signalwire-call] Gemini:  Anh
+2026-07-06T16:58:12 [mock-signalwire-call] SignalWire outbound media 200 (160 bytes audio/x-mulaw)
+2026-07-06T16:58:12 [mock-signalwire-call] Sent audio frame 200 (320 bytes PCM)
+2026-07-06T16:58:12 [mock-signalwire-call] Gemini:  chị cần
+2026-07-06T16:58:12 [mock-signalwire-call] Gemini:  em tư
+2026-07-06T16:58:13 [mock-signalwire-call] Gemini:  vấn
+2026-07-06T16:58:13 [mock-signalwire-call] SignalWire outbound media 250 (160 bytes audio/x-mulaw)
+2026-07-06T16:58:13 [mock-signalwire-call] Sent audio frame 250 (320 bytes PCM)
+2026-07-06T16:58:13 [mock-signalwire-call] Gemini:  Venus
+2026-07-06T16:58:13 [mock-signalwire-call] Gemini:  BigOne
+2026-07-06T16:58:14 [mock-signalwire-call] Gemini:  hay
+2026-07-06T16:58:14 [mock-signalwire-call] SignalWire outbound media 300 (160 bytes audio/x-mulaw)
+2026-07-06T16:58:14 [mock-signalwire-call] Sent audio frame 300 (320 bytes PCM)
+2026-07-06T16:58:14 [mock-signalwire-call] Gemini:  có câu
+2026-07-06T16:58:15 [mock-signalwire-call] Gemini:  hỏi
+2026-07-06T16:58:15 [mock-signalwire-call] Gemini:  gì ạ?
+2026-07-06T16:58:15 [mock-signalwire-call] SignalWire outbound media 350 (160 bytes audio/x-mulaw)
+2026-07-06T16:58:15 [mock-signalwire-call] Sent audio frame 350 (320 bytes PCM)
+2026-07-06T16:58:15 [mock-signalwire-call] Gemini turn complete
+2026-07-06T16:58:15 [mock-signalwire-call] Ignoring inbound media before 9000ms
+2026-07-06T16:58:16 [mock-signalwire-call] SignalWire inbound media 1 (160 bytes audio/x-mulaw, timestamp=9000ms, rms=0)
+2026-07-06T16:58:16 [mock-signalwire-call] SignalWire inbound media 2 (160 bytes audio/x-mulaw, timestamp=9020ms, rms=0)
+2026-07-06T16:58:16 [mock-signalwire-call] SignalWire inbound media 3 (160 bytes audio/x-mulaw, timestamp=9040ms, rms=0)
+2026-07-06T16:58:17 [mock-signalwire-call] Speech started (timestamp=10040ms, rms=2472)
+2026-07-06T16:58:18 [mock-signalwire-call] SignalWire inbound media 100 (160 bytes audio/x-mulaw, timestamp=10980ms, rms=6)
+2026-07-06T16:58:20 [mock-signalwire-call] SignalWire inbound media 200 (160 bytes audio/x-mulaw, timestamp=12980ms, rms=634)
+2026-07-06T16:58:22 [mock-signalwire-call] Speech ended (timestamp=14760ms)
+2026-07-06T16:58:22 [mock-signalwire-call] SignalWire inbound media 300 (160 bytes audio/x-mulaw, timestamp=14980ms, rms=0)
+2026-07-06T16:58:25 [mock-signalwire-call] SignalWire inbound media 400 (160 bytes audio/x-mulaw, timestamp=16980ms, rms=0)
+2026-07-06T16:58:38 [mock-signalwire-call] SignalWire stream stopped
+2026-07-06T16:58:38 [mock-signalwire-call] Gemini Live closed
