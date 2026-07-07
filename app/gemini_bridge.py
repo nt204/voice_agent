@@ -1,4 +1,5 @@
 import asyncio
+import audioop
 import base64
 from contextlib import suppress
 from typing import Awaitable, Callable
@@ -6,7 +7,7 @@ from typing import Awaitable, Callable
 from google import genai
 from google.genai import types
 
-from app.audio import PcmFrameBuffer, extract_sample_rate, frame_bytes_for_pcm16, resample_pcm16_mono
+from app.audio import PcmFrameBuffer, extract_sample_rate, frame_bytes_for_pcm16
 from app.config import config, gemini_system_instruction, require_env
 from app.logging_utils import log
 
@@ -14,11 +15,19 @@ SendAudio = Callable[[bytes], Awaitable[None]]
 
 
 class GeminiCallBridge:
-    def __init__(self, call_id: str, call_sample_rate: int, send_audio: SendAudio):
+    def __init__(
+        self,
+        call_id: str,
+        call_sample_rate: int,
+        send_audio: SendAudio,
+        explicit_vad: bool = False,
+    ):
         self.call_id = call_id
         self.call_sample_rate = call_sample_rate
         self.gemini_input_sample_rate = config.gemini.input_sample_rate
         self.send_audio = send_audio
+        self.explicit_vad = explicit_vad
+        self.input_activity_active = False
         self.client = genai.Client(api_key=require_env("GEMINI_API_KEY"))
         self.session = None
         self.receiver_task: asyncio.Task | None = None
@@ -26,12 +35,19 @@ class GeminiCallBridge:
         self.output_frame_count = 0
         self.first_audio_sent = asyncio.Event()
         self.turn_complete = asyncio.Event()
+        self.input_resample_state = None
+        self.output_resample_state_by_rate: dict[int, object] = {}
+        self.input_turn_buffer = bytearray()
+        self.output_muted = False
+        self.completed_turn_count = 0
+        self.last_output_at = 0.0
 
     async def start(self) -> None:
         live = self.client.aio.live.connect(
             model=config.gemini.model,
             config=types.LiveConnectConfig(
                 response_modalities=[types.Modality.AUDIO],
+                max_output_tokens=120,
                 speech_config=types.SpeechConfig(
                     voice_config=types.VoiceConfig(
                         prebuilt_voice_config=types.PrebuiltVoiceConfig(
@@ -52,7 +68,7 @@ class GeminiCallBridge:
                         prefix_padding_ms=300,
                         silence_duration_ms=500,
                     ),
-                    activity_handling=types.ActivityHandling.NO_INTERRUPTION,
+                    activity_handling=types.ActivityHandling.START_OF_ACTIVITY_INTERRUPTS,
                     turn_coverage=types.TurnCoverage.TURN_INCLUDES_ONLY_ACTIVITY,
                 ),
             ),
@@ -64,44 +80,129 @@ class GeminiCallBridge:
         await self.session.send_client_content(
             turns=types.Content(
                 role="user",
-                parts=[types.Part(text=config.gemini.initial_greeting)],
+                parts=[
+                    types.Part(
+                        text=(
+                            "Hãy nói đúng nguyên văn câu sau, không thêm nội dung khác: "
+                            f"{config.gemini.initial_greeting}"
+                        )
+                    )
+                ],
             ),
             turn_complete=True,
         )
-        try:
-            await asyncio.wait_for(self.turn_complete.wait(), timeout=12)
-        except asyncio.TimeoutError:
-            log(f"[{self.call_id}] Initial greeting turn timeout")
 
     async def send_input_audio(self, pcm: bytes) -> None:
         if not self.session:
             return
-        gemini_pcm = resample_pcm16_mono(
-            pcm,
-            self.call_sample_rate,
-            self.gemini_input_sample_rate,
+        gemini_pcm = self._resample_input(pcm)
+        if not gemini_pcm:
+            return
+        self.input_turn_buffer.extend(gemini_pcm)
+
+    async def commit_input_audio_turn(self) -> None:
+        if not self.session or not self.input_turn_buffer:
+            return
+        audio = bytes(self.input_turn_buffer)
+        self.input_turn_buffer.clear()
+        self.input_resample_state = None
+        self.turn_complete.clear()
+        await self._stop_receiver()
+        await self.session.send_client_content(
+            turns=types.Content(
+                role="user",
+                parts=[
+                    types.Part(
+                        inline_data=types.Blob(
+                            data=audio,
+                            mime_type=f"audio/pcm;rate={self.gemini_input_sample_rate}",
+                        )
+                    )
+                ],
+            ),
+            turn_complete=True,
         )
-        await self.session.send_realtime_input(
-            media=types.Blob(
-                data=gemini_pcm,
-                mime_type=f"audio/pcm;rate={self.gemini_input_sample_rate}",
-            )
-        )
+        self.receiver_task = asyncio.create_task(self._receive_loop())
+        log(f"[{self.call_id}] Committed input audio turn ({len(audio)} bytes PCM)")
+
+    def set_output_muted(self, muted: bool) -> None:
+        if self.output_muted == muted:
+            return
+        self.output_muted = muted
+        if muted:
+            self.output_frames.clear()
+        log(f"[{self.call_id}] Gemini output {'muted' if muted else 'unmuted'}")
+
+    def output_recent(self, seconds: float = 1.0) -> bool:
+        if not self.last_output_at:
+            return False
+        return asyncio.get_running_loop().time() - self.last_output_at < seconds
+
+    async def start_input_activity(self) -> None:
+        if not self.session or not self.explicit_vad or self.input_activity_active:
+            return
+        await self.session.send_realtime_input(activity_start=types.ActivityStart())
+        self.input_activity_active = True
+        log(f"[{self.call_id}] Gemini input activity started")
+
+    async def end_input_activity(self) -> None:
+        if not self.session or not self.explicit_vad or not self.input_activity_active:
+            return
+        await self.session.send_realtime_input(activity_end=types.ActivityEnd())
+        self.input_activity_active = False
+        log(f"[{self.call_id}] Gemini input activity ended")
 
     async def end_input_audio(self) -> None:
         if not self.session:
             return
-        await self.session.send_realtime_input(audio_stream_end=True)
+        await self.commit_input_audio_turn()
 
     async def close(self) -> None:
-        if self.receiver_task:
-            self.receiver_task.cancel()
-            with suppress(asyncio.CancelledError):
-                await self.receiver_task
+        await self._stop_receiver()
         if getattr(self, "_live_context", None):
             await self._live_context.__aexit__(None, None, None)
         self.output_frames.clear()
         log(f"[{self.call_id}] Gemini Live closed")
+
+    async def _stop_receiver(self) -> None:
+        if not self.receiver_task:
+            return
+        self.receiver_task.cancel()
+        with suppress(asyncio.CancelledError, Exception):
+            await self.receiver_task
+        self.receiver_task = None
+
+    def _resample_input(self, pcm: bytes) -> bytes:
+        if self.call_sample_rate == self.gemini_input_sample_rate:
+            return pcm
+        if len(pcm) < 2:
+            return b""
+        converted, self.input_resample_state = audioop.ratecv(
+            pcm,
+            2,
+            1,
+            self.call_sample_rate,
+            self.gemini_input_sample_rate,
+            self.input_resample_state,
+        )
+        return converted
+
+    def _resample_output(self, pcm: bytes, gemini_rate: int) -> bytes:
+        if gemini_rate == self.call_sample_rate:
+            return pcm
+        if len(pcm) < 2:
+            return b""
+        state = self.output_resample_state_by_rate.get(gemini_rate)
+        converted, state = audioop.ratecv(
+            pcm,
+            2,
+            1,
+            gemini_rate,
+            self.call_sample_rate,
+            state,
+        )
+        self.output_resample_state_by_rate[gemini_rate] = state
+        return converted
 
     async def _receive_loop(self) -> None:
         assert self.session is not None
@@ -123,9 +224,12 @@ class GeminiCallBridge:
 
                         gemini_rate = extract_sample_rate(inline.mime_type, 24000)
                         pcm = _inline_bytes(inline.data)
-                        call_pcm = resample_pcm16_mono(pcm, gemini_rate, self.call_sample_rate)
+                        call_pcm = self._resample_output(pcm, gemini_rate)
 
                         for frame in self.output_frames.push(call_pcm):
+                            if self.output_muted:
+                                continue
+                            self.last_output_at = asyncio.get_running_loop().time()
                             await self.send_audio(frame)
                             self.output_frame_count += 1
                             self.first_audio_sent.set()
@@ -136,6 +240,7 @@ class GeminiCallBridge:
                                 )
 
                 if content.turn_complete:
+                    self.completed_turn_count += 1
                     log(f"[{self.call_id}] Gemini turn complete")
                     self.turn_complete.set()
 

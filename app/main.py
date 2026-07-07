@@ -21,6 +21,101 @@ from app.logging_utils import log
 app = FastAPI(title="Viber Gemini Live Bridge")
 
 
+class RealtimeInputGate:
+    def __init__(
+        self,
+        bridge: GeminiCallBridge,
+        call_id: str,
+        speech_threshold: int = 900,
+        speech_start_frames: int = 10,
+        speech_end_silence_frames: int = 50,
+        prebuffer_frames: int = 10,
+    ):
+        self.bridge = bridge
+        self.call_id = call_id
+        self.speech_threshold = speech_threshold
+        self.speech_start_frames = speech_start_frames
+        self.speech_end_silence_frames = speech_end_silence_frames
+        self.prebuffer: deque[bytes] = deque(maxlen=prebuffer_frames)
+        self.speech_active = False
+        self.speech_frames = 0
+        self.silence_frames = 0
+        self.last_frame_bytes = 0
+
+    async def push(self, pcm: bytes, rms: int, timestamp_ms: int | None = None) -> None:
+        self.last_frame_bytes = len(pcm)
+        if self.speech_active:
+            await self.bridge.send_input_audio(pcm)
+            if rms >= self.speech_threshold:
+                self.silence_frames = 0
+            else:
+                self.silence_frames += 1
+
+            if self.silence_frames >= self.speech_end_silence_frames:
+                await self.force_end(timestamp_ms, flush_silence=False)
+            return
+
+        # Do not treat line echo/noise as caller speech while the AI is greeting
+        # or while AI audio is still reaching the phone.
+        if self.bridge.completed_turn_count == 0 or self.bridge.output_recent(1.2):
+            self.speech_frames = 0
+            self.prebuffer.clear()
+            return
+
+        self.prebuffer.append(pcm)
+        if rms >= self.speech_threshold:
+            self.speech_frames += 1
+        else:
+            self.speech_frames = 0
+
+        if self.speech_frames < self.speech_start_frames:
+            return
+
+        self.speech_active = True
+        self.silence_frames = 0
+        if self.bridge.completed_turn_count > 0:
+            self.bridge.set_output_muted(True)
+        if timestamp_ms is None:
+            log(f"[{self.call_id}] Speech started (rms={rms})")
+        else:
+            log(f"[{self.call_id}] Speech started (timestamp={timestamp_ms}ms, rms={rms})")
+        await self.bridge.start_input_activity()
+        for buffered_pcm in self.prebuffer:
+            await self.bridge.send_input_audio(buffered_pcm)
+        self.prebuffer.clear()
+
+    async def force_end(
+        self,
+        timestamp_ms: int | None = None,
+        flush_silence: bool = True,
+    ) -> None:
+        if not self.speech_active:
+            self.speech_frames = 0
+            self.silence_frames = 0
+            self.prebuffer.clear()
+            return
+
+        if timestamp_ms is None:
+            log(f"[{self.call_id}] Speech ended")
+        else:
+            log(f"[{self.call_id}] Speech ended (timestamp={timestamp_ms}ms)")
+        self.speech_active = False
+        self.speech_frames = 0
+        self.silence_frames = 0
+        self.prebuffer.clear()
+        if flush_silence and self.last_frame_bytes:
+            silence = b"\x00" * self.last_frame_bytes
+            for _ in range(self.speech_end_silence_frames):
+                await self.bridge.send_input_audio(silence)
+        await self.bridge.end_input_activity()
+        try:
+            await asyncio.wait_for(self.bridge.turn_complete.wait(), timeout=30)
+        except asyncio.TimeoutError:
+            log(f"[{self.call_id}] Timed out waiting for current Gemini turn before commit")
+        self.bridge.set_output_muted(False)
+        await self.bridge.commit_input_audio_turn()
+
+
 @app.get("/health")
 async def health() -> dict[str, bool]:
     return {"ok": True}
@@ -81,14 +176,7 @@ async def signalwire_ws(websocket: WebSocket) -> None:
     encoding = "audio/x-L16"
     next_send_at = 0.0
     outbound_frame_count = 0
-    ignore_media_before_ms = 0
-    speech_active = False
-    speech_frames = 0
-    silence_frames = 0
-    speech_threshold = 700
-    speech_start_frames = 2
-    speech_end_silence_frames = 25
-    speech_prebuffer = deque(maxlen=10)
+    input_gate: RealtimeInputGate | None = None
 
     async def send_audio(frame: bytes) -> None:
         nonlocal next_send_at, outbound_frame_count
@@ -148,17 +236,14 @@ async def signalwire_ws(websocket: WebSocket) -> None:
                     call_sample_rate=sample_rate,
                     send_audio=send_audio,
                 )
+                input_gate = RealtimeInputGate(bridge, call_id)
                 await bridge.start()
-                ignore_media_before_ms = max(ignore_media_before_ms, 9000)
-                log(f"[{call_id}] Ignoring inbound media before {ignore_media_before_ms}ms")
 
             elif event_type == "media":
                 if not bridge:
                     continue
                 media = event.get("media") or {}
                 timestamp_ms = int(media.get("timestamp") or 0)
-                if timestamp_ms < ignore_media_before_ms:
-                    continue
                 raw = base64.b64decode(media.get("payload") or "")
                 inbound_frame_count += 1
                 pcm = signalwire_payload_to_pcm16(raw, encoding)
@@ -170,40 +255,15 @@ async def signalwire_ws(websocket: WebSocket) -> None:
                         f"timestamp={timestamp_ms}ms, rms={rms})"
                     )
 
-                if rms >= speech_threshold:
-                    speech_frames += 1
-                    silence_frames = 0
-                else:
-                    silence_frames += 1
-
-                started_now = False
-                if not speech_active:
-                    speech_prebuffer.append(pcm)
-                    if speech_frames >= speech_start_frames:
-                        speech_active = True
-                        started_now = True
-                        silence_frames = 0
-                        log(
-                            f"[{call_id}] Speech started "
-                            f"(timestamp={timestamp_ms}ms, rms={rms})"
-                        )
-                        for buffered_pcm in speech_prebuffer:
-                            await bridge.send_input_audio(buffered_pcm)
-                        speech_prebuffer.clear()
-                    else:
-                        continue
-
-                if not started_now:
-                    await bridge.send_input_audio(pcm)
-
-                if speech_active and silence_frames >= speech_end_silence_frames:
-                    speech_active = False
-                    speech_frames = 0
-                    silence_frames = 0
-                    log(f"[{call_id}] Speech ended (timestamp={timestamp_ms}ms)")
+                if input_gate:
+                    await input_gate.push(pcm, rms, timestamp_ms)
 
             elif event_type == "stop":
                 log(f"[{call_id}] SignalWire stream stopped")
+                if input_gate:
+                    await input_gate.force_end()
+                if bridge:
+                    await bridge.end_input_audio()
                 break
 
             elif event_type == "dtmf":
@@ -232,6 +292,7 @@ async def infobip_ws(websocket: WebSocket) -> None:
     await websocket.accept()
 
     bridge: GeminiCallBridge | None = None
+    input_gate: RealtimeInputGate | None = None
     call_id = "unknown-call"
     sample_rate = config.infobip.ws_sample_rate
 
@@ -262,16 +323,20 @@ async def infobip_ws(websocket: WebSocket) -> None:
                         call_sample_rate=sample_rate,
                         send_audio=send_audio,
                     )
+                    input_gate = RealtimeInputGate(bridge, call_id)
                     await bridge.start()
                 elif event.get("event") == "mock:audio_end":
                     if bridge:
+                        if input_gate:
+                            await input_gate.force_end()
                         await bridge.end_input_audio()
                 else:
                     print(f"[{call_id}] Infobip text event: {event}", flush=True)
 
             elif "bytes" in message and message["bytes"] is not None:
-                if bridge:
-                    await bridge.send_input_audio(message["bytes"])
+                if input_gate:
+                    pcm = message["bytes"]
+                    await input_gate.push(pcm, audioop.rms(pcm, 2))
 
     except WebSocketDisconnect:
         print(f"[{call_id}] Infobip WebSocket disconnected", flush=True)

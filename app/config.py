@@ -49,11 +49,11 @@ class GeminiConfig:
     product_knowledge_path: str = os.getenv("PRODUCT_KNOWLEDGE_PATH", "product.md")
     initial_greeting: str = os.getenv(
         "GEMINI_INITIAL_GREETING",
-        "Hãy chào khách bằng tiếng Việt và hỏi khách cần tư vấn sản phẩm nào. Nói ngắn gọn.",
+        "Dạ em chào anh chị. Anh chị cần tư vấn gì ạ?",
     )
     system_instruction: str = os.getenv(
         "GEMINI_SYSTEM_INSTRUCTION",
-        "Bạn là trợ lý AI trả lời cuộc gọi bằng tiếng Việt. Trả lời ngắn gọn, tự nhiên.",
+        "Bạn là trợ lý AI trả lời cuộc gọi bằng tiếng Việt. Nói chậm, ngắn, tự nhiên.",
     )
 
 
@@ -93,6 +93,9 @@ QUY TẮC CHĂM SÓC KHÁCH HÀNG:
 - Không bịa giá, công dụng, chính sách, khuyến mãi, xuất xứ hoặc cam kết ngoài dữ liệu sản phẩm.
 - Nếu khách hỏi thông tin chưa có trong dữ liệu, hãy nói chưa có thông tin chính xác và xin số điện thoại/nhu cầu để tư vấn viên xác nhận.
 - Ưu tiên hỏi và ghi nhận: tên khách, số điện thoại, nhu cầu, số lượng muốn mua, địa chỉ/khu vực giao hàng, câu hỏi còn vướng.
+- Mỗi lượt chỉ nói tối đa 1-2 câu ngắn, dưới 12 giây.
+- Chỉ hỏi 1 câu rồi dừng để khách trả lời. Không nói dồn dập, không hỏi nhiều câu liên tiếp.
+- Không tự liệt kê công dụng, giá, chính sách hoặc thông tin sản phẩm nếu khách chưa hỏi rõ.
 
 DỮ LIỆU SẢN PHẨM:
 {knowledge}
