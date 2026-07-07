@@ -1,0 +1,115 @@
+INFO:     127.0.0.1:56551 - "GET /health HTTP/1.1" 200 OK
+INFO:     192.76.120.130:0 - "POST /telnyx/answer HTTP/1.1" 200 OK
+INFO:     50.114.147.82:0 - "GET /telnyx/greeting.wav HTTP/1.1" 200 OK
+[telnyx] WebSocket connected
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx stream started: d87a069d-c6c3-4e6f-97b8-f6a3ae38fa2b PCMU 8000Hz
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx realtime mode: explicit_vad=True speech_threshold=450 speech_start_frames=3 speech_end_silence_frames=5
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini Live connected
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 1 (160 bytes PCMU, timestamp=63360ms, rms=9)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 2 (160 bytes PCMU, timestamp=63840ms, rms=9)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 3 (160 bytes PCMU, timestamp=64000ms, rms=8)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=73920ms, rms=6096)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 100 (160 bytes PCMU, timestamp=79520ms, rms=1478)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=81120ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=83040ms, rms=1000)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] User: Hôm nay là th? m?y?
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=84960ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini: D?, hôm
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx outbound media 1 (160 bytes PCMU)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Sent audio frame 1 (320 bytes PCM)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx outbound media 2 (160 bytes PCMU)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Sent audio frame 2 (320 bytes PCM)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx outbound media 3 (160 bytes PCMU)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Sent audio frame 3 (320 bytes PCM)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 200 (160 bytes PCMU, timestamp=95520ms, rms=71)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  nay là
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  th?
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  Ba
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx outbound media 50 (160 bytes PCMU)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Sent audio frame 50 (320 bytes PCM)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  ?.
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  Mình
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx outbound media 100 (160 bytes PCMU)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Sent audio frame 100 (320 bytes PCM)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  c?n
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  em h?
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 300 (160 bytes PCMU, timestamp=111520ms, rms=9)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  tr?
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  gì
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  thêm
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx outbound media 150 (160 bytes PCMU)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Sent audio frame 150 (320 bytes PCM)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  không?
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini turn complete
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 400 (160 bytes PCMU, timestamp=127520ms, rms=808)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=136000ms, rms=1216)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=136800ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=139840ms, rms=5114)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=141760ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=142560ms, rms=592)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=143360ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 500 (160 bytes PCMU, timestamp=143520ms, rms=166)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=144320ms, rms=3283)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=152320ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=153920ms, rms=3174)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=155520ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=156640ms, rms=1564)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=159200ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 600 (160 bytes PCMU, timestamp=159520ms, rms=17)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=160160ms, rms=3155)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=164640ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=165120ms, rms=4420)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=168160ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=173120ms, rms=1186)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=175200ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 700 (160 bytes PCMU, timestamp=175520ms, rms=22)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=189440ms, rms=1059)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=190240ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 800 (160 bytes PCMU, timestamp=191520ms, rms=39)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 900 (160 bytes PCMU, timestamp=207520ms, rms=109)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=210080ms, rms=684)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=211200ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 1000 (160 bytes PCMU, timestamp=223520ms, rms=31)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=235680ms, rms=4676)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 1100 (160 bytes PCMU, timestamp=239520ms, rms=1803)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=244960ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=245440ms, rms=3395)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=248640ms)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 1200 (160 bytes PCMU, timestamp=255520ms, rms=32)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=269280ms, rms=1620)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 1300 (160 bytes PCMU, timestamp=271520ms, rms=890)
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx stream stopped
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
+[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini realtime audio stream ended

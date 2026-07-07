@@ -4,15 +4,20 @@ import audioop
 import json
 from collections import deque
 from html import escape
+from pathlib import Path
 from urllib.parse import parse_qsl
+from urllib.parse import urlencode
 from urllib.parse import urljoin, urlparse, urlunparse
 
 from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect, status
+from fastapi.responses import FileResponse
 
 from app.audio import (
     extract_sample_rate,
     pcm16_to_signalwire_payload,
+    pcm16_to_telnyx_payload,
     signalwire_payload_to_pcm16,
+    telnyx_payload_to_pcm16,
 )
 from app.config import config
 from app.gemini_bridge import GeminiCallBridge
@@ -30,12 +35,16 @@ class RealtimeInputGate:
         speech_start_frames: int = 10,
         speech_end_silence_frames: int = 50,
         prebuffer_frames: int = 10,
+        require_initial_turn: bool = True,
+        wait_for_turn_before_commit: bool = True,
     ):
         self.bridge = bridge
         self.call_id = call_id
         self.speech_threshold = speech_threshold
         self.speech_start_frames = speech_start_frames
         self.speech_end_silence_frames = speech_end_silence_frames
+        self.require_initial_turn = require_initial_turn
+        self.wait_for_turn_before_commit = wait_for_turn_before_commit
         self.prebuffer: deque[bytes] = deque(maxlen=prebuffer_frames)
         self.speech_active = False
         self.speech_frames = 0
@@ -57,7 +66,7 @@ class RealtimeInputGate:
 
         # Do not treat line echo/noise as caller speech while the AI is greeting
         # or while AI audio is still reaching the phone.
-        if self.bridge.completed_turn_count == 0 or self.bridge.output_recent(1.2):
+        if (self.require_initial_turn and self.bridge.completed_turn_count == 0) or self.bridge.output_recent(1.2):
             self.speech_frames = 0
             self.prebuffer.clear()
             return
@@ -106,11 +115,34 @@ class RealtimeInputGate:
             for _ in range(self.speech_end_silence_frames):
                 await self.bridge.send_input_audio(silence)
         await self.bridge.end_input_activity()
-        try:
-            await asyncio.wait_for(self.bridge.turn_complete.wait(), timeout=30)
-        except asyncio.TimeoutError:
-            log(f"[{self.call_id}] Timed out waiting for current Gemini turn before commit")
+        if self.wait_for_turn_before_commit:
+            try:
+                await asyncio.wait_for(self.bridge.turn_complete.wait(), timeout=30)
+            except asyncio.TimeoutError:
+                log(f"[{self.call_id}] Timed out waiting for current Gemini turn before commit")
         await self.bridge.commit_input_audio_turn()
+
+
+class RealtimePassthroughInput:
+    def __init__(self, bridge: GeminiCallBridge, call_id: str):
+        self.bridge = bridge
+        self.call_id = call_id
+        self.frame_count = 0
+
+    async def push(self, pcm: bytes, rms: int, timestamp_ms: int | None = None) -> None:
+        self.frame_count += 1
+        await self.bridge.send_input_audio(pcm)
+        if self.frame_count <= 3 or self.frame_count % 100 == 0:
+            if timestamp_ms is None:
+                log(f"[{self.call_id}] Realtime input frame {self.frame_count} (rms={rms})")
+            else:
+                log(
+                    f"[{self.call_id}] Realtime input frame {self.frame_count} "
+                    f"(timestamp={timestamp_ms}ms, rms={rms})"
+                )
+
+    async def force_end(self) -> None:
+        await self.bridge.end_input_audio()
 
 
 @app.get("/health")
@@ -122,6 +154,172 @@ async def health() -> dict[str, bool]:
 async def infobip_events(payload: dict) -> dict[str, bool]:
     print("Infobip event:", json.dumps(payload, ensure_ascii=False))
     return {"ok": True}
+
+
+@app.api_route("/telnyx/answer", methods=["GET", "POST"])
+async def telnyx_answer() -> Response:
+    stream_url = _public_ws_url("/telnyx/ws")
+    greeting_url = _public_http_url("/telnyx/greeting.wav")
+    if config.telnyx.stream_token:
+        stream_url = f"{stream_url}?{urlencode({'token': config.telnyx.stream_token})}"
+
+    texml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play continueOnError="true">{escape(greeting_url)}</Play>
+  <Connect>
+    <Stream url="{escape(stream_url)}" track="inbound_track" codec="{escape(config.telnyx.stream_codec)}" bidirectionalMode="rtp" bidirectionalCodec="{escape(config.telnyx.stream_codec)}" bidirectionalSamplingRate="{config.telnyx.stream_sample_rate}" />
+  </Connect>
+  <Pause length="600" />
+</Response>
+"""
+    return Response(content=texml, media_type="application/xml")
+
+
+@app.get("/telnyx/greeting.wav")
+async def telnyx_greeting() -> FileResponse:
+    return FileResponse(_telnyx_greeting_audio_path(), media_type="audio/wav")
+
+
+@app.websocket("/telnyx/ws")
+async def telnyx_ws(websocket: WebSocket) -> None:
+    expected_token = config.telnyx.stream_token
+    token = websocket.query_params.get("token")
+    if expected_token and token != expected_token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    await websocket.accept()
+
+    bridge: GeminiCallBridge | None = None
+    input_gate: RealtimeInputGate | RealtimePassthroughInput | None = None
+    call_id = "unknown-call"
+    stream_id: str | None = None
+    sample_rate = config.telnyx.stream_sample_rate
+    codec = config.telnyx.stream_codec
+    next_send_at = 0.0
+    outbound_frame_count = 0
+
+    async def send_audio(frame: bytes) -> None:
+        nonlocal next_send_at, outbound_frame_count
+        now = asyncio.get_running_loop().time()
+        if next_send_at > now:
+            await asyncio.sleep(next_send_at - now)
+        next_send_at = max(next_send_at, now) + 0.02
+
+        payload = pcm16_to_telnyx_payload(frame, codec)
+        message = {
+            "event": "media",
+            "media": {"payload": base64.b64encode(payload).decode("ascii")},
+        }
+        await websocket.send_text(json.dumps(message))
+
+        outbound_frame_count += 1
+        if outbound_frame_count <= 3 or outbound_frame_count % 50 == 0:
+            log(
+                f"[{call_id}] Telnyx outbound media "
+                f"{outbound_frame_count} ({len(payload)} bytes {codec})"
+            )
+
+    try:
+        inbound_frame_count = 0
+        while True:
+            message = await websocket.receive()
+            if message.get("type") == "websocket.disconnect":
+                break
+            if "text" not in message or message["text"] is None:
+                continue
+
+            event = json.loads(message["text"])
+            event_type = event.get("event")
+
+            if event_type == "connected":
+                log("[telnyx] WebSocket connected")
+
+            elif event_type == "start":
+                start = event.get("start") or {}
+                media_format = start.get("media_format") or start.get("mediaFormat") or {}
+                stream_id = event.get("stream_id") or start.get("stream_id") or stream_id
+                call_id = (
+                    start.get("call_control_id")
+                    or start.get("call_session_id")
+                    or start.get("call_leg_id")
+                    or call_id
+                )
+                sample_rate = int(media_format.get("sample_rate") or sample_rate)
+                codec = media_format.get("encoding") or codec
+                log(
+                    f"[{call_id}] Telnyx stream started: {stream_id} "
+                    f"{codec} {sample_rate}Hz"
+                )
+                log(
+                    f"[{call_id}] Telnyx realtime mode: explicit_vad=True "
+                    f"speech_threshold={config.telnyx.speech_threshold} "
+                    "speech_start_frames=3 speech_end_silence_frames=5"
+                )
+
+                bridge = GeminiCallBridge(
+                    call_id=call_id,
+                    call_sample_rate=sample_rate,
+                    send_audio=send_audio,
+                    explicit_vad=True,
+                    send_initial_greeting=False,
+                    realtime_input=True,
+                )
+                input_gate = RealtimeInputGate(
+                    bridge,
+                    call_id,
+                    speech_threshold=config.telnyx.speech_threshold,
+                    speech_start_frames=3,
+                    speech_end_silence_frames=5,
+                    require_initial_turn=False,
+                    wait_for_turn_before_commit=False,
+                )
+                await bridge.start()
+
+            elif event_type == "media":
+                if not bridge:
+                    continue
+                media = event.get("media") or {}
+                timestamp_ms = int(media.get("timestamp") or 0)
+                raw = base64.b64decode(media.get("payload") or "")
+                inbound_frame_count += 1
+                pcm = telnyx_payload_to_pcm16(raw, codec)
+                rms = audioop.rms(pcm, 2)
+                if inbound_frame_count <= 3 or inbound_frame_count % 100 == 0:
+                    log(
+                        f"[{call_id}] Telnyx inbound media "
+                        f"{inbound_frame_count} ({len(raw)} bytes {codec}, "
+                        f"timestamp={timestamp_ms}ms, rms={rms})"
+                    )
+
+                if input_gate:
+                    await input_gate.push(pcm, rms, timestamp_ms)
+
+            elif event_type == "stop":
+                log(f"[{call_id}] Telnyx stream stopped")
+                if input_gate:
+                    await input_gate.force_end()
+                if bridge:
+                    await bridge.end_input_audio()
+                break
+
+            elif event_type == "dtmf":
+                log(f"[{call_id}] Telnyx DTMF: {event.get('dtmf')}")
+
+            elif event_type == "mark":
+                pass
+
+            elif event_type == "error":
+                log(f"[{call_id}] Telnyx error: {event}")
+
+            else:
+                log(f"[{call_id}] Telnyx event: {event}")
+
+    except WebSocketDisconnect:
+        log(f"[{call_id}] Telnyx WebSocket disconnected")
+    finally:
+        if bridge:
+            await bridge.close()
 
 
 @app.api_route("/signalwire/stream-status", methods=["GET", "POST"])
@@ -357,3 +555,10 @@ def _public_http_url(path: str) -> str:
         public_base_url = "http://localhost:3000"
     parsed = urlparse(urljoin(public_base_url.rstrip("/") + "/", path.lstrip("/")))
     return urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+
+
+def _telnyx_greeting_audio_path() -> Path:
+    path = Path(config.telnyx.greeting_audio_path)
+    if not path.is_absolute():
+        path = Path(__file__).resolve().parent.parent / path
+    return path

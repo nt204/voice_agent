@@ -1,0 +1,7 @@
+INFO:     Started server process [19136]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:3000 (Press CTRL+C to quit)
+INFO:     ('192.76.120.130', 0) - "WebSocket /telnyx/ws" [accepted]
+INFO:     connection open
+INFO:     connection closed

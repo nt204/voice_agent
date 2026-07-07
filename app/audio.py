@@ -55,3 +55,27 @@ def pcm16_to_signalwire_payload(pcm: bytes, encoding: str) -> bytes:
     if encoding == "audio/x-L16":
         return audioop.byteswap(pcm, 2)
     return pcm
+
+
+def _normalized_telnyx_codec(codec: str | None) -> str:
+    if not codec:
+        return "PCMU"
+    return codec.split("@", 1)[0].upper()
+
+
+def telnyx_payload_to_pcm16(payload: bytes, codec: str | None) -> bytes:
+    normalized = _normalized_telnyx_codec(codec)
+    if normalized in {"PCMU", "G711U"}:
+        return audioop.ulaw2lin(payload, 2)
+    if normalized in {"PCMA", "G711A"}:
+        return audioop.alaw2lin(payload, 2)
+    return payload
+
+
+def pcm16_to_telnyx_payload(pcm: bytes, codec: str | None) -> bytes:
+    normalized = _normalized_telnyx_codec(codec)
+    if normalized in {"PCMU", "G711U"}:
+        return audioop.lin2ulaw(pcm, 2)
+    if normalized in {"PCMA", "G711A"}:
+        return audioop.lin2alaw(pcm, 2)
+    return pcm

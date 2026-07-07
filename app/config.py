@@ -41,10 +41,27 @@ class SignalWireConfig:
 
 
 @dataclass(frozen=True)
+class TelnyxConfig:
+    stream_token: str = os.getenv("TELNYX_STREAM_TOKEN", "")
+    stream_codec: str = os.getenv("TELNYX_STREAM_CODEC", "PCMU")
+    stream_sample_rate: int = _int_env("TELNYX_STREAM_SAMPLE_RATE", 8000)
+    speech_threshold: int = _int_env("TELNYX_SPEECH_THRESHOLD", 450)
+    greeting_audio_path: str = os.getenv(
+        "TELNYX_GREETING_AUDIO_PATH",
+        "assets/telnyx-greeting.wav",
+    )
+    greeting: str = os.getenv(
+        "TELNYX_GREETING",
+        "Dạ em chào anh chị. Anh chị cần tư vấn sản phẩm nào ạ?",
+    )
+
+
+@dataclass(frozen=True)
 class GeminiConfig:
     api_key: str | None = os.getenv("GEMINI_API_KEY")
     model: str = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
     voice_name: str = os.getenv("GEMINI_VOICE_NAME", "Aoede")
+    language_code: str = os.getenv("GEMINI_LANGUAGE_CODE", "vi-VN")
     input_sample_rate: int = _int_env("GEMINI_INPUT_SAMPLE_RATE", 16000)
     product_knowledge_path: str = os.getenv("PRODUCT_KNOWLEDGE_PATH", "product.md")
     initial_greeting: str = os.getenv(
@@ -63,6 +80,7 @@ class AppConfig:
     public_base_url: str | None = os.getenv("PUBLIC_BASE_URL")
     infobip: InfobipConfig = InfobipConfig()
     signalwire: SignalWireConfig = SignalWireConfig()
+    telnyx: TelnyxConfig = TelnyxConfig()
     gemini: GeminiConfig = GeminiConfig()
 
 
@@ -80,11 +98,20 @@ def product_knowledge() -> str:
 
 
 def gemini_system_instruction() -> str:
+    voice_rules = (
+        "\n\nLUAT GIONG NOI REALTIME:\n"
+        "- Bat buoc noi tieng Viet tu nhien, toc do vua phai nhu nhan vien tong dai.\n"
+        "- Moi luot chi noi 1 cau ngan, toi da 10-14 tu, duoi 5 giay.\n"
+        "- Uu tien chot sale: xac nhan nhu cau, hoi 1 cau tiep theo de chot don.\n"
+        "- Khong giai thich dai, khong liet ke, khong tu hoi nhieu cau lien tiep.\n"
+        "- Neu nghe chua ro, chi noi: Da em nghe chua ro, minh noi lai giup em a.\n"
+        "- Sau moi cau phai dung lai de khach noi tiep.\n"
+    )
     knowledge = product_knowledge()
     if not knowledge:
-        return config.gemini.system_instruction
+        return f"{config.gemini.system_instruction}{voice_rules}"
 
-    return f"""{config.gemini.system_instruction}
+    return f"""{config.gemini.system_instruction}{voice_rules}
 
 QUY TẮC CHĂM SÓC KHÁCH HÀNG:
 - Ưu tiên cao nhất: Luôn nói tiếng Việt tự nhiên, dễ hiểu. Không dùng tiếng Anh trong cuộc gọi, trừ khi khách yêu cầu rõ ràng.
@@ -106,4 +133,9 @@ QUY TẮC CHĂM SÓC KHÁCH HÀNG:
 
 DỮ LIỆU SẢN PHẨM:
 {knowledge}
+
+FINAL REALTIME SALES RULE:
+- Answer with exactly 1 short Vietnamese sentence only.
+- Maximum 10-14 words. Ask only 1 closing question.
+- Stop speaking immediately after that sentence.
 """
