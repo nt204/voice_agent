@@ -230,3 +230,799 @@
 2026-07-07T09:15:46 [6262d672-1c4d-49c1-a144-9f7c694ecf37] Committed input audio turn (83838 bytes PCM)
 2026-07-07T09:15:46 [6262d672-1c4d-49c1-a144-9f7c694ecf37] Gemini Live closed
 2026-07-07T09:15:46 SignalWire stream status: {'CallSid': '6262d672-1c4d-49c1-a144-9f7c694ecf37', 'AccountSid': '6111b15d-ef66-468a-b740-561e44868811', 'StreamSid': '83f630b8-d0d8-4345-9b65-9a40300543b9', 'StreamName': '83f630b8-d0d8-4345-9b65-9a40300543b9', 'StreamEvent': 'stream-stopped', 'Timestamp': '2026-07-07T02:15:45Z'}
+2026-07-07T09:17:21 [signalwire] WebSocket connected
+2026-07-07T09:17:21 [mock-signalwire-call] SignalWire stream started: mock-stream audio/x-mulaw 8000Hz
+2026-07-07T09:17:22 [mock-signalwire-call] Gemini Live connected
+2026-07-07T09:17:22 [mock-signalwire-call] SignalWire inbound media 1 (160 bytes audio/x-mulaw, timestamp=0ms, rms=0)
+2026-07-07T09:17:22 [mock-signalwire-call] SignalWire inbound media 2 (160 bytes audio/x-mulaw, timestamp=20ms, rms=0)
+2026-07-07T09:17:22 [mock-signalwire-call] SignalWire inbound media 3 (160 bytes audio/x-mulaw, timestamp=40ms, rms=0)
+2026-07-07T09:17:22 [mock-signalwire-call] Gemini: Dạ em
+2026-07-07T09:17:22 [mock-signalwire-call] SignalWire outbound media 1 (160 bytes audio/x-mulaw)
+2026-07-07T09:17:22 [mock-signalwire-call] Sent audio frame 1 (320 bytes PCM)
+2026-07-07T09:17:22 [mock-signalwire-call] SignalWire outbound media 2 (160 bytes audio/x-mulaw)
+2026-07-07T09:17:22 [mock-signalwire-call] Sent audio frame 2 (320 bytes PCM)
+2026-07-07T09:17:22 [mock-signalwire-call] SignalWire outbound media 3 (160 bytes audio/x-mulaw)
+2026-07-07T09:17:22 [mock-signalwire-call] Sent audio frame 3 (320 bytes PCM)
+2026-07-07T09:17:23 [mock-signalwire-call] Gemini:  chào
+2026-07-07T09:17:23 [mock-signalwire-call] Gemini:  anh
+2026-07-07T09:17:23 [mock-signalwire-call] Gemini:  chị.
+2026-07-07T09:17:23 [mock-signalwire-call] SignalWire inbound media 100 (160 bytes audio/x-mulaw, timestamp=1980ms, rms=0)
+2026-07-07T09:17:23 [mock-signalwire-call] SignalWire outbound media 50 (160 bytes audio/x-mulaw)
+2026-07-07T09:17:23 [mock-signalwire-call] Sent audio frame 50 (320 bytes PCM)
+2026-07-07T09:17:24 [mock-signalwire-call] Gemini:  Anh
+2026-07-07T09:17:24 [mock-signalwire-call] Gemini:  chị
+2026-07-07T09:17:24 [mock-signalwire-call] Gemini:  cần
+2026-07-07T09:17:24 [mock-signalwire-call] SignalWire outbound media 100 (160 bytes audio/x-mulaw)
+2026-07-07T09:17:24 [mock-signalwire-call] Sent audio frame 100 (320 bytes PCM)
+2026-07-07T09:17:25 [mock-signalwire-call] Gemini:  tư vấn
+2026-07-07T09:17:25 [mock-signalwire-call] Gemini:  gì
+2026-07-07T09:17:25 [mock-signalwire-call] Gemini:  ạ?
+2026-07-07T09:17:25 [mock-signalwire-call] SignalWire outbound media 150 (160 bytes audio/x-mulaw)
+2026-07-07T09:17:25 [mock-signalwire-call] Sent audio frame 150 (320 bytes PCM)
+2026-07-07T09:17:25 [mock-signalwire-call] SignalWire inbound media 200 (160 bytes audio/x-mulaw, timestamp=3980ms, rms=6)
+2026-07-07T09:17:26 [mock-signalwire-call] Gemini turn complete
+2026-07-07T09:17:27 [mock-signalwire-call] Speech started (timestamp=5580ms, rms=5092)
+2026-07-07T09:17:28 [mock-signalwire-call] SignalWire inbound media 300 (160 bytes audio/x-mulaw, timestamp=5980ms, rms=634)
+2026-07-07T09:17:30 [mock-signalwire-call] SignalWire inbound media 400 (160 bytes audio/x-mulaw, timestamp=7980ms, rms=0)
+2026-07-07T09:17:30 [mock-signalwire-call] Speech ended (timestamp=8240ms)
+2026-07-07T09:17:30 [mock-signalwire-call] Committed input audio turn (91342 bytes PCM)
+2026-07-07T09:17:31 [mock-signalwire-call] Gemini: Dạ xin
+2026-07-07T09:17:31 [mock-signalwire-call] Gemini:  lỗi,
+2026-07-07T09:17:32 [mock-signalwire-call] SignalWire outbound media 200 (160 bytes audio/x-mulaw)
+2026-07-07T09:17:32 [mock-signalwire-call] Sent audio frame 200 (320 bytes PCM)
+2026-07-07T09:17:32 [mock-signalwire-call] Gemini:  em chưa
+2026-07-07T09:17:32 [mock-signalwire-call] SignalWire inbound media 500 (160 bytes audio/x-mulaw, timestamp=9980ms, rms=0)
+2026-07-07T09:17:33 [mock-signalwire-call] Gemini:  nghe
+2026-07-07T09:17:33 [mock-signalwire-call] SignalWire outbound media 250 (160 bytes audio/x-mulaw)
+2026-07-07T09:17:33 [mock-signalwire-call] Sent audio frame 250 (320 bytes PCM)
+2026-07-07T09:17:33 [mock-signalwire-call] Gemini:  rõ
+2026-07-07T09:17:33 [mock-signalwire-call] Gemini:  lắm.
+2026-07-07T09:17:33 [mock-signalwire-call] Gemini:  Anh
+2026-07-07T09:17:34 [mock-signalwire-call] SignalWire outbound media 300 (160 bytes audio/x-mulaw)
+2026-07-07T09:17:34 [mock-signalwire-call] Sent audio frame 300 (320 bytes PCM)
+2026-07-07T09:17:34 [mock-signalwire-call] Gemini:  chị
+2026-07-07T09:17:34 [mock-signalwire-call] Gemini:  có thể
+2026-07-07T09:17:34 [mock-signalwire-call] Gemini:  nói
+2026-07-07T09:17:35 [mock-signalwire-call] Gemini:  lại
+2026-07-07T09:17:35 [mock-signalwire-call] SignalWire outbound media 350 (160 bytes audio/x-mulaw)
+2026-07-07T09:17:35 [mock-signalwire-call] Sent audio frame 350 (320 bytes PCM)
+2026-07-07T09:17:35 [mock-signalwire-call] Gemini:  được
+2026-07-07T09:17:35 [mock-signalwire-call] Gemini:  không ạ?
+2026-07-07T09:17:36 [mock-signalwire-call] SignalWire outbound media 400 (160 bytes audio/x-mulaw)
+2026-07-07T09:17:36 [mock-signalwire-call] Sent audio frame 400 (320 bytes PCM)
+2026-07-07T09:17:36 [mock-signalwire-call] Gemini turn complete
+2026-07-07T09:17:45 [mock-signalwire-call] SignalWire stream stopped
+2026-07-07T09:17:45 [mock-signalwire-call] Gemini Live closed
+2026-07-07T09:19:27 [signalwire] WebSocket connected
+2026-07-07T09:19:27 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire stream started: 2786c11a-cfeb-42c2-92d3-c3c23d5d04d3 audio/x-mulaw 8000Hz
+2026-07-07T09:19:27 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini Live connected
+2026-07-07T09:19:27 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 1 (160 bytes audio/x-mulaw, timestamp=46ms, rms=757)
+2026-07-07T09:19:27 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 2 (160 bytes audio/x-mulaw, timestamp=66ms, rms=1062)
+2026-07-07T09:19:27 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 3 (160 bytes audio/x-mulaw, timestamp=86ms, rms=843)
+2026-07-07T09:19:28 SignalWire stream status: {'CallSid': '4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b', 'AccountSid': '6111b15d-ef66-468a-b740-561e44868811', 'StreamSid': '2786c11a-cfeb-42c2-92d3-c3c23d5d04d3', 'StreamName': '2786c11a-cfeb-42c2-92d3-c3c23d5d04d3', 'StreamEvent': 'stream-started', 'Timestamp': '2026-07-07T02:19:27Z'}
+2026-07-07T09:19:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini: Dạ em
+2026-07-07T09:19:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1 (320 bytes PCM)
+2026-07-07T09:19:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2 (320 bytes PCM)
+2026-07-07T09:19:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 3 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 3 (320 bytes PCM)
+2026-07-07T09:19:29 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  chào
+2026-07-07T09:19:29 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 100 (160 bytes audio/x-mulaw, timestamp=2026ms, rms=187)
+2026-07-07T09:19:29 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  anh
+2026-07-07T09:19:29 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 50 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:29 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 50 (320 bytes PCM)
+2026-07-07T09:19:29 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  chị.
+2026-07-07T09:19:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  Anh
+2026-07-07T09:19:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  chị
+2026-07-07T09:19:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 100 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 100 (320 bytes PCM)
+2026-07-07T09:19:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  cần
+2026-07-07T09:19:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tư
+2026-07-07T09:19:31 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  vấn
+2026-07-07T09:19:31 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 200 (160 bytes audio/x-mulaw, timestamp=4026ms, rms=209)
+2026-07-07T09:19:31 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  gì
+2026-07-07T09:19:31 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 150 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:31 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 150 (320 bytes PCM)
+2026-07-07T09:19:31 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  ạ?
+2026-07-07T09:19:32 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini turn complete
+2026-07-07T09:19:33 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 300 (160 bytes audio/x-mulaw, timestamp=6026ms, rms=303)
+2026-07-07T09:19:34 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Speech started (timestamp=7586ms, rms=10379)
+2026-07-07T09:19:35 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 400 (160 bytes audio/x-mulaw, timestamp=8026ms, rms=4909)
+2026-07-07T09:19:36 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Speech ended (timestamp=9286ms)
+2026-07-07T09:19:36 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Committed input audio turn (60798 bytes PCM)
+2026-07-07T09:19:37 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini: Dạ, hôm
+2026-07-07T09:19:37 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 500 (160 bytes audio/x-mulaw, timestamp=10026ms, rms=49)
+2026-07-07T09:19:37 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 200 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:37 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 200 (320 bytes PCM)
+2026-07-07T09:19:37 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  nay
+2026-07-07T09:19:38 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  là thứ
+2026-07-07T09:19:38 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  ba,
+2026-07-07T09:19:38 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 250 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:38 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 250 (320 bytes PCM)
+2026-07-07T09:19:38 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  ngày
+2026-07-07T09:19:39 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 600 (160 bytes audio/x-mulaw, timestamp=12026ms, rms=35)
+2026-07-07T09:19:39 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  7
+2026-07-07T09:19:39 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tháng
+2026-07-07T09:19:39 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 300 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:39 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 300 (320 bytes PCM)
+2026-07-07T09:19:39 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  7
+2026-07-07T09:19:40 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  năm
+2026-07-07T09:19:40 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  2026
+2026-07-07T09:19:40 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 350 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:40 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 350 (320 bytes PCM)
+2026-07-07T09:19:41 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  ạ.
+2026-07-07T09:19:41 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 700 (160 bytes audio/x-mulaw, timestamp=14026ms, rms=29)
+2026-07-07T09:19:41 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  Anh
+2026-07-07T09:19:41 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 400 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:41 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 400 (320 bytes PCM)
+2026-07-07T09:19:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  chị
+2026-07-07T09:19:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  cần
+2026-07-07T09:19:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  biết
+2026-07-07T09:19:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 450 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 450 (320 bytes PCM)
+2026-07-07T09:19:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  thêm
+2026-07-07T09:19:43 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  thông
+2026-07-07T09:19:43 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tin
+2026-07-07T09:19:43 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 800 (160 bytes audio/x-mulaw, timestamp=16026ms, rms=37)
+2026-07-07T09:19:43 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  gì nữa
+2026-07-07T09:19:43 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 500 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:43 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 500 (320 bytes PCM)
+2026-07-07T09:19:43 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  không?
+2026-07-07T09:19:44 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini turn complete
+2026-07-07T09:19:45 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 900 (160 bytes audio/x-mulaw, timestamp=18026ms, rms=34)
+2026-07-07T09:19:46 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Speech started (timestamp=19026ms, rms=1508)
+2026-07-07T09:19:47 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 1000 (160 bytes audio/x-mulaw, timestamp=20026ms, rms=86)
+2026-07-07T09:19:48 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Speech ended (timestamp=20886ms)
+2026-07-07T09:19:48 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Committed input audio turn (65918 bytes PCM)
+2026-07-07T09:19:49 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 1100 (160 bytes audio/x-mulaw, timestamp=22026ms, rms=46)
+2026-07-07T09:19:49 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini: Dạ, bên
+2026-07-07T09:19:49 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 550 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:49 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 550 (320 bytes PCM)
+2026-07-07T09:19:49 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  em
+2026-07-07T09:19:50 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  đang
+2026-07-07T09:19:50 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  bán
+2026-07-07T09:19:50 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  sữa
+2026-07-07T09:19:50 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 600 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:50 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 600 (320 bytes PCM)
+2026-07-07T09:19:50 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  bột
+2026-07-07T09:19:51 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  Venus
+2026-07-07T09:19:51 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 1200 (160 bytes audio/x-mulaw, timestamp=24026ms, rms=56)
+2026-07-07T09:19:51 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  BigOne
+2026-07-07T09:19:51 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 650 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:51 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 650 (320 bytes PCM)
+2026-07-07T09:19:52 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  hỗ
+2026-07-07T09:19:52 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  trợ
+2026-07-07T09:19:52 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tăng
+2026-07-07T09:19:52 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 700 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:52 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 700 (320 bytes PCM)
+2026-07-07T09:19:52 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  vòng
+2026-07-07T09:19:53 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  1
+2026-07-07T09:19:53 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 1300 (160 bytes audio/x-mulaw, timestamp=26026ms, rms=58)
+2026-07-07T09:19:53 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  từ
+2026-07-07T09:19:53 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  Nhật
+2026-07-07T09:19:53 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 750 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:53 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 750 (320 bytes PCM)
+2026-07-07T09:19:53 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  Bản
+2026-07-07T09:19:54 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  đó ạ.
+2026-07-07T09:19:54 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  Anh
+2026-07-07T09:19:54 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 800 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:54 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 800 (320 bytes PCM)
+2026-07-07T09:19:55 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  chị
+2026-07-07T09:19:55 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 1400 (160 bytes audio/x-mulaw, timestamp=28026ms, rms=49)
+2026-07-07T09:19:55 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  có muốn
+2026-07-07T09:19:55 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tìm
+2026-07-07T09:19:55 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 850 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:55 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 850 (320 bytes PCM)
+2026-07-07T09:19:55 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  hiểu
+2026-07-07T09:19:56 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  thêm
+2026-07-07T09:19:56 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  về
+2026-07-07T09:19:56 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  công
+2026-07-07T09:19:56 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  hiệu
+2026-07-07T09:19:56 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 900 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:56 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 900 (320 bytes PCM)
+2026-07-07T09:19:56 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  của sản
+2026-07-07T09:19:57 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  phẩm
+2026-07-07T09:19:57 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 1500 (160 bytes audio/x-mulaw, timestamp=30026ms, rms=46)
+2026-07-07T09:19:57 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  này không?
+2026-07-07T09:19:57 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 950 (160 bytes audio/x-mulaw)
+2026-07-07T09:19:57 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 950 (320 bytes PCM)
+2026-07-07T09:19:58 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini turn complete
+2026-07-07T09:19:59 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 1600 (160 bytes audio/x-mulaw, timestamp=32026ms, rms=130)
+2026-07-07T09:19:59 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Speech started (timestamp=32506ms, rms=8673)
+2026-07-07T09:20:01 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 1700 (160 bytes audio/x-mulaw, timestamp=34026ms, rms=231)
+2026-07-07T09:20:02 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Speech ended (timestamp=34846ms)
+2026-07-07T09:20:02 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Committed input audio turn (81278 bytes PCM)
+2026-07-07T09:20:02 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini: Dạ, cách
+2026-07-07T09:20:03 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 1800 (160 bytes audio/x-mulaw, timestamp=36026ms, rms=73)
+2026-07-07T09:20:03 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1000 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:03 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1000 (320 bytes PCM)
+2026-07-07T09:20:03 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  dùng
+2026-07-07T09:20:03 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  thì anh
+2026-07-07T09:20:03 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  chị
+2026-07-07T09:20:04 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  pha
+2026-07-07T09:20:04 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1050 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:04 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1050 (320 bytes PCM)
+2026-07-07T09:20:04 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  2
+2026-07-07T09:20:04 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  thìa
+2026-07-07T09:20:04 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  canh
+2026-07-07T09:20:05 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 1900 (160 bytes audio/x-mulaw, timestamp=38026ms, rms=62)
+2026-07-07T09:20:05 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  sữa
+2026-07-07T09:20:05 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1100 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:05 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1100 (320 bytes PCM)
+2026-07-07T09:20:05 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  với
+2026-07-07T09:20:05 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  150ml
+2026-07-07T09:20:06 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1150 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:06 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1150 (320 bytes PCM)
+2026-07-07T09:20:07 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  nước
+2026-07-07T09:20:07 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 2000 (160 bytes audio/x-mulaw, timestamp=40026ms, rms=114)
+2026-07-07T09:20:07 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  ấm
+2026-07-07T09:20:07 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1200 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:07 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1200 (320 bytes PCM)
+2026-07-07T09:20:07 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  40-45
+2026-07-07T09:20:08 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1250 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:08 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1250 (320 bytes PCM)
+2026-07-07T09:20:08 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  độ
+2026-07-07T09:20:08 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  C,
+2026-07-07T09:20:09 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 2100 (160 bytes audio/x-mulaw, timestamp=42026ms, rms=68)
+2026-07-07T09:20:09 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  khuấy
+2026-07-07T09:20:09 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1300 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:09 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1300 (320 bytes PCM)
+2026-07-07T09:20:09 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  đều
+2026-07-07T09:20:10 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  rồi
+2026-07-07T09:20:10 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  uống
+2026-07-07T09:20:10 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1350 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:10 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1350 (320 bytes PCM)
+2026-07-07T09:20:10 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  ngày
+2026-07-07T09:20:10 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  2
+2026-07-07T09:20:11 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  lần
+2026-07-07T09:20:11 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 2200 (160 bytes audio/x-mulaw, timestamp=44026ms, rms=43)
+2026-07-07T09:20:11 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  sáng
+2026-07-07T09:20:11 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1400 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:11 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1400 (320 bytes PCM)
+2026-07-07T09:20:11 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tối
+2026-07-07T09:20:12 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  ạ.
+2026-07-07T09:20:12 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  Anh
+2026-07-07T09:20:12 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1450 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:12 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1450 (320 bytes PCM)
+2026-07-07T09:20:12 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  chị
+2026-07-07T09:20:13 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 2300 (160 bytes audio/x-mulaw, timestamp=46026ms, rms=837)
+2026-07-07T09:20:13 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  có muốn
+2026-07-07T09:20:13 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1500 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:13 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1500 (320 bytes PCM)
+2026-07-07T09:20:13 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tìm
+2026-07-07T09:20:13 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  hiểu
+2026-07-07T09:20:13 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  về
+2026-07-07T09:20:14 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  combo
+2026-07-07T09:20:14 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1550 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:14 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1550 (320 bytes PCM)
+2026-07-07T09:20:14 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  khuyến
+2026-07-07T09:20:14 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  mãi
+2026-07-07T09:20:14 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  không?
+2026-07-07T09:20:15 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 2400 (160 bytes audio/x-mulaw, timestamp=48026ms, rms=59)
+2026-07-07T09:20:15 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1600 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:15 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1600 (320 bytes PCM)
+2026-07-07T09:20:15 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini turn complete
+2026-07-07T09:20:17 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 2500 (160 bytes audio/x-mulaw, timestamp=50026ms, rms=99)
+2026-07-07T09:20:17 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Speech started (timestamp=50566ms, rms=4398)
+2026-07-07T09:20:19 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 2600 (160 bytes audio/x-mulaw, timestamp=52026ms, rms=76)
+2026-07-07T09:20:19 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Speech ended (timestamp=52486ms)
+2026-07-07T09:20:19 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Committed input audio turn (67838 bytes PCM)
+2026-07-07T09:20:20 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini: Dạ, bên
+2026-07-07T09:20:21 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 2700 (160 bytes audio/x-mulaw, timestamp=54026ms, rms=59)
+2026-07-07T09:20:21 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  em
+2026-07-07T09:20:21 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1650 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:21 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1650 (320 bytes PCM)
+2026-07-07T09:20:21 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  đang
+2026-07-07T09:20:21 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  có các
+2026-07-07T09:20:21 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  combo
+2026-07-07T09:20:22 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  như
+2026-07-07T09:20:22 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1700 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:22 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1700 (320 bytes PCM)
+2026-07-07T09:20:22 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  mua
+2026-07-07T09:20:23 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 2800 (160 bytes audio/x-mulaw, timestamp=56026ms, rms=40)
+2026-07-07T09:20:23 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  3
+2026-07-07T09:20:23 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1750 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:23 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1750 (320 bytes PCM)
+2026-07-07T09:20:23 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  hộp
+2026-07-07T09:20:23 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tặng
+2026-07-07T09:20:23 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  2
+2026-07-07T09:20:24 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  sản
+2026-07-07T09:20:24 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1800 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:24 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1800 (320 bytes PCM)
+2026-07-07T09:20:24 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  phẩm,
+2026-07-07T09:20:24 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  hoặc
+2026-07-07T09:20:25 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 2900 (160 bytes audio/x-mulaw, timestamp=58026ms, rms=40)
+2026-07-07T09:20:25 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  mua
+2026-07-07T09:20:25 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1850 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:25 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1850 (320 bytes PCM)
+2026-07-07T09:20:25 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  5
+2026-07-07T09:20:25 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  hộp
+2026-07-07T09:20:26 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tặng
+2026-07-07T09:20:26 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  4
+2026-07-07T09:20:26 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1900 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:26 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1900 (320 bytes PCM)
+2026-07-07T09:20:26 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  sản
+2026-07-07T09:20:26 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  phẩm
+2026-07-07T09:20:26 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  đó ạ.
+2026-07-07T09:20:27 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 3000 (160 bytes audio/x-mulaw, timestamp=60026ms, rms=48)
+2026-07-07T09:20:27 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  Mua
+2026-07-07T09:20:27 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 1950 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:27 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 1950 (320 bytes PCM)
+2026-07-07T09:20:27 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  từ
+2026-07-07T09:20:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  2
+2026-07-07T09:20:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2000 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2000 (320 bytes PCM)
+2026-07-07T09:20:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  hộp
+2026-07-07T09:20:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  trở
+2026-07-07T09:20:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  lên
+2026-07-07T09:20:28 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 3100 (160 bytes audio/x-mulaw, timestamp=62026ms, rms=151)
+2026-07-07T09:20:29 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  là được
+2026-07-07T09:20:29 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  miễn
+2026-07-07T09:20:29 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2050 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:29 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2050 (320 bytes PCM)
+2026-07-07T09:20:29 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  phí giao
+2026-07-07T09:20:29 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  hàng
+2026-07-07T09:20:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  toàn
+2026-07-07T09:20:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  quốc
+2026-07-07T09:20:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2100 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2100 (320 bytes PCM)
+2026-07-07T09:20:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  luôn.
+2026-07-07T09:20:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 3200 (160 bytes audio/x-mulaw, timestamp=64026ms, rms=63)
+2026-07-07T09:20:30 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  Anh
+2026-07-07T09:20:31 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  chị
+2026-07-07T09:20:31 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2150 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:31 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2150 (320 bytes PCM)
+2026-07-07T09:20:31 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  có muốn
+2026-07-07T09:20:31 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  em nói
+2026-07-07T09:20:32 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  rõ
+2026-07-07T09:20:32 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2200 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:32 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2200 (320 bytes PCM)
+2026-07-07T09:20:32 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  hơn
+2026-07-07T09:20:32 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 3300 (160 bytes audio/x-mulaw, timestamp=66026ms, rms=58)
+2026-07-07T09:20:32 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  về
+2026-07-07T09:20:33 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  các
+2026-07-07T09:20:33 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  quà
+2026-07-07T09:20:33 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tặng
+2026-07-07T09:20:33 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2250 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:33 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2250 (320 bytes PCM)
+2026-07-07T09:20:33 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  kèm
+2026-07-07T09:20:33 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  không?
+2026-07-07T09:20:34 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini turn complete
+2026-07-07T09:20:34 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 3400 (160 bytes audio/x-mulaw, timestamp=68026ms, rms=49)
+2026-07-07T09:20:36 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 3500 (160 bytes audio/x-mulaw, timestamp=70026ms, rms=90)
+2026-07-07T09:20:37 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Speech started (timestamp=71126ms, rms=2560)
+2026-07-07T09:20:38 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 3600 (160 bytes audio/x-mulaw, timestamp=72026ms, rms=1021)
+2026-07-07T09:20:40 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Speech ended (timestamp=73766ms)
+2026-07-07T09:20:40 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Committed input audio turn (90878 bytes PCM)
+2026-07-07T09:20:40 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 3700 (160 bytes audio/x-mulaw, timestamp=74026ms, rms=50)
+2026-07-07T09:20:41 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini: Dạ, sau
+2026-07-07T09:20:41 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2300 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:41 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2300 (320 bytes PCM)
+2026-07-07T09:20:41 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  khi
+2026-07-07T09:20:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  dùng
+2026-07-07T09:20:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  khoảng
+2026-07-07T09:20:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2350 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2350 (320 bytes PCM)
+2026-07-07T09:20:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 3800 (160 bytes audio/x-mulaw, timestamp=76026ms, rms=63)
+2026-07-07T09:20:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  7
+2026-07-07T09:20:42 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  đến
+2026-07-07T09:20:43 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  10
+2026-07-07T09:20:43 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  ngày,
+2026-07-07T09:20:43 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2400 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:43 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2400 (320 bytes PCM)
+2026-07-07T09:20:43 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  thường
+2026-07-07T09:20:44 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  sẽ thấy
+2026-07-07T09:20:44 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2450 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:44 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2450 (320 bytes PCM)
+2026-07-07T09:20:44 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  ngực
+2026-07-07T09:20:44 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 3900 (160 bytes audio/x-mulaw, timestamp=78026ms, rms=1146)
+2026-07-07T09:20:44 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  căng
+2026-07-07T09:20:45 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tức
+2026-07-07T09:20:45 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  nhẹ
+2026-07-07T09:20:45 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2500 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:45 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2500 (320 bytes PCM)
+2026-07-07T09:20:45 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  và săn
+2026-07-07T09:20:45 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  chắc
+2026-07-07T09:20:46 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  hơn.
+2026-07-07T09:20:46 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2550 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:46 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2550 (320 bytes PCM)
+2026-07-07T09:20:46 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  Còn
+2026-07-07T09:20:46 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 4000 (160 bytes audio/x-mulaw, timestamp=80026ms, rms=45)
+2026-07-07T09:20:47 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  sau
+2026-07-07T09:20:47 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2600 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:47 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2600 (320 bytes PCM)
+2026-07-07T09:20:47 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  4
+2026-07-07T09:20:47 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  đến
+2026-07-07T09:20:47 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  6
+2026-07-07T09:20:48 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tuần
+2026-07-07T09:20:48 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  thì có
+2026-07-07T09:20:48 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2650 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:48 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2650 (320 bytes PCM)
+2026-07-07T09:20:48 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 4100 (160 bytes audio/x-mulaw, timestamp=82026ms, rms=48)
+2026-07-07T09:20:48 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  thể tăng
+2026-07-07T09:20:49 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  từ
+2026-07-07T09:20:49 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2700 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:49 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2700 (320 bytes PCM)
+2026-07-07T09:20:49 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  2
+2026-07-07T09:20:49 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  đến
+2026-07-07T09:20:49 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  5
+2026-07-07T09:20:50 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  cm,
+2026-07-07T09:20:50 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2750 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:50 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2750 (320 bytes PCM)
+2026-07-07T09:20:50 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire inbound media 4200 (160 bytes audio/x-mulaw, timestamp=84026ms, rms=62)
+2026-07-07T09:20:50 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  tròn
+2026-07-07T09:20:51 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  đầy
+2026-07-07T09:20:51 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire outbound media 2800 (160 bytes audio/x-mulaw)
+2026-07-07T09:20:51 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Sent audio frame 2800 (320 bytes PCM)
+2026-07-07T09:20:51 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  hơn
+2026-07-07T09:20:51 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini:  đó ạ.
+2026-07-07T09:20:51 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] SignalWire stream stopped
+2026-07-07T09:20:51 [4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b] Gemini Live closed
+2026-07-07T09:20:52 SignalWire stream status: {'CallSid': '4b4cae1a-eeb6-4de1-8aff-716aca3bdb9b', 'AccountSid': '6111b15d-ef66-468a-b740-561e44868811', 'StreamSid': '2786c11a-cfeb-42c2-92d3-c3c23d5d04d3', 'StreamName': '2786c11a-cfeb-42c2-92d3-c3c23d5d04d3', 'StreamEvent': 'stream-stopped', 'Timestamp': '2026-07-07T02:20:51Z'}
+2026-07-07T10:09:23 [signalwire] WebSocket connected
+2026-07-07T10:09:23 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire stream started: fe1ef548-6953-4605-b04a-59370016ee8f audio/x-mulaw 8000Hz
+2026-07-07T10:09:24 SignalWire stream status: {'CallSid': '5b3fb881-8616-4830-9870-5ca8ea3181be', 'AccountSid': '6111b15d-ef66-468a-b740-561e44868811', 'StreamSid': 'fe1ef548-6953-4605-b04a-59370016ee8f', 'StreamName': 'fe1ef548-6953-4605-b04a-59370016ee8f', 'StreamEvent': 'stream-started', 'Timestamp': '2026-07-07T03:09:23Z'}
+2026-07-07T10:09:24 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini Live connected
+2026-07-07T10:09:24 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 1 (160 bytes audio/x-mulaw, timestamp=54ms, rms=8)
+2026-07-07T10:09:24 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 2 (160 bytes audio/x-mulaw, timestamp=74ms, rms=8)
+2026-07-07T10:09:24 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 3 (160 bytes audio/x-mulaw, timestamp=94ms, rms=8)
+2026-07-07T10:09:25 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini: Dạ em
+2026-07-07T10:09:25 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 1 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:25 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 1 (320 bytes PCM)
+2026-07-07T10:09:25 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 2 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:25 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 2 (320 bytes PCM)
+2026-07-07T10:09:25 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 3 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:25 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 3 (320 bytes PCM)
+2026-07-07T10:09:25 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 100 (160 bytes audio/x-mulaw, timestamp=2034ms, rms=22)
+2026-07-07T10:09:25 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  chào
+2026-07-07T10:09:25 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  anh
+2026-07-07T10:09:26 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 50 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:26 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 50 (320 bytes PCM)
+2026-07-07T10:09:26 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  chị.
+2026-07-07T10:09:26 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  Anh
+2026-07-07T10:09:27 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 100 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:27 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 100 (320 bytes PCM)
+2026-07-07T10:09:27 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  chị
+2026-07-07T10:09:27 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  cần
+2026-07-07T10:09:27 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 200 (160 bytes audio/x-mulaw, timestamp=4034ms, rms=9)
+2026-07-07T10:09:27 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  tư
+2026-07-07T10:09:27 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  vấn
+2026-07-07T10:09:28 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 150 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:28 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 150 (320 bytes PCM)
+2026-07-07T10:09:28 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  gì
+2026-07-07T10:09:28 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  ạ?
+2026-07-07T10:09:28 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini turn complete
+2026-07-07T10:09:29 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 300 (160 bytes audio/x-mulaw, timestamp=6034ms, rms=622)
+2026-07-07T10:09:31 [5b3fb881-8616-4830-9870-5ca8ea3181be] Speech started (timestamp=7714ms, rms=4344)
+2026-07-07T10:09:31 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 400 (160 bytes audio/x-mulaw, timestamp=8034ms, rms=2671)
+2026-07-07T10:09:33 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 500 (160 bytes audio/x-mulaw, timestamp=10034ms, rms=14)
+2026-07-07T10:09:33 [5b3fb881-8616-4830-9870-5ca8ea3181be] Speech ended (timestamp=10074ms)
+2026-07-07T10:09:33 [5b3fb881-8616-4830-9870-5ca8ea3181be] Committed input audio turn (81918 bytes PCM)
+2026-07-07T10:09:34 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini: Dạ, một
+2026-07-07T10:09:34 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 200 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:34 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 200 (320 bytes PCM)
+2026-07-07T10:09:35 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  hộp
+2026-07-07T10:09:35 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  Venus
+2026-07-07T10:09:35 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 600 (160 bytes audio/x-mulaw, timestamp=12034ms, rms=32)
+2026-07-07T10:09:35 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 250 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:35 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 250 (320 bytes PCM)
+2026-07-07T10:09:35 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  BigOne
+2026-07-07T10:09:36 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  có giá
+2026-07-07T10:09:36 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 300 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:36 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 300 (320 bytes PCM)
+2026-07-07T10:09:36 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  120.000
+2026-07-07T10:09:37 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 700 (160 bytes audio/x-mulaw, timestamp=14034ms, rms=9)
+2026-07-07T10:09:37 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 350 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:37 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 350 (320 bytes PCM)
+2026-07-07T10:09:37 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  kyats
+2026-07-07T10:09:38 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  ạ.
+2026-07-07T10:09:38 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  Chị
+2026-07-07T10:09:38 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 400 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:38 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 400 (320 bytes PCM)
+2026-07-07T10:09:39 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  mua
+2026-07-07T10:09:39 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  lẻ
+2026-07-07T10:09:39 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 800 (160 bytes audio/x-mulaw, timestamp=16034ms, rms=8)
+2026-07-07T10:09:39 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  một
+2026-07-07T10:09:39 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 450 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:39 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 450 (320 bytes PCM)
+2026-07-07T10:09:39 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  hộp
+2026-07-07T10:09:40 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  hay
+2026-07-07T10:09:40 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  muốn
+2026-07-07T10:09:40 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  tham
+2026-07-07T10:09:40 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 500 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:40 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 500 (320 bytes PCM)
+2026-07-07T10:09:40 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  khảo
+2026-07-07T10:09:41 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  các combo
+2026-07-07T10:09:41 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 900 (160 bytes audio/x-mulaw, timestamp=18034ms, rms=9)
+2026-07-07T10:09:41 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  khuyến
+2026-07-07T10:09:41 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 550 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:41 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 550 (320 bytes PCM)
+2026-07-07T10:09:41 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  mãi
+2026-07-07T10:09:42 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  của bên
+2026-07-07T10:09:42 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  em ạ?
+2026-07-07T10:09:42 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 600 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:42 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 600 (320 bytes PCM)
+2026-07-07T10:09:43 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini turn complete
+2026-07-07T10:09:43 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 1000 (160 bytes audio/x-mulaw, timestamp=20034ms, rms=9)
+2026-07-07T10:09:45 [5b3fb881-8616-4830-9870-5ca8ea3181be] Speech started (timestamp=21954ms, rms=8811)
+2026-07-07T10:09:45 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 1100 (160 bytes audio/x-mulaw, timestamp=22034ms, rms=7671)
+2026-07-07T10:09:47 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 1200 (160 bytes audio/x-mulaw, timestamp=24034ms, rms=9)
+2026-07-07T10:09:47 [5b3fb881-8616-4830-9870-5ca8ea3181be] Speech ended (timestamp=24214ms)
+2026-07-07T10:09:47 [5b3fb881-8616-4830-9870-5ca8ea3181be] Committed input audio turn (78718 bytes PCM)
+2026-07-07T10:09:48 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini: Dạ, bên
+2026-07-07T10:09:49 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 650 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:49 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 650 (320 bytes PCM)
+2026-07-07T10:09:49 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  em
+2026-07-07T10:09:49 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  không
+2026-07-07T10:09:49 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  có bán
+2026-07-07T10:09:49 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 1300 (160 bytes audio/x-mulaw, timestamp=26034ms, rms=21)
+2026-07-07T10:09:49 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  nửa
+2026-07-07T10:09:50 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 700 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:50 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 700 (320 bytes PCM)
+2026-07-07T10:09:50 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  hộp,
+2026-07-07T10:09:50 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  chỉ
+2026-07-07T10:09:50 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  bán
+2026-07-07T10:09:51 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 750 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:51 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 750 (320 bytes PCM)
+2026-07-07T10:09:51 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  nguyên
+2026-07-07T10:09:51 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  hộp
+2026-07-07T10:09:51 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 1400 (160 bytes audio/x-mulaw, timestamp=28034ms, rms=9)
+2026-07-07T10:09:51 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  thôi ạ.
+2026-07-07T10:09:52 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 800 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:52 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 800 (320 bytes PCM)
+2026-07-07T10:09:52 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  Chị
+2026-07-07T10:09:52 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  có muốn
+2026-07-07T10:09:53 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 850 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:53 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 850 (320 bytes PCM)
+2026-07-07T10:09:53 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  đặt
+2026-07-07T10:09:53 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  một
+2026-07-07T10:09:53 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  hộp
+2026-07-07T10:09:53 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire inbound media 1500 (160 bytes audio/x-mulaw, timestamp=30034ms, rms=9)
+2026-07-07T10:09:53 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  không
+2026-07-07T10:09:53 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini:  ạ?
+2026-07-07T10:09:54 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire outbound media 900 (160 bytes audio/x-mulaw)
+2026-07-07T10:09:54 [5b3fb881-8616-4830-9870-5ca8ea3181be] Sent audio frame 900 (320 bytes PCM)
+2026-07-07T10:09:54 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini turn complete
+2026-07-07T10:09:54 [5b3fb881-8616-4830-9870-5ca8ea3181be] SignalWire stream stopped
+2026-07-07T10:09:54 [5b3fb881-8616-4830-9870-5ca8ea3181be] Gemini Live closed
+2026-07-07T10:09:55 SignalWire stream status: {'CallSid': '5b3fb881-8616-4830-9870-5ca8ea3181be', 'AccountSid': '6111b15d-ef66-468a-b740-561e44868811', 'StreamSid': 'fe1ef548-6953-4605-b04a-59370016ee8f', 'StreamName': 'fe1ef548-6953-4605-b04a-59370016ee8f', 'StreamEvent': 'stream-stopped', 'Timestamp': '2026-07-07T03:09:54Z'}
+2026-07-07T10:23:40 [signalwire] WebSocket connected
+2026-07-07T10:23:40 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire stream started: e9f8836d-ed69-4635-988c-d815ebf0ffbf audio/x-mulaw 8000Hz
+2026-07-07T10:23:41 SignalWire stream status: {'CallSid': 'bffae81d-599e-44b1-a6fd-2783f2a44af5', 'AccountSid': '6111b15d-ef66-468a-b740-561e44868811', 'StreamSid': 'e9f8836d-ed69-4635-988c-d815ebf0ffbf', 'StreamName': 'e9f8836d-ed69-4635-988c-d815ebf0ffbf', 'StreamEvent': 'stream-started', 'Timestamp': '2026-07-07T03:23:40Z'}
+2026-07-07T10:23:41 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini Live connected
+2026-07-07T10:23:41 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 1 (160 bytes audio/x-mulaw, timestamp=52ms, rms=421)
+2026-07-07T10:23:41 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 2 (160 bytes audio/x-mulaw, timestamp=72ms, rms=472)
+2026-07-07T10:23:41 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 3 (160 bytes audio/x-mulaw, timestamp=92ms, rms=393)
+2026-07-07T10:23:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini: Dạ em
+2026-07-07T10:23:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1 (320 bytes PCM)
+2026-07-07T10:23:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 2 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 2 (320 bytes PCM)
+2026-07-07T10:23:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 3 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 3 (320 bytes PCM)
+2026-07-07T10:23:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 100 (160 bytes audio/x-mulaw, timestamp=2032ms, rms=137)
+2026-07-07T10:23:43 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  chào
+2026-07-07T10:23:43 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  anh
+2026-07-07T10:23:43 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 50 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:43 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 50 (320 bytes PCM)
+2026-07-07T10:23:43 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  chị.
+2026-07-07T10:23:43 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  Anh
+2026-07-07T10:23:44 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  chị
+2026-07-07T10:23:44 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 100 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:44 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 100 (320 bytes PCM)
+2026-07-07T10:23:44 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  cần
+2026-07-07T10:23:44 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 200 (160 bytes audio/x-mulaw, timestamp=4032ms, rms=214)
+2026-07-07T10:23:44 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  tư vấn
+2026-07-07T10:23:45 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  gì
+2026-07-07T10:23:45 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 150 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:45 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 150 (320 bytes PCM)
+2026-07-07T10:23:45 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  ạ?
+2026-07-07T10:23:45 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini turn complete
+2026-07-07T10:23:46 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 300 (160 bytes audio/x-mulaw, timestamp=6032ms, rms=776)
+2026-07-07T10:23:47 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Speech started (timestamp=7032ms, rms=4044)
+2026-07-07T10:23:48 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 400 (160 bytes audio/x-mulaw, timestamp=8032ms, rms=102)
+2026-07-07T10:23:49 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Speech ended (timestamp=8512ms)
+2026-07-07T10:23:49 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Committed input audio turn (53758 bytes PCM)
+2026-07-07T10:23:50 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini: Dạ vâng,
+2026-07-07T10:23:50 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 500 (160 bytes audio/x-mulaw, timestamp=10032ms, rms=29)
+2026-07-07T10:23:50 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 200 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:50 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 200 (320 bytes PCM)
+2026-07-07T10:23:50 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  em
+2026-07-07T10:23:51 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  hiểu
+2026-07-07T10:23:51 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  là mình
+2026-07-07T10:23:51 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  đang
+2026-07-07T10:23:51 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  bị đau
+2026-07-07T10:23:51 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 250 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:51 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 250 (320 bytes PCM)
+2026-07-07T10:23:51 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  bụng
+2026-07-07T10:23:52 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  đúng
+2026-07-07T10:23:52 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  không ạ?
+2026-07-07T10:23:52 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 600 (160 bytes audio/x-mulaw, timestamp=12032ms, rms=29)
+2026-07-07T10:23:52 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 300 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:52 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 300 (320 bytes PCM)
+2026-07-07T10:23:52 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  Anh
+2026-07-07T10:23:53 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  chị cho
+2026-07-07T10:23:53 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  em hỏi
+2026-07-07T10:23:53 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 350 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:53 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 350 (320 bytes PCM)
+2026-07-07T10:23:53 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  thêm
+2026-07-07T10:23:54 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  là mình
+2026-07-07T10:23:54 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  đau
+2026-07-07T10:23:54 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 700 (160 bytes audio/x-mulaw, timestamp=14032ms, rms=26)
+2026-07-07T10:23:54 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 400 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:54 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 400 (320 bytes PCM)
+2026-07-07T10:23:54 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  ở vùng
+2026-07-07T10:23:55 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  nào
+2026-07-07T10:23:55 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  và cơn
+2026-07-07T10:23:55 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 450 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:55 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 450 (320 bytes PCM)
+2026-07-07T10:23:55 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  đau
+2026-07-07T10:23:56 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  như thế
+2026-07-07T10:23:56 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  nào
+2026-07-07T10:23:56 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  ạ?
+2026-07-07T10:23:56 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 800 (160 bytes audio/x-mulaw, timestamp=16032ms, rms=30)
+2026-07-07T10:23:56 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 500 (160 bytes audio/x-mulaw)
+2026-07-07T10:23:56 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 500 (320 bytes PCM)
+2026-07-07T10:23:57 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini turn complete
+2026-07-07T10:23:58 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 900 (160 bytes audio/x-mulaw, timestamp=18032ms, rms=651)
+2026-07-07T10:24:00 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Speech started (timestamp=19852ms, rms=2110)
+2026-07-07T10:24:00 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 1000 (160 bytes audio/x-mulaw, timestamp=20032ms, rms=1622)
+2026-07-07T10:24:02 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 1100 (160 bytes audio/x-mulaw, timestamp=22032ms, rms=85)
+2026-07-07T10:24:03 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Speech ended (timestamp=22692ms)
+2026-07-07T10:24:03 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Committed input audio turn (97278 bytes PCM)
+2026-07-07T10:24:04 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini: Dạ, mình
+2026-07-07T10:24:04 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 1200 (160 bytes audio/x-mulaw, timestamp=24032ms, rms=49)
+2026-07-07T10:24:04 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  đau
+2026-07-07T10:24:05 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 550 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:05 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 550 (320 bytes PCM)
+2026-07-07T10:24:05 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  ở bụng
+2026-07-07T10:24:05 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  trên
+2026-07-07T10:24:05 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  đó ạ?
+2026-07-07T10:24:06 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 600 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:06 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 600 (320 bytes PCM)
+2026-07-07T10:24:06 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  Mình
+2026-07-07T10:24:06 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 1300 (160 bytes audio/x-mulaw, timestamp=26032ms, rms=29)
+2026-07-07T10:24:06 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  đau
+2026-07-07T10:24:07 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 650 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:07 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 650 (320 bytes PCM)
+2026-07-07T10:24:07 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  cả ngày
+2026-07-07T10:24:07 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  hay
+2026-07-07T10:24:07 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  là
+2026-07-07T10:24:07 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  có
+2026-07-07T10:24:08 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 700 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:08 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 700 (320 bytes PCM)
+2026-07-07T10:24:08 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  thời
+2026-07-07T10:24:08 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  điểm
+2026-07-07T10:24:08 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  nào
+2026-07-07T10:24:08 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  đau
+2026-07-07T10:24:08 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 1400 (160 bytes audio/x-mulaw, timestamp=28032ms, rms=34)
+2026-07-07T10:24:08 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  nhiều
+2026-07-07T10:24:09 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 750 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:09 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 750 (320 bytes PCM)
+2026-07-07T10:24:09 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  hơn
+2026-07-07T10:24:09 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  không,
+2026-07-07T10:24:09 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  anh
+2026-07-07T10:24:09 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  chị?
+2026-07-07T10:24:10 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 800 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:10 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 800 (320 bytes PCM)
+2026-07-07T10:24:10 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini turn complete
+2026-07-07T10:24:10 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 1500 (160 bytes audio/x-mulaw, timestamp=30032ms, rms=50)
+2026-07-07T10:24:12 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 1600 (160 bytes audio/x-mulaw, timestamp=32032ms, rms=82)
+2026-07-07T10:24:13 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Speech started (timestamp=32952ms, rms=4378)
+2026-07-07T10:24:14 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 1700 (160 bytes audio/x-mulaw, timestamp=34032ms, rms=50)
+2026-07-07T10:24:15 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Speech ended (timestamp=34632ms)
+2026-07-07T10:24:15 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Committed input audio turn (60158 bytes PCM)
+2026-07-07T10:24:15 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini: Dạ, vậy
+2026-07-07T10:24:16 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  là mình
+2026-07-07T10:24:16 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 1800 (160 bytes audio/x-mulaw, timestamp=36032ms, rms=31)
+2026-07-07T10:24:16 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 850 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:16 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 850 (320 bytes PCM)
+2026-07-07T10:24:16 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  đau
+2026-07-07T10:24:17 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  nhiều
+2026-07-07T10:24:17 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  về
+2026-07-07T10:24:17 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  buổi
+2026-07-07T10:24:17 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  tối
+2026-07-07T10:24:17 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 900 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:17 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 900 (320 bytes PCM)
+2026-07-07T10:24:17 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  đúng
+2026-07-07T10:24:18 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  không ạ?
+2026-07-07T10:24:18 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  Ngoài
+2026-07-07T10:24:18 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 1900 (160 bytes audio/x-mulaw, timestamp=38032ms, rms=27)
+2026-07-07T10:24:18 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 950 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:18 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 950 (320 bytes PCM)
+2026-07-07T10:24:19 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  ra,
+2026-07-07T10:24:19 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  mình
+2026-07-07T10:24:19 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  có kèm
+2026-07-07T10:24:19 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1000 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:19 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1000 (320 bytes PCM)
+2026-07-07T10:24:20 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  theo
+2026-07-07T10:24:20 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  triệu
+2026-07-07T10:24:20 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  chứng
+2026-07-07T10:24:20 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  nào
+2026-07-07T10:24:20 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 2000 (160 bytes audio/x-mulaw, timestamp=40032ms, rms=36)
+2026-07-07T10:24:20 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1050 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:20 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1050 (320 bytes PCM)
+2026-07-07T10:24:20 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  khác
+2026-07-07T10:24:21 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  không,
+2026-07-07T10:24:21 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  ạ?
+2026-07-07T10:24:21 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1100 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:21 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1100 (320 bytes PCM)
+2026-07-07T10:24:21 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini turn complete
+2026-07-07T10:24:22 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 2100 (160 bytes audio/x-mulaw, timestamp=42032ms, rms=40)
+2026-07-07T10:24:24 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 2200 (160 bytes audio/x-mulaw, timestamp=44032ms, rms=76)
+2026-07-07T10:24:25 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Speech started (timestamp=45092ms, rms=1900)
+2026-07-07T10:24:26 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 2300 (160 bytes audio/x-mulaw, timestamp=46032ms, rms=31)
+2026-07-07T10:24:26 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Speech ended (timestamp=46172ms)
+2026-07-07T10:24:26 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Committed input audio turn (40958 bytes PCM)
+2026-07-07T10:24:27 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini: Dạ, em
+2026-07-07T10:24:28 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  nghe
+2026-07-07T10:24:28 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  không
+2026-07-07T10:24:28 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1150 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:28 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1150 (320 bytes PCM)
+2026-07-07T10:24:28 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  rõ
+2026-07-07T10:24:28 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 2400 (160 bytes audio/x-mulaw, timestamp=48032ms, rms=42)
+2026-07-07T10:24:28 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  lắm,
+2026-07-07T10:24:29 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  anh
+2026-07-07T10:24:29 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  chị
+2026-07-07T10:24:29 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1200 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:29 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1200 (320 bytes PCM)
+2026-07-07T10:24:29 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  nói
+2026-07-07T10:24:29 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  lại
+2026-07-07T10:24:30 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  giúp
+2026-07-07T10:24:30 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  em được
+2026-07-07T10:24:30 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1250 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:30 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1250 (320 bytes PCM)
+2026-07-07T10:24:30 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  không
+2026-07-07T10:24:30 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 2500 (160 bytes audio/x-mulaw, timestamp=50032ms, rms=28)
+2026-07-07T10:24:30 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  ạ?
+2026-07-07T10:24:31 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini turn complete
+2026-07-07T10:24:32 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 2600 (160 bytes audio/x-mulaw, timestamp=52032ms, rms=2373)
+2026-07-07T10:24:33 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Speech started (timestamp=52392ms, rms=2174)
+2026-07-07T10:24:34 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 2700 (160 bytes audio/x-mulaw, timestamp=54032ms, rms=161)
+2026-07-07T10:24:35 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Speech ended (timestamp=54872ms)
+2026-07-07T10:24:35 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Committed input audio turn (85758 bytes PCM)
+2026-07-07T10:24:36 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini: Dạ, em
+2026-07-07T10:24:36 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1300 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:36 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1300 (320 bytes PCM)
+2026-07-07T10:24:36 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 2800 (160 bytes audio/x-mulaw, timestamp=56032ms, rms=32)
+2026-07-07T10:24:36 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  hiểu
+2026-07-07T10:24:36 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  rồi ạ,
+2026-07-07T10:24:37 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  mình
+2026-07-07T10:24:37 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1350 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:37 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1350 (320 bytes PCM)
+2026-07-07T10:24:37 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  vừa
+2026-07-07T10:24:37 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  bị đau
+2026-07-07T10:24:38 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  bụng
+2026-07-07T10:24:38 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 2900 (160 bytes audio/x-mulaw, timestamp=58032ms, rms=32)
+2026-07-07T10:24:38 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1400 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:38 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1400 (320 bytes PCM)
+2026-07-07T10:24:38 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  trên
+2026-07-07T10:24:38 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  lại còn
+2026-07-07T10:24:39 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  đau
+2026-07-07T10:24:39 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  tay nữa
+2026-07-07T10:24:39 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1450 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:39 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1450 (320 bytes PCM)
+2026-07-07T10:24:39 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  đúng không
+2026-07-07T10:24:40 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  ạ?
+2026-07-07T10:24:40 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  Tình
+2026-07-07T10:24:40 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 3000 (160 bytes audio/x-mulaw, timestamp=60032ms, rms=44)
+2026-07-07T10:24:40 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1500 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:40 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1500 (320 bytes PCM)
+2026-07-07T10:24:40 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  trạng
+2026-07-07T10:24:41 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  này
+2026-07-07T10:24:41 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  mình
+2026-07-07T10:24:41 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1550 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:41 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1550 (320 bytes PCM)
+2026-07-07T10:24:41 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  bị lâu
+2026-07-07T10:24:41 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  chưa,
+2026-07-07T10:24:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  anh
+2026-07-07T10:24:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  chị
+2026-07-07T10:24:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire inbound media 3100 (160 bytes audio/x-mulaw, timestamp=62032ms, rms=67)
+2026-07-07T10:24:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire outbound media 1600 (160 bytes audio/x-mulaw)
+2026-07-07T10:24:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Sent audio frame 1600 (320 bytes PCM)
+2026-07-07T10:24:42 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini:  nhỉ?
+2026-07-07T10:24:43 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini turn complete
+2026-07-07T10:24:43 [bffae81d-599e-44b1-a6fd-2783f2a44af5] SignalWire stream stopped
+2026-07-07T10:24:43 [bffae81d-599e-44b1-a6fd-2783f2a44af5] Gemini Live closed
+2026-07-07T10:24:44 SignalWire stream status: {'CallSid': 'bffae81d-599e-44b1-a6fd-2783f2a44af5', 'AccountSid': '6111b15d-ef66-468a-b740-561e44868811', 'StreamSid': 'e9f8836d-ed69-4635-988c-d815ebf0ffbf', 'StreamName': 'e9f8836d-ed69-4635-988c-d815ebf0ffbf', 'StreamEvent': 'stream-stopped', 'Timestamp': '2026-07-07T03:24:43Z'}

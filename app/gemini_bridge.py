@@ -47,7 +47,6 @@ class GeminiCallBridge:
             model=config.gemini.model,
             config=types.LiveConnectConfig(
                 response_modalities=[types.Modality.AUDIO],
-                max_output_tokens=120,
                 speech_config=types.SpeechConfig(
                     voice_config=types.VoiceConfig(
                         prebuilt_voice_config=types.PrebuiltVoiceConfig(

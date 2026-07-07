@@ -73,8 +73,6 @@ class RealtimeInputGate:
 
         self.speech_active = True
         self.silence_frames = 0
-        if self.bridge.completed_turn_count > 0:
-            self.bridge.set_output_muted(True)
         if timestamp_ms is None:
             log(f"[{self.call_id}] Speech started (rms={rms})")
         else:
@@ -112,7 +110,6 @@ class RealtimeInputGate:
             await asyncio.wait_for(self.bridge.turn_complete.wait(), timeout=30)
         except asyncio.TimeoutError:
             log(f"[{self.call_id}] Timed out waiting for current Gemini turn before commit")
-        self.bridge.set_output_muted(False)
         await self.bridge.commit_input_audio_turn()
 
 
