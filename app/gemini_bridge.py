@@ -74,20 +74,9 @@ class GeminiCallBridge:
             model=config.gemini.model,
             config=types.LiveConnectConfig(
                 response_modalities=[types.Modality.AUDIO],
-<<<<<<< HEAD
                 temperature=0.35,
                 max_output_tokens=180,
                 speech_config=_speech_config(),
-=======
-                max_output_tokens=120,
-                speech_config=types.SpeechConfig(
-                    voice_config=types.VoiceConfig(
-                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                            voice_name=config.gemini.voice_name,
-                        )
-                    )
-                ),
->>>>>>> parent of ba8fc49 (tri fix)
                 system_instruction=types.Content(
                     parts=[types.Part(text=gemini_system_instruction())]
                 ),
