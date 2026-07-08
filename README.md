@@ -163,3 +163,55 @@ python -m scripts.mock_signalwire_ws \
 ```
 
 If `gemini-response-signalwire.pcm` has bytes and logs show `SignalWire stream started` and `Gemini Live connected`, the SignalWire -> Gemini -> SignalWire path is working.
+
+## Telnyx inbound calls
+
+Telnyx can replace SignalWire for a normal phone-number call into the AI agent.
+
+Add these variables to `.env`:
+
+```bash
+TELNYX_STREAM_TOKEN=replace_with_a_random_secret
+TELNYX_STREAM_CODEC=PCMU
+TELNYX_STREAM_SAMPLE_RATE=8000
+TELNYX_STREAM_TRACK=inbound_track
+```
+
+Start the server and expose it with HTTPS:
+
+```bash
+source .venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
+ngrok http 3000
+```
+
+Set `PUBLIC_BASE_URL` in `.env` to the ngrok HTTPS URL, then restart uvicorn.
+
+In Telnyx, configure your TeXML app or inbound number webhook:
+
+```text
+Voice webhook URL: https://<your-ngrok-domain>/telnyx/answer
+Method: POST
+```
+
+The `/telnyx/answer` endpoint returns TeXML that connects the call to a bidirectional RTP media stream:
+
+```text
+wss://<your-ngrok-domain>/telnyx/ws?token=<TELNYX_STREAM_TOKEN>
+```
+
+Local Telnyx WebSocket simulation:
+
+```bash
+python -m scripts.mock_telnyx_ws \
+  --url "ws://localhost:3000/telnyx/ws?token=replace_with_a_random_secret" \
+  --wav test-call.wav \
+  --out gemini-response-telnyx.pcm \
+  --stream-token "replace_with_a_random_secret"
+```
+
+If `gemini-response-telnyx.pcm` has bytes and logs show `Telnyx stream started` and `Gemini Live connected`, the Telnyx -> Gemini -> Telnyx path is working.
+
+cd "/Users/macbook/Desktop/Viber call"
+lsof -ti tcp:3000 | xargs kill -9
+python3 -m uvicorn app.main:app --host 0.0.0.0 --port 3000

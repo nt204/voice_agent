@@ -42,17 +42,21 @@ def resample_pcm16_mono(buffer: bytes, from_rate: int, to_rate: int) -> bytes:
 
 
 def signalwire_payload_to_pcm16(payload: bytes, encoding: str) -> bytes:
-    if encoding == "audio/x-mulaw":
+    if encoding in {"audio/x-mulaw", "PCMU"}:
         return audioop.ulaw2lin(payload, 2)
-    if encoding == "audio/x-L16":
+    if encoding == "PCMA":
+        return audioop.alaw2lin(payload, 2)
+    if encoding in {"audio/x-L16", "L16"}:
         return audioop.byteswap(payload, 2)
     return payload
 
 
 def pcm16_to_signalwire_payload(pcm: bytes, encoding: str) -> bytes:
-    if encoding == "audio/x-mulaw":
+    if encoding in {"audio/x-mulaw", "PCMU"}:
         return audioop.lin2ulaw(pcm, 2)
-    if encoding == "audio/x-L16":
+    if encoding == "PCMA":
+        return audioop.lin2alaw(pcm, 2)
+    if encoding in {"audio/x-L16", "L16"}:
         return audioop.byteswap(pcm, 2)
     return pcm
 

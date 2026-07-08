@@ -45,6 +45,7 @@ class TelnyxConfig:
     stream_token: str = os.getenv("TELNYX_STREAM_TOKEN", "")
     stream_codec: str = os.getenv("TELNYX_STREAM_CODEC", "PCMU")
     stream_sample_rate: int = _int_env("TELNYX_STREAM_SAMPLE_RATE", 8000)
+    stream_track: str = os.getenv("TELNYX_STREAM_TRACK", "inbound_track")
     speech_threshold: int = _int_env("TELNYX_SPEECH_THRESHOLD", 450)
     greeting_audio_path: str = os.getenv(
         "TELNYX_GREETING_AUDIO_PATH",

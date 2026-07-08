@@ -122,7 +122,8 @@ class RealtimeInputGate:
                 await asyncio.wait_for(self.bridge.turn_complete.wait(), timeout=30)
             except asyncio.TimeoutError:
                 log(f"[{self.call_id}] Timed out waiting for current Gemini turn before commit")
-        self.bridge.set_output_muted(False)
+        if hasattr(self.bridge, "set_output_muted"):
+            self.bridge.set_output_muted(False)
         await self.bridge.commit_input_audio_turn()
 
 
@@ -159,10 +160,26 @@ async def infobip_events(payload: dict) -> dict[str, bool]:
     return {"ok": True}
 
 
+@app.api_route("/telnyx/status", methods=["GET", "POST"])
+async def telnyx_stream_status(request: Request) -> dict[str, bool]:
+    payload = dict(request.query_params)
+    if request.method == "POST":
+        content_type = request.headers.get("content-type", "")
+        if "application/json" in content_type:
+            payload.update(await request.json())
+        else:
+            body = (await request.body()).decode("utf-8", errors="replace")
+            payload.update(dict(parse_qsl(body)))
+    log(f"Telnyx stream status: {payload}")
+    return {"ok": True}
+
+
 @app.api_route("/telnyx/answer", methods=["GET", "POST"])
 async def telnyx_answer() -> Response:
     stream_url = _public_ws_url("/telnyx/ws")
     greeting_url = _public_http_url("/telnyx/greeting.wav")
+    status_url = _public_http_url("/telnyx/status")
+    stream_track = getattr(config.telnyx, "stream_track", "inbound_track")
     if config.telnyx.stream_token:
         stream_url = f"{stream_url}?{urlencode({'token': config.telnyx.stream_token})}"
 
@@ -170,7 +187,7 @@ async def telnyx_answer() -> Response:
 <Response>
   <Play continueOnError="true">{escape(greeting_url)}</Play>
   <Connect>
-    <Stream url="{escape(stream_url)}" track="inbound_track" codec="{escape(config.telnyx.stream_codec)}" bidirectionalMode="rtp" bidirectionalCodec="{escape(config.telnyx.stream_codec)}" bidirectionalSamplingRate="{config.telnyx.stream_sample_rate}" />
+    <Stream url="{escape(stream_url)}" track="{escape(stream_track)}" codec="{escape(config.telnyx.stream_codec)}" bidirectionalMode="rtp" bidirectionalCodec="{escape(config.telnyx.stream_codec)}" bidirectionalSamplingRate="{config.telnyx.stream_sample_rate}" statusCallback="{escape(status_url)}" statusCallbackMethod="POST"></Stream>
   </Connect>
   <Pause length="600" />
 </Response>
@@ -549,7 +566,7 @@ def _public_ws_url(path: str) -> str:
         public_base_url = "http://localhost:3000"
     parsed = urlparse(urljoin(public_base_url.rstrip("/") + "/", path.lstrip("/")))
     scheme = "wss" if parsed.scheme == "https" else "ws"
-    return urlunparse((scheme, parsed.netloc, parsed.path, "", "", ""))
+    return urlunparse((scheme, parsed.netloc, parsed.path, "", parsed.query, ""))
 
 
 def _public_http_url(path: str) -> str:
@@ -557,7 +574,7 @@ def _public_http_url(path: str) -> str:
     if not public_base_url:
         public_base_url = "http://localhost:3000"
     parsed = urlparse(urljoin(public_base_url.rstrip("/") + "/", path.lstrip("/")))
-    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", parsed.query, ""))
 
 
 def _telnyx_greeting_audio_path() -> Path:
