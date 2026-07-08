@@ -1,75 +1,48 @@
-Dữ liệu sản phẩm
-Thay nội dung file này bằng thông tin sản phẩm thật của bạn. AI sẽ dùng phần này
-làm nguồn chính để tư vấn và chốt sale.
-Mẫu cấu trúc nên dùng
-Tên sản phẩm
-
-Giá:
-Dung tích/quy cách:
-Phù hợp với:
-Không phù hợp với:
-Công dụng/lợi ích chính:
-Thành phần/điểm nổi bật:
-Cách dùng:
-Thời gian dùng dự kiến:
-Combo/upsell phù hợp:
-Khuyến mãi:
-Chính sách đổi trả:
-Giao hàng:
-Lưu ý bắt buộc:
-
-Ví dụ placeholder
+ထုတ်ကုန်ဒေတာ
+ဒီဖိုင်ကို AI အသံအကူအညီက အကြံပေးခြင်း၊ စျေးနှုန်းဖြေခြင်း၊ အော်ဒါပိတ်ခြင်းအတွက် အဓိကအချက်အလက်အဖြစ် အသုံးပြုပါမည်။
+မသိသောအချက်အလက်ကို မခန့်မှန်းပါနှင့်။
 Venus BigOne
-THÔNG TIN SẢN PHẨM CHI TIẾT:
-"Dạ em chia sẻ với chị về công chính của sữa Venus BigOne nha 🌸
-🌸 Công dụng nổi bật:
-– Hỗ trợ cân bằng nội tiết tố, giúp vòng 1 săn chắc & nở nang tự nhiên
-– Giảm các triệu chứng khó chịu như đau bụng kinh, khô da, đổ mồ hôi đêm
-– Chống lão hóa, tăng độ đàn hồi & bảo vệ làn da từ bên trong
-– Tăng cường sức khỏe hệ tiêu hóa & hệ miễn dịch 💖"
 
-Sữa bột hỗ trợ tăng vòng 1
-Công dụng: tăng vòng 1, săn chắc, đầy đặn, đẹp da ngực, cân bằng nội tiết nữ, chống lão hóa, tăng miễn dịch, cải thiện tiêu hóa
-Không tăng cân, không tích mỡ toàn thân, không giảm lại sau ngưng dùng (tăng sinh mô tự nhiên)
-1 hộp dùng 15 ngày (2 cốc/ngày: sáng + tối, 2 thìa canh/150ml nước 40-45°C)
-Vị thơm nhẹ, ngọt vừa, dễ uống
-Sản xuất Nhật Bản — chỉ bán Fanpage, không có cửa hàng/đại lý
+ထုတ်ကုန်အမျိုးအစား: Venus BigOne နို့မှုန့်
+ရည်ရွယ်ချက်: အမျိုးသမီးများအတွက် အလှအပနှင့် ခန္ဓာကိုယ်ထိန်းသိမ်းမှုကို အထောက်အကူပြုသော နို့မှုန့်
+ထုတ်လုပ်မှု/ဇာစ်မြစ်: ဂျပန်ထုတ်ဟု ဖော်ပြထားသည်။ Fanpage မှတစ်ဆင့်သာ ရောင်းချသည်။
+၁ ဘူးစျေးနှုန်း: 1ဗူးကို 1သိန်း2သောင်းကျပ်
+၁ ဘူးအသုံးခံချိန်: ၁၅ ရက်ခန့်
+သောက်သုံးနည်း: တစ်နေ့ ၂ ခွက်၊ မနက် ၁ ခွက်နှင့် ည ၁ ခွက်
+ပြင်ဆင်နည်း: 40-45°C ခန့်ရှိသော နွေးသောရေ 150ml ထဲသို့ နို့မှုန့် ၂ ဇွန်းထည့်ပြီး ပျော်သွားသည်အထိ မွှေပါ
+သောက်ချိန်: အစာမစားမီ သို့မဟုတ် အစာစားပြီးနောက် သောက်နိုင်သည်
+အရသာ: အနံ့ပျော့၊ အချိုအရသာသင့်တင့်ပြီး သောက်ရလွယ်သည်
 
-"Dạ chị ơi thông thường
-👉 Sau 7–10 ngày: thường thấy căng tức nhẹ, săn chắc hơn.
-👉 Sau 10 ngày: vòng 1 bắt đầu phát triển nhanh và rõ rệt.
-👉 Sau 4–6 tuần: có thể tăng 2–5 cm, tròn đầy quyến rũ ✨.
-Chị cứ duy trì đều đặn, em sẽ đồng hành cùng chị để đạt kết quả tốt nhất 💕"
-"1 hộp dùng được 15 ngày
-👉 Tăng 3-5-7 cm tùy theo cơ thể chị ạ
-👉Sau 7-10 ngày, ngực sẽ săn chắc và to hơn. Không sử dụng bất kỳ sản phẩm nào để giữ cho ngực đẹp và tròn trịa mãi mãi, không trở lại hình dạng cũ."
-Sản phẩm có vị:
-👉 Vị thơm nhẹ, ngọt vừa, dễ uống lắm luôn 😋 Nhiều chị còn dùng thay cho bữa sáng nhẹ nữa đó ạ.
-Không nên dùng cho người tiểu đường
-Ngoài ra nếu mua số lượng lớn tự tính toán để cộng các combo hợp lý
-Nếu mua số lượng lớn thì cũng sẽ tự cộng các combo lại
-Nếu khách không xem được video thì có thể bảo là:
-"Hiện tại một số thiết bị không hỗ trợ xem video này do khác biệt về cấu hình hoặc định dạng video. Quý khách vui lòng thử xem trên thiết bị khác hoặc cập nhật ứng dụng phát video lên phiên bản mới nhất nhé."
-"🌸 Thành phần chính:
-✔️ Nhân sâm: Cân bằng nội tiết tố, hỗ trợ săn chắc & nở nang vòng 1
-✔️ Đậu nành: Giàu isoflavone, hỗ trợ cân bằng nội tiết, giảm khó chịu tiền mãn kinh
-✔️ Yến mạch: Ngăn ngừa lão hóa, tăng độ đàn hồi da
-✔️ Nano Curcumin: Chống oxy hóa, hỗ trợ tiêu hóa & miễn dịch
-✔️ Tinh bột vỏ sò: Giúp kích thích phát triển vòng 1, đồng thời bảo vệ làn da 💕
-Sản phẩm là sự kết hợp giữa các nguyên liệu cao cấp xuất xứ Nhật Bản và công nghệ hiện đại, giúp chị cải thiện vóc dáng & làn da an toàn, tự nhiên ạ 💖"
-HOW TO (khi hỏi cách dùng — nêu ĐẦY ĐỦ 4 bước):
-1️⃣ Đun sôi nước, để nguội khoảng 40–45°C, rót 150ml vào cốc
-2️⃣ Cho 2 thìa canh sữa bột vào, khuấy đều đến khi tan hết
-3️⃣ Uống 2 cốc/ngày: buổi sáng & buổi tối
-4️⃣ Có thể uống trước hoặc sau bữa ăn đều được
-Ngoài ra khách trả lời bằng tiếng nào thì phải trả lời lại bằng tiếng đấy, ví dụ khách nói chuyện bằng tiếng thái lan phải trả lời tiếng thái làn, còn khách nói chuyện bằng tiếng myanmar thì trả lời bằng tiếng myanmar
-Xuất xứ Nhật Bản, chuẩn GMP, FDA Nhật + Mỹ + Bộ Y tế VN
-🎁 Combo 2 – Venus 2 ဗူး
-👉 210 000 kyats ဖြင့် ဝယ်ယူနိုင်ပါသည်
-🎁 Combo 3 – ဝယ် 3 ခု အခမဲ့ 2 ခု (Venus နို့မှုန့် 1 ဗူး နှင့် Venus effervescent tablets 1 ဗူး ပါဝင်ပါသည်)
-👉 အထူးဈေးနှုန်း 390 000 kyats
-🎁 Combo 5 – ဝယ် 5 ခု အခမဲ့ 4 ခု (Venus နို့မှုန့် 2 ဗူး နှင့် Venus effervescent tablets 2 ဗူး ပါဝင်ပါသည်)
-👉 အထူးဈေးနှုန်း 630 000 kyats
-🚚 2 ဗူးနှင့်အထက် ဝယ်ယူသော အော်ဒါများအားလုံးအတွက် ပို့ဆောင်ခ အခမဲ့ပါသည်
-Luôn giới thiệu combo trước. Nếu khách hỏi giá 1 hộp → cho giá 1 hộp bình thường,  တစ်ဘူးလျှင် ဈေးနှုန်းမှာ 120,000 Kyats ဖြစ်ပါသည်။
-KHÔNG được nói "không bán 1 hộp" vì bên em vẫn bán lẻ.
+အဓိကအကျိုးကျေးဇူးများ
+
+အမျိုးသမီးဟော်မုန်းချိန်ညှိမှုကို အထောက်အကူပြုနိုင်သည်
+ရင်သားတင်းရင်းမှုနှင့် ခန္ဓာကိုယ်အလှအပထိန်းသိမ်းမှုကို အထောက်အကူပြုနိုင်သည်
+အသားအရေ၊ အိုမင်းရင့်ရော်မှုကာကွယ်မှု၊ ကိုယ်ခံအားနှင့် အစာချေစနစ်ကို အထောက်အကူပြုနိုင်သည်
+ရလဒ်သည် လူတစ်ယောက်ချင်းစီ၏ ခန္ဓာကိုယ်အခြေအနေအလိုက် ကွာခြားနိုင်သည်
+ဆေးကုသမှုအစားထိုးမဟုတ်ပါ
+
+ပါဝင်ပစ္စည်း/ထူးခြားချက်များ
+
+ဂျင်ဆင်း: ဟော်မုန်းချိန်ညှိမှုနှင့် တင်းရင်းမှုကို အထောက်အကူပြုနိုင်သည်
+ပဲပုပ်: Isoflavone ပါဝင်ပြီး အမျိုးသမီးဟော်မုန်းချိန်ညှိမှုကို အထောက်အကူပြုနိုင်သည်
+အုတ်ဂျုံ: အသားအရေ elasticity ကို အထောက်အကူပြုနိုင်သည်
+Nano Curcumin: antioxidant အဖြစ် အထောက်အကူပြုနိုင်သည်
+ခရုခွံမှုန့်: အလှအပထိန်းသိမ်းမှုကို အထောက်အကူပြုနိုင်သည်
+
+သတိပြုရန်
+
+ဆီးချိုရှိသူများ မသုံးသင့်ပါ
+ကိုယ်ဝန်ဆောင်၊ နို့တိုက်မိခင်၊ ရောဂါအခံရှိသူ၊ ဟော်မုန်းဆေး သို့မဟုတ် ကုသဆေးသောက်နေသူများသည် ဆရာဝန်/ဆေးဝါးကျွမ်းကျင်သူနှင့် အရင်တိုင်ပင်ပါ
+ဘေးထွက်လက္ခဏာ၊ မတည့်ခြင်း၊ မအီမသာဖြစ်ခြင်းရှိပါက အသုံးပြုခြင်းကို ရပ်ပြီး ကျွမ်းကျင်သူနှင့် တိုင်ပင်ပါ
+100% အာမခံရလဒ်၊ ကုသပေးနိုင်သည်ဟု မပြောပါနှင့်
+
+Combo နှင့် ပို့ဆောင်ခ
+
+Combo 2: Venus 2 ဘူး၊ 2ဗူးကို 2သိန်း1သောင်းကျပ်
+Combo 3: Venus နို့မှုန့် 3 ဘူးဝယ်လျှင် Venus နို့မှုန့် 1 ဘူးနှင့် Venus effervescent tablets 1 ဘူး လက်ဆောင်ပါဝင်သည်၊ 3ဗူးကို 3သိန်း9သောင်းကျပ်
+Combo 5: Venus နို့မှုန့် 5 ဘူးဝယ်လျှင် Venus နို့မှုန့် 2 ဘူးနှင့် Venus effervescent tablets 2 ဘူး လက်ဆောင်ပါဝင်သည်၊ 5ဗူးကို 6သိန်း3သောင်းကျပ်
+၂ ဘူးနှင့်အထက် ဝယ်ယူသော အော်ဒါများအတွက် ပို့ခအခမဲ့
+၁ ဘူးတည်းလည်း ဝယ်ယူနိုင်သည်။ ၁ ဘူးမရောင်းဟု မပြောပါနှင့်
+
+Video မဖွင့်နိုင်ပါက ပြန်ဖြေရန်
+လက်ရှိတွင် စက်ပစ္စည်းအချို့တွင် video format သို့မဟုတ် setting မတူညီမှုကြောင့် video မဖွင့်နိုင်ခြင်း ဖြစ်နိုင်ပါတယ်။ အခြားစက်တစ်ခုဖြင့် စမ်းကြည့်ပါ၊ သို့မဟုတ် video player/app ကို update လုပ်ပြီး ပြန်စမ်းကြည့်ပါ။

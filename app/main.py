@@ -37,6 +37,11 @@ class RealtimeInputGate:
         prebuffer_frames: int = 10,
         require_initial_turn: bool = True,
         wait_for_turn_before_commit: bool = True,
+        adaptive_threshold: bool = False,
+        noise_multiplier: float = 3.0,
+        noise_margin: int = 80,
+        barge_in_threshold: int | None = None,
+        echo_suppression_ms: int = 700,
     ):
         self.bridge = bridge
         self.call_id = call_id
@@ -45,6 +50,12 @@ class RealtimeInputGate:
         self.speech_end_silence_frames = speech_end_silence_frames
         self.require_initial_turn = require_initial_turn
         self.wait_for_turn_before_commit = wait_for_turn_before_commit
+        self.adaptive_threshold = adaptive_threshold
+        self.noise_multiplier = noise_multiplier
+        self.noise_margin = noise_margin
+        self.barge_in_threshold = barge_in_threshold or speech_threshold
+        self.echo_suppression_seconds = echo_suppression_ms / 1000
+        self.noise_floor = 0.0
         self.prebuffer: deque[bytes] = deque(maxlen=prebuffer_frames)
         self.speech_active = False
         self.speech_frames = 0
@@ -64,18 +75,21 @@ class RealtimeInputGate:
                 await self.force_end(timestamp_ms, flush_silence=False)
             return
 
-        # Do not treat line echo/noise as caller speech while the AI is greeting
-        # or while AI audio is still reaching the phone.
-        if (self.require_initial_turn and self.bridge.completed_turn_count == 0) or self.bridge.output_recent(1.2):
+        # If configured, wait for the initial AI greeting to finish before
+        # listening. After that, strong caller speech is treated as barge-in.
+        if self.require_initial_turn and self.bridge.completed_turn_count == 0:
             self.speech_frames = 0
             self.prebuffer.clear()
             return
 
+        output_recent = self.bridge.output_recent(self.echo_suppression_seconds)
+        threshold = self._effective_threshold(output_recent=output_recent)
         self.prebuffer.append(pcm)
-        if rms >= self.speech_threshold:
+        if rms >= threshold:
             self.speech_frames += 1
         else:
             self.speech_frames = 0
+            self._update_noise_floor(rms, output_recent=output_recent)
 
         if self.speech_frames < self.speech_start_frames:
             return
@@ -83,11 +97,14 @@ class RealtimeInputGate:
         self.speech_active = True
         self.silence_frames = 0
         if self.bridge.completed_turn_count > 0:
-            self.bridge.set_output_muted(True)
+            await self.bridge.set_output_muted(True)
         if timestamp_ms is None:
-            log(f"[{self.call_id}] Speech started (rms={rms})")
+            log(f"[{self.call_id}] Speech started (rms={rms}, threshold={threshold})")
         else:
-            log(f"[{self.call_id}] Speech started (timestamp={timestamp_ms}ms, rms={rms})")
+            log(
+                f"[{self.call_id}] Speech started "
+                f"(timestamp={timestamp_ms}ms, rms={rms}, threshold={threshold})"
+            )
         await self.bridge.start_input_activity()
         for buffered_pcm in self.prebuffer:
             await self.bridge.send_input_audio(buffered_pcm)
@@ -123,8 +140,25 @@ class RealtimeInputGate:
             except asyncio.TimeoutError:
                 log(f"[{self.call_id}] Timed out waiting for current Gemini turn before commit")
         if hasattr(self.bridge, "set_output_muted"):
-            self.bridge.set_output_muted(False)
+            await getattr(self.bridge, "set_output_muted")(False)
         await self.bridge.commit_input_audio_turn()
+
+    def _effective_threshold(self, *, output_recent: bool) -> int:
+        threshold = self.speech_threshold
+        if self.adaptive_threshold:
+            adaptive_threshold = max(
+                int(self.noise_floor * self.noise_multiplier),
+                int(self.noise_floor + self.noise_margin),
+            )
+            threshold = max(threshold, adaptive_threshold)
+        if output_recent:
+            threshold = max(threshold, self.barge_in_threshold)
+        return threshold
+
+    def _update_noise_floor(self, rms: int, *, output_recent: bool) -> None:
+        if not self.adaptive_threshold or output_recent:
+            return
+        self.noise_floor = rms if self.noise_floor == 0 else (self.noise_floor * 0.9) + (rms * 0.1)
 
 
 class RealtimePassthroughInput:
@@ -177,19 +211,18 @@ async def telnyx_stream_status(request: Request) -> dict[str, bool]:
 @app.api_route("/telnyx/answer", methods=["GET", "POST"])
 async def telnyx_answer() -> Response:
     stream_url = _public_ws_url("/telnyx/ws")
-    greeting_url = _public_http_url("/telnyx/greeting.wav")
     status_url = _public_http_url("/telnyx/status")
     stream_track = getattr(config.telnyx, "stream_track", "inbound_track")
+    pause_length_seconds = getattr(config.telnyx, "pause_length_seconds", 600)
     if config.telnyx.stream_token:
         stream_url = f"{stream_url}?{urlencode({'token': config.telnyx.stream_token})}"
 
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play continueOnError="true">{escape(greeting_url)}</Play>
   <Connect>
     <Stream url="{escape(stream_url)}" track="{escape(stream_track)}" codec="{escape(config.telnyx.stream_codec)}" bidirectionalMode="rtp" bidirectionalCodec="{escape(config.telnyx.stream_codec)}" bidirectionalSamplingRate="{config.telnyx.stream_sample_rate}" statusCallback="{escape(status_url)}" statusCallbackMethod="POST"></Stream>
   </Connect>
-  <Pause length="600" />
+  <Pause length="{pause_length_seconds}" />
 </Response>
 """
     return Response(content=texml, media_type="application/xml")
@@ -274,25 +307,47 @@ async def telnyx_ws(websocket: WebSocket) -> None:
                 log(
                     f"[{call_id}] Telnyx realtime mode: explicit_vad=True "
                     f"speech_threshold={config.telnyx.speech_threshold} "
-                    "speech_start_frames=3 speech_end_silence_frames=5"
                 )
+                speech_start_frames = getattr(config.telnyx, "speech_start_frames", 2)
+                speech_end_silence_frames = getattr(config.telnyx, "speech_end_silence_frames", 30)
+                log(
+                    f"[{call_id}] Telnyx VAD gate: "
+                    f"speech_start_frames={speech_start_frames} "
+                    f"speech_end_silence_frames={speech_end_silence_frames} "
+                    f"adaptive_threshold={config.telnyx.adaptive_threshold}"
+                )
+
+                async def clear_audio() -> None:
+                    await websocket.send_json(
+                        {
+                            "event": "clear",
+                            "stream_id": stream_id,
+                        }
+                    )
+                    log(f"[{call_id}] Sent Telnyx clear event")
 
                 bridge = GeminiCallBridge(
                     call_id=call_id,
                     call_sample_rate=sample_rate,
                     send_audio=send_audio,
+                    clear_audio=clear_audio,
                     explicit_vad=True,
-                    send_initial_greeting=False,
+                    send_initial_greeting=True,
                     realtime_input=True,
                 )
                 input_gate = RealtimeInputGate(
                     bridge,
                     call_id,
                     speech_threshold=config.telnyx.speech_threshold,
-                    speech_start_frames=3,
-                    speech_end_silence_frames=5,
+                    speech_start_frames=speech_start_frames,
+                    speech_end_silence_frames=speech_end_silence_frames,
                     require_initial_turn=False,
                     wait_for_turn_before_commit=False,
+                    adaptive_threshold=config.telnyx.adaptive_threshold,
+                    noise_multiplier=config.telnyx.noise_multiplier,
+                    noise_margin=config.telnyx.noise_margin,
+                    barge_in_threshold=config.telnyx.barge_in_threshold,
+                    echo_suppression_ms=config.telnyx.echo_suppression_ms,
                 )
                 await bridge.start()
 

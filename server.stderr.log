@@ -1,7 +1,59 @@
-INFO:     Started server process [19136]
+INFO:     Started server process [5541]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:3000 (Press CTRL+C to quit)
-INFO:     ('192.76.120.130', 0) - "WebSocket /telnyx/ws" [accepted]
+INFO:     127.0.0.1:50189 - "WebSocket /telnyx/ws?token=telnyx_2eT8RzvL9qK4xP1mN6cY" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     Started server process [6199]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 48] error while attempting to bind on address ('0.0.0.0', 3000): address already in use
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Started server process [6243]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:3000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:50265 - "WebSocket /telnyx/ws?token=telnyx_2eT8RzvL9qK4xP1mN6cY" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:50271 - "WebSocket /telnyx/ws?token=telnyx_2eT8RzvL9qK4xP1mN6cY" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.76.120.151:0 - "WebSocket /telnyx/ws?token=telnyx_2eT8RzvL9qK4xP1mN6cY" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.76.120.130:0 - "WebSocket /telnyx/ws?token=telnyx_2eT8RzvL9qK4xP1mN6cY" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [6243]
+INFO:     Started server process [7095]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:3000 (Press CTRL+C to quit)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [7095]
+INFO:     Started server process [8012]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:3000 (Press CTRL+C to quit)
+INFO:     192.76.120.130:0 - "WebSocket /telnyx/ws?token=telnyx_2eT8RzvL9qK4xP1mN6cY" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [8012]
+INFO:     Started server process [8599]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:3000 (Press CTRL+C to quit)
+INFO:     192.76.120.143:0 - "WebSocket /telnyx/ws?token=telnyx_2eT8RzvL9qK4xP1mN6cY" [accepted]
 INFO:     connection open
 INFO:     connection closed

@@ -71,8 +71,8 @@ async def main() -> None:
         try:
             # Trigger the initial greeting from Gemini config
             initial_prompt = (
-                "Hãy nói đúng nguyên văn câu sau làm lời chào mở đầu cuộc gọi, "
-                f"không thêm bớt nội dung khác: {config.gemini.initial_greeting}"
+                "အောက်ပါစာကြောင်းကို ဖုန်းခေါ်ဆိုမှုအစ နှုတ်ဆက်စကားအဖြစ် အတိအကျသာ ပြောပါ။ "
+                f"အခြားအကြောင်းအရာ မထည့်ပါနှင့်: {config.gemini.initial_greeting}"
             )
             await session.send_client_content(
                 turns=types.Content(

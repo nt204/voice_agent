@@ -1,115 +1,583 @@
-INFO:     127.0.0.1:56551 - "GET /health HTTP/1.1" 200 OK
-INFO:     192.76.120.130:0 - "POST /telnyx/answer HTTP/1.1" 200 OK
-INFO:     50.114.147.82:0 - "GET /telnyx/greeting.wav HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50183 - "GET /health HTTP/1.1" 200 OK
 [telnyx] WebSocket connected
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx stream started: d87a069d-c6c3-4e6f-97b8-f6a3ae38fa2b PCMU 8000Hz
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx realtime mode: explicit_vad=True speech_threshold=450 speech_start_frames=3 speech_end_silence_frames=5
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini Live connected
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 1 (160 bytes PCMU, timestamp=63360ms, rms=9)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 2 (160 bytes PCMU, timestamp=63840ms, rms=9)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 3 (160 bytes PCMU, timestamp=64000ms, rms=8)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=73920ms, rms=6096)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 100 (160 bytes PCMU, timestamp=79520ms, rms=1478)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=81120ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=83040ms, rms=1000)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] User: H�m nay l� th? m?y?
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=84960ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini: D?, h�m
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx outbound media 1 (160 bytes PCMU)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Sent audio frame 1 (320 bytes PCM)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx outbound media 2 (160 bytes PCMU)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Sent audio frame 2 (320 bytes PCM)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx outbound media 3 (160 bytes PCMU)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Sent audio frame 3 (320 bytes PCM)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 200 (160 bytes PCMU, timestamp=95520ms, rms=71)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  nay l�
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  th?
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  Ba
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx outbound media 50 (160 bytes PCMU)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Sent audio frame 50 (320 bytes PCM)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  ?.
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  M�nh
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx outbound media 100 (160 bytes PCMU)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Sent audio frame 100 (320 bytes PCM)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  c?n
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  em h?
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 300 (160 bytes PCMU, timestamp=111520ms, rms=9)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  tr?
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  g�
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  th�m
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx outbound media 150 (160 bytes PCMU)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Sent audio frame 150 (320 bytes PCM)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini:  kh�ng?
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini turn complete
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 400 (160 bytes PCMU, timestamp=127520ms, rms=808)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=136000ms, rms=1216)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=136800ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=139840ms, rms=5114)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=141760ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=142560ms, rms=592)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=143360ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 500 (160 bytes PCMU, timestamp=143520ms, rms=166)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=144320ms, rms=3283)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=152320ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=153920ms, rms=3174)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=155520ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=156640ms, rms=1564)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=159200ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 600 (160 bytes PCMU, timestamp=159520ms, rms=17)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=160160ms, rms=3155)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=164640ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=165120ms, rms=4420)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=168160ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=173120ms, rms=1186)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=175200ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 700 (160 bytes PCMU, timestamp=175520ms, rms=22)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=189440ms, rms=1059)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=190240ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 800 (160 bytes PCMU, timestamp=191520ms, rms=39)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 900 (160 bytes PCMU, timestamp=207520ms, rms=109)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=210080ms, rms=684)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=211200ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 1000 (160 bytes PCMU, timestamp=223520ms, rms=31)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=235680ms, rms=4676)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 1100 (160 bytes PCMU, timestamp=239520ms, rms=1803)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=244960ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=245440ms, rms=3395)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended (timestamp=248640ms)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 1200 (160 bytes PCMU, timestamp=255520ms, rms=32)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech started (timestamp=269280ms, rms=1620)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity started
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx inbound media 1300 (160 bytes PCMU, timestamp=271520ms, rms=890)
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Telnyx stream stopped
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Speech ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini input activity ended
-[v3:Hb7bsXikNdECMdWsSkVeVd5g62AFgogsnJ65Ryp65ZNne7veSmvuNw] Gemini realtime audio stream ended
+[vad_fix_test] Telnyx stream started: vad_fix_stream PCMU 8000Hz
+[vad_fix_test] Telnyx realtime mode: explicit_vad=True speech_threshold=450 
+[vad_fix_test] Telnyx VAD gate: speech_start_frames=2 speech_end_silence_frames=30
+[vad_fix_test] Gemini Live connected
+[vad_fix_test] Gemini: မင်္ဂလာပါရှင်။
+[vad_fix_test] Telnyx outbound media 1 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 1 (320 bytes PCM)
+[vad_fix_test] Telnyx outbound media 2 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 2 (320 bytes PCM)
+[vad_fix_test] Telnyx outbound media 3 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 3 (320 bytes PCM)
+[vad_fix_test] Gemini:  ဘယ်ပစ္စည်းအတွက်
+[vad_fix_test] Gemini:  တိုင်ပင်ချင်ပါသလဲ။
+[vad_fix_test] Telnyx outbound media 50 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 50 (320 bytes PCM)
+[vad_fix_test] Telnyx outbound media 100 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 100 (320 bytes PCM)
+[vad_fix_test] Telnyx inbound media 1 (160 bytes PCMU, timestamp=1000ms, rms=7)
+[vad_fix_test] Telnyx inbound media 2 (160 bytes PCMU, timestamp=1020ms, rms=3139)
+[vad_fix_test] Telnyx inbound media 3 (160 bytes PCMU, timestamp=1040ms, rms=5735)
+[vad_fix_test] Speech started (timestamp=1040ms, rms=5735)
+[vad_fix_test] Gemini input activity started
+[vad_fix_test] Telnyx outbound media 150 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 150 (320 bytes PCM)
+[vad_fix_test] Gemini turn complete
+[vad_fix_test] Telnyx inbound media 100 (160 bytes PCMU, timestamp=2980ms, rms=7)
+[vad_fix_test] Speech ended (timestamp=4660ms)
+[vad_fix_test] Gemini input activity ended
+[vad_fix_test] User: one product good what are its benefits?
+[vad_fix_test] Telnyx inbound media 200 (160 bytes PCMU, timestamp=4980ms, rms=0)
+[vad_fix_test] Gemini: Venus BigOne
+[vad_fix_test] Gemini:  နို့မှုန့်က
+[vad_fix_test] Gemini:  အမျိုးသမီးတွေအတွက်
+[vad_fix_test] Telnyx outbound media 200 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 200 (320 bytes PCM)
+[vad_fix_test] Gemini:  အလှအပနဲ့
+[vad_fix_test] Gemini:  ခန္ဓာကိုယ်
+[vad_fix_test] Gemini:  ထိန်းသိမ်းမှုကို
+[vad_fix_test] Gemini:  အထောက်အကူပြုနိုင်ပါတယ်ရှင်။
+[vad_fix_test] Telnyx outbound media 250 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 250 (320 bytes PCM)
+[vad_fix_test] Gemini:  ဟော်မုန်းချိန်ညှိပေးတာ၊
+[vad_fix_test] Gemini:  ရင်သားတင်းရင်းစေတာနဲ့
+[vad_fix_test] Gemini:  အသားအရေအတွက်လည်း
+[vad_fix_test] Telnyx outbound media 300 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 300 (320 bytes PCM)
+[vad_fix_test] Gemini:  ကောင်းမွန်စေနိုင်ပါတယ်ရှင်။
+[vad_fix_test] Gemini:  ဘာအချက်အလက်တွေ
+[vad_fix_test] Gemini:  ထပ်သိချင်ပါသေးလဲရှင်။
+[vad_fix_test] Telnyx outbound media 350 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 350 (320 bytes PCM)
+[vad_fix_test] Telnyx outbound media 400 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 400 (320 bytes PCM)
+[vad_fix_test] Telnyx outbound media 450 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 450 (320 bytes PCM)
+[vad_fix_test] Telnyx outbound media 500 (160 bytes PCMU)
+[vad_fix_test] Sent audio frame 500 (320 bytes PCM)
+[vad_fix_test] Telnyx stream stopped
+[vad_fix_test] Gemini realtime audio stream ended
+[vad_fix_test] Gemini Live closed
+INFO:     127.0.0.1:50248 - "GET /health HTTP/1.1" 200 OK
+[telnyx] WebSocket connected
+[setup_verify_call] Telnyx stream started: setup_verify_stream PCMU 8000Hz
+[setup_verify_call] Telnyx realtime mode: explicit_vad=True speech_threshold=50 
+[setup_verify_call] Telnyx VAD gate: speech_start_frames=5 speech_end_silence_frames=35 adaptive_threshold=True
+[setup_verify_call] Gemini Live connected
+[setup_verify_call] Gemini: မင်္ဂလာပါ။ ဆိုင်ရဲ့
+[setup_verify_call] Telnyx outbound media 1 (160 bytes PCMU)
+[setup_verify_call] Sent audio frame 1 (320 bytes PCM)
+[setup_verify_call] Telnyx outbound media 2 (160 bytes PCMU)
+[setup_verify_call] Sent audio frame 2 (320 bytes PCM)
+[setup_verify_call] Telnyx outbound media 3 (160 bytes PCMU)
+[setup_verify_call] Sent audio frame 3 (320 bytes PCM)
+[setup_verify_call] Gemini:  အကြံပေးအကူအညီဖြစ်ပါတယ်။
+[setup_verify_call] Telnyx outbound media 50 (160 bytes PCMU)
+[setup_verify_call] Sent audio frame 50 (320 bytes PCM)
+[setup_verify_call] Gemini:  ဘယ်လိုကူညီပေးရမလဲရှင်။
+[setup_verify_call] Telnyx outbound media 100 (160 bytes PCMU)
+[setup_verify_call] Sent audio frame 100 (320 bytes PCM)
+[setup_verify_call] Telnyx stream stopped
+[setup_verify_call] Gemini realtime audio stream ended
+[setup_verify_call] Gemini Live closed
+[telnyx] WebSocket connected
+[setup_audio_test] Telnyx stream started: setup_audio_stream PCMU 8000Hz
+[setup_audio_test] Telnyx realtime mode: explicit_vad=True speech_threshold=50 
+[setup_audio_test] Telnyx VAD gate: speech_start_frames=5 speech_end_silence_frames=35 adaptive_threshold=True
+[setup_audio_test] Gemini Live connected
+[setup_audio_test] Gemini: မင်္ဂလာပါ။ ဆိုင်ရဲ့
+[setup_audio_test] Telnyx outbound media 1 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 1 (320 bytes PCM)
+[setup_audio_test] Telnyx outbound media 2 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 2 (320 bytes PCM)
+[setup_audio_test] Telnyx outbound media 3 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 3 (320 bytes PCM)
+[setup_audio_test] Gemini:  အကြံပေးအကူအညီဖြစ်ပါတယ်။
+[setup_audio_test] Gemini:  ဘယ်လိုကူညီပေးရမလဲရှင်။
+[setup_audio_test] Telnyx outbound media 50 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 50 (320 bytes PCM)
+[setup_audio_test] Telnyx outbound media 100 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 100 (320 bytes PCM)
+[setup_audio_test] Telnyx outbound media 150 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 150 (320 bytes PCM)
+[setup_audio_test] Telnyx inbound media 1 (160 bytes PCMU, timestamp=1000ms, rms=7)
+[setup_audio_test] Telnyx inbound media 2 (160 bytes PCMU, timestamp=1020ms, rms=3139)
+[setup_audio_test] Telnyx inbound media 3 (160 bytes PCMU, timestamp=1040ms, rms=5735)
+[setup_audio_test] Speech started (timestamp=1100ms, rms=4624, threshold=900)
+[setup_audio_test] Gemini input activity started
+[setup_audio_test] Telnyx outbound media 200 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 200 (320 bytes PCM)
+[setup_audio_test] Gemini turn complete
+[setup_audio_test] Telnyx inbound media 100 (160 bytes PCMU, timestamp=2980ms, rms=7)
+[setup_audio_test] Telnyx inbound media 200 (160 bytes PCMU, timestamp=4980ms, rms=0)
+[setup_audio_test] Speech ended (timestamp=5020ms)
+[setup_audio_test] Gemini input activity ended
+[setup_audio_test] User: product good what are its benefits
+[setup_audio_test] Gemini: Venus BigOne
+[setup_audio_test] Telnyx outbound media 250 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 250 (320 bytes PCM)
+[setup_audio_test] Gemini:  နို့မှုန့်က
+[setup_audio_test] Gemini:  အမျိုးသမီးဟော်မုန်းချိန်ညှိမှုနဲ့
+[setup_audio_test] Gemini:  ရင်သားတင်းရင်းမှုကို
+[setup_audio_test] Telnyx outbound media 300 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 300 (320 bytes PCM)
+[setup_audio_test] Gemini:  အထောက်အကူပြုနိုင်ပါတယ်ရှင်။
+[setup_audio_test] Gemini:  အသားအရေနဲ့
+[setup_audio_test] Telnyx outbound media 350 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 350 (320 bytes PCM)
+[setup_audio_test] Gemini:  ကိုယ်ခံအားအတွက်လည်း
+[setup_audio_test] Gemini:  ကောင်းမွန်စေပါတယ်၊
+[setup_audio_test] Gemini:  ဘာတွေများ
+[setup_audio_test] Gemini:  ထပ်သိချင်ပါသလဲရှင်။
+[setup_audio_test] Telnyx outbound media 400 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 400 (320 bytes PCM)
+[setup_audio_test] Telnyx outbound media 450 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 450 (320 bytes PCM)
+[setup_audio_test] Telnyx outbound media 500 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 500 (320 bytes PCM)
+[setup_audio_test] Telnyx outbound media 550 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 550 (320 bytes PCM)
+[setup_audio_test] Telnyx outbound media 600 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 600 (320 bytes PCM)
+[setup_audio_test] Telnyx outbound media 650 (160 bytes PCMU)
+[setup_audio_test] Sent audio frame 650 (320 bytes PCM)
+[setup_audio_test] Telnyx stream stopped
+[setup_audio_test] Gemini realtime audio stream ended
+[setup_audio_test] Gemini Live closed
+INFO:     192.76.120.151:0 - "GET /telnyx/answer?AccountSid=be66315e-d92c-45cf-8266-cbae0db99958&CallInitiatedAt=2026-07-08T07%3A41%3A12.358056Z&CallSid=v3%3AhP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ&CallSidLegacy=v3%3AhP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ&CallStatus=in-progress&CallerId=%2B84961984204&CallingPartyType=pstn&ConnectionId=2999182774331507992&Direction=inbound&From=%2B84961984204&FromSipUri=%2B84961984204%404.55.78.33%3A5060&To=%2B18565100128&ToSipUri=%2B18565100128%4064.16.250.10%3A5060 HTTP/1.1" 200 OK
+[telnyx] WebSocket connected
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx stream started: 0919337c-ec45-4f68-9c87-594fc5e3e094 PCMU 8000Hz
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx realtime mode: explicit_vad=True speech_threshold=50 
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx VAD gate: speech_start_frames=5 speech_end_silence_frames=35 adaptive_threshold=True
+Telnyx stream status: {'AccountSid': 'be66315e-d92c-45cf-8266-cbae0db99958', 'CallInitiatedAt': '2026-07-08T07:41:12.358056Z', 'CallSid': 'v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ', 'CallSidLegacy': 'v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ', 'CallStatus': 'in-progress', 'CallerId': '+84961984204', 'CallingPartyType': 'pstn', 'ConnectionId': '2999182774331507992', 'Direction': 'inbound', 'From': '+84961984204', 'FromSipUri': '+84961984204@4.55.78.33:5060', 'StreamEvent': 'stream-started', 'StreamName': 'feaae581-c5c0-4f2b-860a-0bf1064a3ca5', 'To': '+18565100128', 'ToSipUri': '+18565100128@64.16.250.10:5060'}
+INFO:     192.76.120.151:0 - "POST /telnyx/status HTTP/1.1" 200 OK
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini Live connected
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx inbound media 1 (160 bytes PCMU, timestamp=10080ms, rms=9)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx inbound media 2 (160 bytes PCMU, timestamp=10560ms, rms=9)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx inbound media 3 (160 bytes PCMU, timestamp=10720ms, rms=8)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini: မင်္ဂလာပါ။ ဆိုင်ရဲ့
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx outbound media 1 (160 bytes PCMU)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Sent audio frame 1 (320 bytes PCM)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx outbound media 2 (160 bytes PCMU)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Sent audio frame 2 (320 bytes PCM)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx outbound media 3 (160 bytes PCMU)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Sent audio frame 3 (320 bytes PCM)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini:  အကြံပေးအကူအညီဖြစ်ပါတယ်။
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx outbound media 50 (160 bytes PCMU)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Sent audio frame 50 (320 bytes PCM)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini:  ဘယ်လိုကူညီပေးရမလဲရှင်။
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx inbound media 100 (160 bytes PCMU, timestamp=26240ms, rms=9)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx outbound media 100 (160 bytes PCMU)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Sent audio frame 100 (320 bytes PCM)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx outbound media 150 (160 bytes PCMU)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Sent audio frame 150 (320 bytes PCM)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx inbound media 200 (160 bytes PCMU, timestamp=42240ms, rms=9)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx outbound media 200 (160 bytes PCMU)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Sent audio frame 200 (320 bytes PCM)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini turn complete
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx inbound media 300 (160 bytes PCMU, timestamp=58240ms, rms=9)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx inbound media 400 (160 bytes PCMU, timestamp=74240ms, rms=3538)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Sent Telnyx clear event
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini output muted
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Speech started (timestamp=74400ms, rms=2925, threshold=89)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini input activity started
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Speech ended (timestamp=89280ms)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini input activity ended
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini output unmuted
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx inbound media 500 (160 bytes PCMU, timestamp=90240ms, rms=9)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] User: 工 种 的 产 品 名
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini: Venus BigOne
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx outbound media 250 (160 bytes PCMU)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Sent audio frame 250 (320 bytes PCM)
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini:  နို့မှုန့်က
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini:  အမျိုးသမီးတွေအတွက်
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini:  အလှအပနဲ့
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Telnyx stream stopped
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini realtime audio stream ended
+[v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ] Gemini Live closed
+Telnyx stream status: {'AccountSid': 'be66315e-d92c-45cf-8266-cbae0db99958', 'CallInitiatedAt': '2026-07-08T07:41:12.358056Z', 'CallSid': 'v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ', 'CallSidLegacy': 'v3:hP8E3q59eNlWIEGt07Khl-g5tm5to3N3FAaOfGKhIeB5sXLxI9DiqQ', 'CallStatus': 'completed', 'CallerId': '+84961984204', 'CallingPartyType': 'pstn', 'ConnectionId': '2999182774331507992', 'Direction': 'inbound', 'From': '+84961984204', 'FromSipUri': '+84961984204@4.55.78.33:5060', 'StreamEvent': 'stream-stopped', 'StreamName': 'feaae581-c5c0-4f2b-860a-0bf1064a3ca5', 'To': '+18565100128', 'ToSipUri': '+18565100128@64.16.250.10:5060'}
+INFO:     192.76.120.151:0 - "POST /telnyx/status HTTP/1.1" 200 OK
+INFO:     192.76.120.130:0 - "GET /telnyx/answer?AccountSid=be66315e-d92c-45cf-8266-cbae0db99958&CallInitiatedAt=2026-07-08T07%3A42%3A14.456696Z&CallSid=v3%3ATwt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw&CallSidLegacy=v3%3ATwt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw&CallStatus=in-progress&CallerId=%2B84961984204&CallingPartyType=pstn&ConnectionId=2999182774331507992&Direction=inbound&From=%2B84961984204&FromSipUri=%2B84961984204%404.55.78.33%3A5060&To=%2B18565100128&ToSipUri=%2B18565100128%4064.16.250.10%3A5060 HTTP/1.1" 200 OK
+[telnyx] WebSocket connected
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx stream started: 6da0b171-dfb1-47fc-90ae-b8d8b83120c5 PCMU 8000Hz
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx realtime mode: explicit_vad=True speech_threshold=50 
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx VAD gate: speech_start_frames=5 speech_end_silence_frames=35 adaptive_threshold=True
+Telnyx stream status: {'AccountSid': 'be66315e-d92c-45cf-8266-cbae0db99958', 'CallInitiatedAt': '2026-07-08T07:42:14.456696Z', 'CallSid': 'v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw', 'CallSidLegacy': 'v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw', 'CallStatus': 'in-progress', 'CallerId': '+84961984204', 'CallingPartyType': 'pstn', 'ConnectionId': '2999182774331507992', 'Direction': 'inbound', 'From': '+84961984204', 'FromSipUri': '+84961984204@4.55.78.33:5060', 'StreamEvent': 'stream-started', 'StreamName': '98aa9d37-a2a5-4efc-bcc9-a61da632653f', 'To': '+18565100128', 'ToSipUri': '+18565100128@64.16.250.10:5060'}
+INFO:     192.76.120.130:0 - "POST /telnyx/status HTTP/1.1" 200 OK
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini Live connected
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 1 (160 bytes PCMU, timestamp=8320ms, rms=8)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 2 (160 bytes PCMU, timestamp=8800ms, rms=8)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 3 (160 bytes PCMU, timestamp=8960ms, rms=9)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini: မင်္ဂလာပါ။ ဆိုင်ရဲ့
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 2 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 2 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 3 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 3 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  အကြံပေးအကူအညီဖြစ်ပါတယ်။
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 100 (160 bytes PCMU, timestamp=24480ms, rms=42)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 50 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 50 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ဘယ်လိုကူညီပေးရမလဲရှင်။
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 100 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 100 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 200 (160 bytes PCMU, timestamp=40480ms, rms=8)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 150 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 150 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 200 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 200 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 300 (160 bytes PCMU, timestamp=56480ms, rms=9)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini turn complete
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 400 (160 bytes PCMU, timestamp=72480ms, rms=105)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent Telnyx clear event
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini output muted
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Speech started (timestamp=75520ms, rms=1438, threshold=99)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini input activity started
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 500 (160 bytes PCMU, timestamp=88480ms, rms=9)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Speech ended (timestamp=90400ms)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini input activity ended
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini output unmuted
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] User: Công dụng của sản phẩm là gì?
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini: Venus BigOne
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 250 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 250 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  နို့မှုန့်က
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  အမျိုးသမီးဟော်မုန်းချိန်ညှိမှုနဲ့
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 600 (160 bytes PCMU, timestamp=104480ms, rms=8)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ရင်သားတင်းရင်းမှုကို
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 300 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 300 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  အထောက်အကူပြုနိုင်ပါတယ်ရှင်။
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  အသားအရေနဲ့
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ကိုယ်ခံအားအတွက်လည်း
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 350 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 350 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ကောင်းမွန်စေပါတယ်၊
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ဘာများထပ်သိလိုပါသလဲရှင်။
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 700 (160 bytes PCMU, timestamp=120480ms, rms=9)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 400 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 400 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 450 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 450 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 800 (160 bytes PCMU, timestamp=136480ms, rms=11)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 500 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 500 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 550 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 550 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 900 (160 bytes PCMU, timestamp=152480ms, rms=8)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 600 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 600 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 650 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 650 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 1000 (160 bytes PCMU, timestamp=168480ms, rms=99)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 700 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 700 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 750 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 750 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 1100 (160 bytes PCMU, timestamp=184480ms, rms=9)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini turn complete
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 1200 (160 bytes PCMU, timestamp=200480ms, rms=8)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent Telnyx clear event
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini output muted
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Speech started (timestamp=203520ms, rms=314, threshold=96)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini input activity started
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 1300 (160 bytes PCMU, timestamp=216480ms, rms=28)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Speech ended (timestamp=221600ms)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini input activity ended
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini output unmuted
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] User: ဒါမျိုး
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini: တစ်ဘူးကို ၁
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 800 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 800 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  သိန်း
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ၂ သောင်းကျပ်ပါရှင်။
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 1400 (160 bytes PCMU, timestamp=232480ms, rms=8)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ဘယ်နှစ်ဘူး
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  လောက်
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  မှာယူချင်ပါသလဲရှင်။
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 850 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 850 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 900 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 900 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 1500 (160 bytes PCMU, timestamp=248480ms, rms=10)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 950 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 950 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini turn complete
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 1600 (160 bytes PCMU, timestamp=264480ms, rms=135)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent Telnyx clear event
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini output muted
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Speech started (timestamp=279840ms, rms=2357, threshold=95)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini input activity started
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 1700 (160 bytes PCMU, timestamp=280480ms, rms=1240)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Speech ended (timestamp=293600ms)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini input activity ended
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini output unmuted
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] User: Có những combo nào?
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 1800 (160 bytes PCMU, timestamp=296480ms, rms=9)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini: ၂ ဘူးဆိုရင်
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1000 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1000 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ၂ သိန်း
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ၁ သောင်းကျပ်ပါရှင်။
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ၃
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ဘူးဝယ်ရင်
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ၁ ဘူးလက်ဆောင်ရမယ့်
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1050 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1050 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  combo
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  လည်းရှိပါတယ်၊
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 1900 (160 bytes PCMU, timestamp=312480ms, rms=10)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  အသေးစိတ်
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ပြောပြပေးရမလားရှင်။
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1100 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1100 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1150 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1150 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 2000 (160 bytes PCMU, timestamp=328480ms, rms=87)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1200 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1200 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1250 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1250 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 2100 (160 bytes PCMU, timestamp=344480ms, rms=8)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1300 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1300 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini turn complete
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1350 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1350 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 2200 (160 bytes PCMU, timestamp=360480ms, rms=81)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent Telnyx clear event
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini output muted
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Speech started (timestamp=373920ms, rms=1078, threshold=109)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini input activity started
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 2300 (160 bytes PCMU, timestamp=376480ms, rms=1919)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 2400 (160 bytes PCMU, timestamp=392480ms, rms=8)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Speech ended (timestamp=393440ms)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini input activity ended
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini output unmuted
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] User: Momo Kawaii
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini: ဟုတ်ကဲ့၊ ၂
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ဘူး
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  မှာယူမယ်ဆိုရင်
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 2500 (160 bytes PCMU, timestamp=408480ms, rms=22)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ပို့ခအခမဲ့နဲ့
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ၂ သိန်း
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1400 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1400 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ၁ သောင်းကျပ်ပါရှင်။
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  မှာယူဖို့အတွက်
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ဖုန်းနံပါတ်လေး
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini:  ပြောပေးပါရှင်။
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1450 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1450 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 2600 (160 bytes PCMU, timestamp=424480ms, rms=12)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1500 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1500 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1550 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1550 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 2700 (160 bytes PCMU, timestamp=440480ms, rms=9)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1600 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1600 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx outbound media 1650 (160 bytes PCMU)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Sent audio frame 1650 (320 bytes PCM)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini turn complete
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx inbound media 2800 (160 bytes PCMU, timestamp=456480ms, rms=9)
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Telnyx stream stopped
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini realtime audio stream ended
+[v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw] Gemini Live closed
+Telnyx stream status: {'AccountSid': 'be66315e-d92c-45cf-8266-cbae0db99958', 'CallInitiatedAt': '2026-07-08T07:42:14.456696Z', 'CallSid': 'v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw', 'CallSidLegacy': 'v3:Twt8uE2cgxPI4EgRGHsJR7Rzjabym2qspRXj5AhWYu_Nvfl1qyoLEw', 'CallStatus': 'in-progress', 'CallerId': '+84961984204', 'CallingPartyType': 'pstn', 'ConnectionId': '2999182774331507992', 'Direction': 'inbound', 'From': '+84961984204', 'FromSipUri': '+84961984204@4.55.78.33:5060', 'StreamEvent': 'stream-stopped', 'StreamName': '98aa9d37-a2a5-4efc-bcc9-a61da632653f', 'To': '+18565100128', 'ToSipUri': '+18565100128@64.16.250.10:5060'}
+INFO:     192.76.120.130:0 - "POST /telnyx/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50433 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50453 - "GET /health HTTP/1.1" 200 OK
+INFO:     192.76.120.130:0 - "GET /telnyx/answer?AccountSid=be66315e-d92c-45cf-8266-cbae0db99958&CallInitiatedAt=2026-07-08T07%3A51%3A30.240299Z&CallSid=v3%3A7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg&CallSidLegacy=v3%3A7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg&CallStatus=in-progress&CallerId=%2B84961984204&CallingPartyType=pstn&ConnectionId=2999182774331507992&Direction=inbound&From=%2B84961984204&FromSipUri=%2B84961984204%404.55.78.33%3A5060&To=%2B18565100128&ToSipUri=%2B18565100128%4064.16.250.10%3A5060 HTTP/1.1" 200 OK
+[telnyx] WebSocket connected
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx stream started: e7cf9afe-824c-405b-afa7-3242987e70a5 PCMU 8000Hz
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx realtime mode: explicit_vad=True speech_threshold=50 
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx VAD gate: speech_start_frames=5 speech_end_silence_frames=35 adaptive_threshold=True
+Telnyx stream status: {'AccountSid': 'be66315e-d92c-45cf-8266-cbae0db99958', 'CallInitiatedAt': '2026-07-08T07:51:30.240299Z', 'CallSid': 'v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg', 'CallSidLegacy': 'v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg', 'CallStatus': 'in-progress', 'CallerId': '+84961984204', 'CallingPartyType': 'pstn', 'ConnectionId': '2999182774331507992', 'Direction': 'inbound', 'From': '+84961984204', 'FromSipUri': '+84961984204@4.55.78.33:5060', 'StreamEvent': 'stream-started', 'StreamName': '22dd59bf-6302-4f4e-9dd1-2f76c69e0985', 'To': '+18565100128', 'ToSipUri': '+18565100128@64.16.250.10:5060'}
+INFO:     192.76.120.130:0 - "POST /telnyx/status HTTP/1.1" 200 OK
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini Live connected
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx inbound media 1 (160 bytes PCMU, timestamp=7520ms, rms=9)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx inbound media 2 (160 bytes PCMU, timestamp=8000ms, rms=8)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx inbound media 3 (160 bytes PCMU, timestamp=8160ms, rms=8)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini: မင်္ဂလာပါ။ ဆိုင်ရဲ့
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx outbound media 1 (160 bytes PCMU)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Sent audio frame 1 (320 bytes PCM)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx outbound media 2 (160 bytes PCMU)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Sent audio frame 2 (320 bytes PCM)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx outbound media 3 (160 bytes PCMU)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Sent audio frame 3 (320 bytes PCM)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini:  အကြံပေးအကူအညီဖြစ်ပါတယ်။
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx inbound media 100 (160 bytes PCMU, timestamp=23680ms, rms=481)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini:  ဘယ်လိုကူညီပေးရမလဲရှင်။
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx outbound media 50 (160 bytes PCMU)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Sent audio frame 50 (320 bytes PCM)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx outbound media 100 (160 bytes PCMU)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Sent audio frame 100 (320 bytes PCM)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx inbound media 200 (160 bytes PCMU, timestamp=39680ms, rms=31)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx outbound media 150 (160 bytes PCMU)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Sent audio frame 150 (320 bytes PCM)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx outbound media 200 (160 bytes PCMU)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Sent audio frame 200 (320 bytes PCM)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini turn complete
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx inbound media 300 (160 bytes PCMU, timestamp=55680ms, rms=9)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx inbound media 400 (160 bytes PCMU, timestamp=72000ms, rms=76)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Sent Telnyx clear event
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini output muted
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Speech started (timestamp=78880ms, rms=1191, threshold=120)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini input activity started
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx inbound media 500 (160 bytes PCMU, timestamp=88000ms, rms=2270)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Speech ended (timestamp=96640ms)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini input activity ended
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini output unmuted
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] User: I don't know my home. They know me one.
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Sent Telnyx clear event
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini output muted
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Speech started (timestamp=103040ms, rms=491, threshold=104)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini input activity started
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx inbound media 600 (160 bytes PCMU, timestamp=104000ms, rms=108)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini turn complete
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx inbound media 700 (160 bytes PCMU, timestamp=120000ms, rms=27)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Speech ended (timestamp=121120ms)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini input activity ended
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini output unmuted
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Sent Telnyx clear event
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini output muted
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Speech started (timestamp=125760ms, rms=1549, threshold=108)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini input activity started
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini turn complete
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx inbound media 800 (160 bytes PCMU, timestamp=136000ms, rms=1448)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Speech ended (timestamp=150720ms)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini input activity ended
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini output unmuted
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx inbound media 900 (160 bytes PCMU, timestamp=152000ms, rms=27)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] User: เป็นภูมิคุ้มกันให้ทุกวัน
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Sent Telnyx clear event
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini output muted
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Speech started (timestamp=155200ms, rms=1382, threshold=117)
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini input activity started
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Telnyx stream stopped
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Speech ended
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini input activity ended
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini output unmuted
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini realtime audio stream ended
+[v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg] Gemini Live closed
+Telnyx stream status: {'AccountSid': 'be66315e-d92c-45cf-8266-cbae0db99958', 'CallInitiatedAt': '2026-07-08T07:51:30.240299Z', 'CallSid': 'v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg', 'CallSidLegacy': 'v3:7QgtSOo6XOP3laW6IhO0MCn10hydCN91c0GECp245LJ7dCgfdHjNjg', 'CallStatus': 'in-progress', 'CallerId': '+84961984204', 'CallingPartyType': 'pstn', 'ConnectionId': '2999182774331507992', 'Direction': 'inbound', 'From': '+84961984204', 'FromSipUri': '+84961984204@4.55.78.33:5060', 'StreamEvent': 'stream-stopped', 'StreamName': '22dd59bf-6302-4f4e-9dd1-2f76c69e0985', 'To': '+18565100128', 'ToSipUri': '+18565100128@64.16.250.10:5060'}
+INFO:     192.76.120.130:0 - "POST /telnyx/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50498 - "GET /health HTTP/1.1" 200 OK
+INFO:     192.76.120.143:0 - "GET /telnyx/answer?AccountSid=be66315e-d92c-45cf-8266-cbae0db99958&CallInitiatedAt=2026-07-08T07%3A55%3A16.181047Z&CallSid=v3%3AjgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ&CallSidLegacy=v3%3AjgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ&CallStatus=in-progress&CallerId=%2B84961984204&CallingPartyType=pstn&ConnectionId=2999182774331507992&Direction=inbound&From=%2B84961984204&FromSipUri=%2B84961984204%404.55.28.33%3A5060&To=%2B18565100128&ToSipUri=%2B18565100128%40192.76.120.10%3A5060 HTTP/1.1" 200 OK
+[telnyx] WebSocket connected
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx stream started: 1c9a0b93-55eb-4d0b-99d1-e0a9cfd6ce96 PCMU 8000Hz
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx realtime mode: explicit_vad=True speech_threshold=50 
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx VAD gate: speech_start_frames=5 speech_end_silence_frames=60 adaptive_threshold=True
+Telnyx stream status: {'AccountSid': 'be66315e-d92c-45cf-8266-cbae0db99958', 'CallInitiatedAt': '2026-07-08T07:55:16.181047Z', 'CallSid': 'v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ', 'CallSidLegacy': 'v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ', 'CallStatus': 'in-progress', 'CallerId': '+84961984204', 'CallingPartyType': 'pstn', 'ConnectionId': '2999182774331507992', 'Direction': 'inbound', 'From': '+84961984204', 'FromSipUri': '+84961984204@4.55.28.33:5060', 'StreamEvent': 'stream-started', 'StreamName': '4d5abf8e-3471-4473-a7c1-04e5ce2dcca8', 'To': '+18565100128', 'ToSipUri': '+18565100128@192.76.120.10:5060'}
+INFO:     192.76.120.143:0 - "POST /telnyx/status HTTP/1.1" 200 OK
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini Live connected
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 1 (160 bytes PCMU, timestamp=6400ms, rms=8)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 2 (160 bytes PCMU, timestamp=6880ms, rms=8)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 3 (160 bytes PCMU, timestamp=7040ms, rms=17)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini: မင်္ဂလာပါ။ ဆိုင်ရဲ့
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 1 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 1 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 2 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 2 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 3 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 3 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  အကြံပေးအကူအညီဖြစ်ပါတယ်။
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 100 (160 bytes PCMU, timestamp=22560ms, rms=8)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  ဘယ်လိုကူညီပေးရမလဲရှင်။
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 50 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 50 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 100 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 100 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 200 (160 bytes PCMU, timestamp=38560ms, rms=9)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 150 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 150 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 200 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 200 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 300 (160 bytes PCMU, timestamp=54560ms, rms=9)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini turn complete
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 400 (160 bytes PCMU, timestamp=70560ms, rms=8)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent Telnyx clear event
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini output muted
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Speech started (timestamp=75840ms, rms=1664, threshold=88)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini input activity started
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 500 (160 bytes PCMU, timestamp=86560ms, rms=9)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 600 (160 bytes PCMU, timestamp=102560ms, rms=18)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 700 (160 bytes PCMU, timestamp=118560ms, rms=611)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Speech ended (timestamp=130720ms)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini input activity ended
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini output unmuted
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] User: Công dụng của dán con voi. Tờ 10.000đ.
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 800 (160 bytes PCMU, timestamp=134560ms, rms=9)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini: Venus BigOne
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 250 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 250 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  နို့မှုန့်က
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  အမျိုးသမီးဟော်မုန်းချိန်ညှိမှုကို
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  အထောက်အကူပြုနိုင်ပြီး
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 300 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 300 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  ရင်သားတင်းရင်းမှုနဲ့
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 900 (160 bytes PCMU, timestamp=150560ms, rms=8)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  အသားအရေလှပဖို့အတွက်
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  ကူညီပေးနိုင်ပါတယ်ရှင်။
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 350 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 350 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  ဘာများထပ်သိချင်ပါသေးလဲရှင်။
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 400 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 400 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 1000 (160 bytes PCMU, timestamp=166560ms, rms=8)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 450 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 450 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 500 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 500 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 1100 (160 bytes PCMU, timestamp=182560ms, rms=18)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 550 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 550 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 600 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 600 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 1200 (160 bytes PCMU, timestamp=198560ms, rms=8)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 650 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 650 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 700 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 700 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 1300 (160 bytes PCMU, timestamp=214560ms, rms=9)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 750 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 750 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini turn complete
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 1400 (160 bytes PCMU, timestamp=230560ms, rms=9)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent Telnyx clear event
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini output muted
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Speech started (timestamp=234400ms, rms=954, threshold=116)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini input activity started
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 1500 (160 bytes PCMU, timestamp=246560ms, rms=8)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Speech ended (timestamp=249280ms)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini input activity ended
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini output unmuted
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] User: giá bao nhiêu?
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini: Venus BigOne
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  နို့မှုန့်
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 1600 (160 bytes PCMU, timestamp=262560ms, rms=9)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  တစ်ဘူးကို
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  တစ်သိန်းနှစ်သောင်းကျပ်ပါရှင်။
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 800 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 800 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini:  ဝယ်ယူချင်ပါသလားရှင်။
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 850 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 850 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 1700 (160 bytes PCMU, timestamp=278560ms, rms=8)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 900 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 900 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 950 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 950 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx inbound media 1800 (160 bytes PCMU, timestamp=294560ms, rms=8)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx outbound media 1000 (160 bytes PCMU)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Sent audio frame 1000 (320 bytes PCM)
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Telnyx stream stopped
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini realtime audio stream ended
+[v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ] Gemini Live closed
+Telnyx stream status: {'AccountSid': 'be66315e-d92c-45cf-8266-cbae0db99958', 'CallInitiatedAt': '2026-07-08T07:55:16.181047Z', 'CallSid': 'v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ', 'CallSidLegacy': 'v3:jgiSY8RgV6ky5cXyVviJmhJEshyw3eKmtrWza6rc6fij9uVK7lNvaQ', 'CallStatus': 'in-progress', 'CallerId': '+84961984204', 'CallingPartyType': 'pstn', 'ConnectionId': '2999182774331507992', 'Direction': 'inbound', 'From': '+84961984204', 'FromSipUri': '+84961984204@4.55.28.33:5060', 'StreamEvent': 'stream-stopped', 'StreamName': '4d5abf8e-3471-4473-a7c1-04e5ce2dcca8', 'To': '+18565100128', 'ToSipUri': '+18565100128@192.76.120.10:5060'}
+INFO:     192.76.120.143:0 - "POST /telnyx/status HTTP/1.1" 200 OK

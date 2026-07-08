@@ -69,7 +69,7 @@ class TelnyxAdapterTests(unittest.TestCase):
                 stream_codec="PCMU",
                 stream_sample_rate=8000,
                 speech_threshold=120,
-                greeting="Dạ em chào anh chị. Anh chị cần tư vấn sản phẩm nào ạ?",
+                greeting="မင်္ဂလာပါရှင်။ ဘယ်ပစ္စည်းအတွက် တိုင်ပင်ချင်ပါသလဲ။",
             ),
         )
         self.client = TestClient(main.app)
@@ -82,10 +82,7 @@ class TelnyxAdapterTests(unittest.TestCase):
         body = response.text
         self.assertIn('<Response>', body)
         self.assertNotIn('<Say', body)
-        self.assertIn(
-            '<Play continueOnError="true">https://example.ngrok-free.dev/telnyx/greeting.wav</Play>',
-            body,
-        )
+        self.assertNotIn('<Play', body)
         self.assertIn('<Connect>', body)
         self.assertIn('url="wss://example.ngrok-free.dev/telnyx/ws?token=secret-token"', body)
         self.assertIn('track="inbound_track"', body)
@@ -261,17 +258,17 @@ class TelnyxAdapterTests(unittest.TestCase):
         self.assertIsNone(vad.end_of_speech_sensitivity)
         self.assertIsNone(vad.silence_duration_ms)
 
-    def test_speech_config_forces_vietnamese_live_language(self) -> None:
+    def test_speech_config_forces_myanmar_live_language(self) -> None:
         speech = _speech_config()
 
-        self.assertEqual(speech.language_code, "vi-VN")
+        self.assertEqual(speech.language_code, "my-MM")
 
     def test_system_instruction_requires_short_realtime_sales_replies(self) -> None:
         instruction = app_config.gemini_system_instruction()
 
-        self.assertIn("Moi luot chi noi 1 cau ngan", instruction)
-        self.assertIn("Uu tien chot sale", instruction)
-        self.assertIn("FINAL REALTIME SALES RULE", instruction)
+        self.assertIn("မြန်မာဘာသာဖြင့်သာ", instruction)
+        self.assertIn("နောက်ဆက်တွဲမေးခွန်းကို ၁ ခုသာ မေးပါ", instruction)
+        self.assertIn("နောက်ဆုံးအသံဖြေကြားစည်းကမ်း", instruction)
 
     def test_safe_stdout_does_not_crash_on_vietnamese_text(self) -> None:
         class FakeStdout:
@@ -290,7 +287,7 @@ class TelnyxAdapterTests(unittest.TestCase):
 
         fake_stdout = FakeStdout()
         with patch("sys.stdout", fake_stdout):
-            _safe_stdout("Gemini: Dạ em nghe rõ rồi ạ")
+            _safe_stdout("Gemini: အသံကြားရပါတယ်ရှင်")
 
         self.assertIn("Gemini:", fake_stdout.value)
 
