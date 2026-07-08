@@ -13,6 +13,17 @@ def log(message: str) -> None:
 
 
 def _safe_stdout(message: str) -> None:
-    encoding = sys.stdout.encoding or "utf-8"
-    safe_message = message.encode(encoding, errors="replace").decode(encoding, errors="replace")
-    print(safe_message, flush=True)
+    try:
+        print(message, flush=True)
+    except UnicodeEncodeError:
+        try:
+            encoding = sys.stdout.encoding or "utf-8"
+            safe_message = message.encode(encoding, errors="backslashreplace").decode(encoding, errors="replace")
+            print(safe_message, flush=True)
+        except Exception:
+            try:
+                safe_message = message.encode("ascii", errors="backslashreplace").decode("ascii")
+                print(safe_message, flush=True)
+            except Exception:
+                pass
+
