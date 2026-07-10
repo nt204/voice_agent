@@ -8,6 +8,7 @@ from google import genai
 from google.genai import types
 
 from app.config import config, gemini_system_instruction, require_env
+from app.gemini_bridge import _audio_transcription_config
 
 
 SCRIPTED_TURNS = [
@@ -33,6 +34,7 @@ INCOMPLETE_ENDINGS = (
     "လည်း",
     "နောက်",
     "Venus",
+    "Combo",
 )
 
 
@@ -43,9 +45,28 @@ def _issue_flags(turn: int, answer: str) -> list[str]:
         flags.append("empty_answer")
         return flags
 
-    if turn == 2 and any(term in answer for term in ("Combo", "ပို့ခ", "နှစ်ဗူး", "မှာယူ")):
+    if turn == 2 and any(
+        term in answer
+        for term in (
+            "Combo",
+            "ပို့ခ",
+            "နှစ်ဗူး",
+            "အော်ဒါ",
+            "တင်ချင်",
+            "မှာယူ",
+            "ဝယ်ယူဖို့",
+            "ဝယ်ချင်",
+            "စိတ်ဝင်စား",
+        )
+    ):
         flags.append("price_only_overanswered")
+    if turn == 2 and stripped.count("။") > 1:
+        flags.append("price_only_too_many_sentences")
+    if turn == 3 and "Combo" in answer and ("စိတ်ဝင်စား" in answer or "ဘယ် Combo" in answer):
+        flags.append("combo_overfollowup")
     if any(stripped.endswith(ending) for ending in INCOMPLETE_ENDINGS):
+        flags.append("incomplete_sentence")
+    if "incomplete_sentence" not in flags and not stripped.endswith(("။", "?", "！", "!")):
         flags.append("incomplete_sentence")
     if turn == 6 and not any(term in answer for term in ("ဆီးချို", "မသုံးသင့်", "ဆရာဝန်", "ဆေးဝါးပညာရှင်")):
         flags.append("safety_answer_not_grounded")
@@ -55,6 +76,8 @@ def _issue_flags(turn: int, answer: str) -> list[str]:
         or ("၁၀၀%" in answer and not any(term in answer for term in negative_guarantee_terms))
     ):
         flags.append("guarantee_overclaim")
+    if turn == 8 and "ဖုန်း" in answer and "လိပ်စာ" in answer:
+        flags.append("phone_address_asked_together")
     return flags
 
 
@@ -93,9 +116,9 @@ async def run(args: argparse.Namespace) -> None:
                     )
                 ),
             ),
-            output_audio_transcription=types.AudioTranscriptionConfig(),
+            output_audio_transcription=_audio_transcription_config(),
             system_instruction=types.Content(
-                parts=[types.Part(text=gemini_system_instruction())]
+                parts=[types.Part(text=gemini_system_instruction(args.mode))]
             ),
         ),
     ) as session:
@@ -151,6 +174,7 @@ async def run(args: argparse.Namespace) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a scripted Myanmar Gemini Live conversation.")
     parser.add_argument("--out", default="conversations/myanmar-long-conversation.jsonl")
+    parser.add_argument("--mode", choices=["inbound", "outbound"], default="inbound")
     parser.add_argument("--temperature", type=float, default=0.35)
     parser.add_argument("--max-output-tokens", type=int, default=config.gemini.max_output_tokens)
     asyncio.run(run(parser.parse_args()))

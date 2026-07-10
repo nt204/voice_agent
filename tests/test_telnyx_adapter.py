@@ -13,7 +13,13 @@ import app.config as app_config
 from app.logging_utils import _safe_stdout
 from app.main import RealtimeInputGate, RealtimePassthroughInput
 from app.audio import pcm16_to_telnyx_payload, telnyx_payload_to_pcm16
-from app.gemini_bridge import GeminiCallBridge, _automatic_activity_detection, _speech_config
+from app.gemini_bridge import (
+    GeminiCallBridge,
+    _audio_transcription_config,
+    _automatic_activity_detection,
+    _speech_config,
+)
+from scripts.test_myanmar_conversation import _issue_flags
 
 
 class FakeBridge:
@@ -81,10 +87,18 @@ class TelnyxAdapterTests(unittest.TestCase):
         main.config = SimpleNamespace(
             public_base_url="https://example.ngrok-free.dev",
             telnyx=SimpleNamespace(
+                api_key="telnyx-api-key",
+                account_sid="telnyx-account",
+                texml_app_id="texml-app",
                 stream_token="secret-token",
                 stream_codec="PCMU",
                 stream_sample_rate=8000,
                 speech_threshold=120,
+                stream_track="inbound_track",
+                pause_length_seconds=600,
+                outbound_greeting_delay_seconds=2,
+                outbound_from_number="+19482194502",
+                outbound_call_timeout_seconds=15,
                 greeting="မင်္ဂလာပါရှင်။ ဘယ်ပစ္စည်းအတွက် တိုင်ပင်ချင်ပါသလဲ။",
             ),
         )
@@ -107,6 +121,100 @@ class TelnyxAdapterTests(unittest.TestCase):
         self.assertIn('bidirectionalCodec="PCMU"', body)
         self.assertIn('bidirectionalSamplingRate="8000"', body)
         self.assertIn('<Pause length="600" />', body)
+
+    def test_telnyx_outbound_answer_uses_separate_stream_path(self) -> None:
+        response = self.client.post("/telnyx/outbound/answer")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "application/xml")
+        body = response.text
+        self.assertIn('<Response>', body)
+        self.assertIn('<Pause length="2" />', body)
+        self.assertNotIn('<Play>', body)
+        self.assertIn('<Connect>', body)
+        self.assertIn('url="wss://example.ngrok-free.dev/telnyx/outbound/ws?token=secret-token"', body)
+        self.assertIn('statusCallback="https://example.ngrok-free.dev/telnyx/outbound/status"', body)
+        self.assertNotIn('/telnyx/ws', body)
+        self.assertNotIn('/telnyx/status', body)
+        self.assertLess(body.index('<Pause length="2" />'), body.index("<Connect>"))
+
+    def test_telnyx_outbound_has_no_separate_audio_greeting_route(self) -> None:
+        response = self.client.get("/telnyx/outbound/greeting.wav")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_telnyx_outbound_keeps_inbound_conversation_settings_except_prompt(self) -> None:
+        inbound = main._telnyx_bridge_options("inbound")
+        outbound = main._telnyx_bridge_options("outbound")
+
+        self.assertTrue(inbound["send_initial_greeting"])
+        self.assertTrue(outbound["send_initial_greeting"])
+        self.assertIsNone(inbound["system_instruction"])
+        self.assertIn("Outbound mode", outbound["system_instruction"])
+
+    def test_telnyx_outbound_waits_for_initial_greeting_before_listening(self) -> None:
+        inbound = main._telnyx_input_gate_options("inbound")
+        outbound = main._telnyx_input_gate_options("outbound")
+
+        self.assertFalse(inbound["require_initial_turn"])
+        self.assertTrue(outbound["require_initial_turn"])
+        self.assertEqual(inbound["wait_for_turn_before_commit"], outbound["wait_for_turn_before_commit"])
+        self.assertEqual(inbound["speech_threshold"], outbound["speech_threshold"])
+
+    def test_telnyx_outbound_call_posts_to_texml_api(self) -> None:
+        captured = {}
+
+        class FakeResponse:
+            status_code = 201
+
+            def json(self):
+                return {"sid": "call-sid-1", "status": "queued"}
+
+            def raise_for_status(self):
+                return None
+
+        class FakeAsyncClient:
+            def __init__(self, *, timeout):
+                captured["timeout"] = timeout
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return None
+
+            async def post(self, url, *, json, headers):
+                captured["url"] = url
+                captured["json"] = json
+                captured["headers"] = headers
+                return FakeResponse()
+
+        with patch("app.main.httpx.AsyncClient", FakeAsyncClient):
+            response = self.client.post(
+                "/telnyx/outbound/call",
+                json={"to_number": "+84961234567"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["ok"], True)
+        self.assertEqual(response.json()["call_sid"], "call-sid-1")
+        self.assertEqual(
+            captured["url"],
+            "https://api.telnyx.com/v2/texml/Accounts/telnyx-account/Calls",
+        )
+        self.assertEqual(captured["headers"]["Authorization"], "Bearer telnyx-api-key")
+        self.assertEqual(
+            captured["json"],
+            {
+                "ApplicationSid": "texml-app",
+                "To": "+84961234567",
+                "From": "+19482194502",
+                "Url": "https://example.ngrok-free.dev/telnyx/outbound/answer",
+                "UrlMethod": "POST",
+                "StatusCallback": "https://example.ngrok-free.dev/telnyx/outbound/status",
+                "StatusCallbackMethod": "POST",
+            },
+        )
 
     def test_telnyx_audio_helpers_convert_pcmu_payloads(self) -> None:
         pcm = b"\x00\x00\x01\x00\xff\xff\x00\x10"
@@ -331,6 +439,12 @@ class TelnyxAdapterTests(unittest.TestCase):
 
         self.assertEqual(speech.language_code, "my-MM")
 
+    def test_audio_transcription_keeps_configured_language(self) -> None:
+        transcription = _audio_transcription_config()
+
+        self.assertEqual(transcription.language_hints.language_codes, ["my-MM"])
+        self.assertIsNone(transcription.language_codes)
+
     def test_system_instruction_requires_short_realtime_sales_replies(self) -> None:
         instruction = app_config.gemini_system_instruction()
 
@@ -339,6 +453,38 @@ class TelnyxAdapterTests(unittest.TestCase):
         self.assertIn("နောက်ဆုံးအသံဖြေကြားစည်းကမ်း", instruction)
         self.assertIn("what is that", instruction)
         self.assertIn("never stay silent", instruction)
+        self.assertNotIn("Outbound mode", instruction)
+
+    def test_outbound_system_instruction_is_proactive_sales_without_changing_inbound(self) -> None:
+        instruction = app_config.gemini_system_instruction("outbound")
+
+        self.assertIn("Outbound mode", instruction)
+        self.assertIn("proactively lead the call", instruction)
+        self.assertIn("yes/okay", instruction)
+        self.assertIn("one concrete product benefit", instruction)
+        self.assertIn("Do not greet again", instruction)
+        self.assertIn("If the customer asks only the price", instruction)
+        self.assertIn("Price-only override", instruction)
+
+    def test_long_conversation_detector_flags_price_only_sales_followup(self) -> None:
+        issues = _issue_flags(
+            2,
+            "တစ်ဗူးကို ၁ သိန်း ၂ သောင်းကျပ်ပါရှင်။ အော်ဒါတင်ချင်ပါသလားရှင်။",
+        )
+
+        self.assertIn("price_only_overanswered", issues)
+        self.assertIn("price_only_too_many_sentences", issues)
+
+    def test_long_conversation_detector_flags_clipped_and_double_collection(self) -> None:
+        self.assertIn("incomplete_sentence", _issue_flags(3, "၂ ဘူးက ၂ သိန်း ၁ သောင်းပါရှင်။ ဘယ် Combo"))
+        self.assertIn(
+            "combo_overfollowup",
+            _issue_flags(3, "၂ ဘူးက ၂ သိန်း ၁ သောင်းပါရှင်။ ဘယ် Combo ကို စိတ်ဝင်စားပါသလဲရှင်။"),
+        )
+        self.assertIn(
+            "phone_address_asked_together",
+            _issue_flags(8, "ဖုန်းနံပါတ်နဲ့ လိပ်စာလေး ပေးရပါမယ်ရှင်။"),
+        )
 
     def test_safe_stdout_does_not_crash_on_vietnamese_text(self) -> None:
         class FakeStdout:

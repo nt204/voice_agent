@@ -61,10 +61,15 @@ class SignalWireConfig:
 
 @dataclass(frozen=True)
 class TelnyxConfig:
+    api_key: str | None = os.getenv("TELNYX_API_KEY")
+    account_sid: str | None = os.getenv("TELNYX_ACCOUNT_SID")
+    texml_app_id: str | None = os.getenv("TELNYX_TEXML_APP_ID")
     stream_token: str = os.getenv("TELNYX_STREAM_TOKEN", "")
     stream_codec: str = os.getenv("TELNYX_STREAM_CODEC", "PCMU")
     stream_sample_rate: int = _int_env("TELNYX_STREAM_SAMPLE_RATE", 8000)
     stream_track: str = os.getenv("TELNYX_STREAM_TRACK", "inbound_track")
+    outbound_from_number: str | None = os.getenv("TELNYX_OUTBOUND_FROM_NUMBER")
+    outbound_call_timeout_seconds: int = _int_env("TELNYX_OUTBOUND_CALL_TIMEOUT_SECONDS", 15)
     speech_threshold: int = _int_env("TELNYX_SPEECH_THRESHOLD", 50)
     speech_start_frames: int = _int_env(
         "TELNYX_SPEECH_START_FRAMES",
@@ -80,6 +85,7 @@ class TelnyxConfig:
     barge_in_threshold: int = _int_env("TELNYX_BARGE_IN_THRESHOLD", 900)
     echo_suppression_ms: int = _int_env("TELNYX_ECHO_SUPPRESSION_MS", 700)
     pause_length_seconds: int = _int_env("TELNYX_PAUSE_LENGTH_SECONDS", 600)
+    outbound_greeting_delay_seconds: int = _int_env("TELNYX_OUTBOUND_GREETING_DELAY_SECONDS", 2)
     greeting_audio_path: str = os.getenv(
         "TELNYX_GREETING_AUDIO_PATH",
         "assets/telnyx-greeting.wav",
@@ -137,7 +143,31 @@ def product_knowledge() -> str:
     return path.read_text(encoding="utf-8").strip()
 
 
-def gemini_system_instruction() -> str:
+def _outbound_mode_rules(mode: str) -> str:
+    if mode != "outbound":
+        return ""
+    return """
+
+Outbound mode, overriding all earlier sales/follow-up rules:
+- You called the customer first. Be a polite Myanmar-speaking sales advisor and proactively lead the call.
+- Do not greet again after the initial greeting. If the customer says anything after the greeting, answer that content directly.
+- If the customer asks only the price, answer only the price and stop. Do not ask quantity, phone, address, or whether they want to buy.
+- Price-only override: the whole answer must be one sentence with the price only, for example "၁ ဗူးကို ၁ သိန်း ၂ သောင်းကျပ်ပါရှင်။"
+- In a price-only answer, never add these meanings or Burmese words: are you interested, do you want to buy, order, quantity, phone, address, combo, shipping, benefit, follow-up question, "အော်ဒါ", "မှာယူ", "ဝယ်ယူ", "စိတ်ဝင်စား", "ဘယ်နှစ်ဗူး", "ဖုန်း", "လိပ်စာ".
+- Concrete price-only example: if the customer says "တစ်ဗူးဈေးဘယ်လောက်လဲ။", answer exactly "၁ ဗူးကို ၁ သိန်း ၂ သောင်းကျပ်ပါရှင်။" and then stop speaking.
+- Wrong price-only answers include any second sentence or any question after the price. Do not say "မှာယူချင်ပါသလား", "အော်ဒါတင်ချင်ပါသလား", or "စိတ်ဝင်စားပါသလား".
+- If the customer asks combo prices, list at most 2 combo options and stop. Do not add "which combo are you interested in" if the answer is already 2 sentences.
+- When collecting order information, ask for the phone number first only. Do not mention or ask for the address in the same turn.
+- Concrete order-info example: if the customer says "တစ်ဗူးမှာမယ်ဆိုရင် ဘာအချက်အလက် ပေးရမလဲ။", answer exactly "အရင်ဆုံး ဖုန်းနံပါတ်လေး ပြောပေးနိုင်မလားရှင်။" and then stop speaking.
+- In an order-info answer, do not say "လိပ်စာ", even if you mean you will ask it later.
+- If the customer only says yes/okay, hello, or gives a short acknowledgement, do not ask what they want to ask. Continue with one concrete product benefit and one easy question.
+- Keep each answer to 1-2 short Burmese sentences. Ask only one question at a time.
+- If the customer asks a product question, answer from the product knowledge first, then guide gently toward the next sales step.
+- Do not pressure the customer. If they are busy or not interested, acknowledge politely and offer to call later.
+"""
+
+
+def gemini_system_instruction(mode: str = "inbound") -> str:
     voice_rules = (
         "\n\nအသံခေါ်ဆိုမှု စည်းကမ်းများ:\n"
         "- မဖြစ်မနေ မြန်မာဘာသာဖြင့်သာ ပြောပါ။ အင်္ဂလိပ်၊ ဗီယက်နမ် သို့မဟုတ် အခြားဘာသာဖြင့် မဖြေပါနှင့်။\n"
@@ -153,9 +183,9 @@ def gemini_system_instruction() -> str:
     )
     knowledge = product_knowledge()
     if not knowledge:
-        return f"{config.gemini.system_instruction}{voice_rules}"
+        return f"{config.gemini.system_instruction}{voice_rules}{_outbound_mode_rules(mode)}"
 
-    return f"""{config.gemini.system_instruction}{voice_rules}
+    instruction = f"""{config.gemini.system_instruction}{voice_rules}
 
 ဖောက်သည်စောင့်ရှောက်မှု စည်းကမ်းများ:
 - အမြင့်ဆုံးဦးစားပေး: အဖြေတိုင်းကို မြန်မာဘာသာဖြင့်သာ ဖြေပါ။ ဖောက်သည်က အခြားဘာသာဖြင့်မေးလျှင်လည်း အဓိပ္ပါယ်ကို မြန်မာလို ပြန်ဖြေပါ။
@@ -184,3 +214,4 @@ def gemini_system_instruction() -> str:
 - နောက်ဆက်တွဲမေးခွန်း ၁ ခုထက်ပို မမေးပါနှင့်။
 - အဖြေပြီးသည်နှင့် ချက်ချင်းရပ်ပါ။
 """
+    return f"{instruction}{_outbound_mode_rules(mode)}"

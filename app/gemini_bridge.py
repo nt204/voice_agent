@@ -37,6 +37,14 @@ def _speech_config() -> types.SpeechConfig:
     )
 
 
+def _audio_transcription_config() -> types.AudioTranscriptionConfig:
+    return types.AudioTranscriptionConfig(
+        language_hints=types.LanguageHints(
+            language_codes=[config.gemini.language_code],
+        ),
+    )
+
+
 class GeminiCallBridge:
     def __init__(
         self,
@@ -47,6 +55,8 @@ class GeminiCallBridge:
         send_initial_greeting: bool = True,
         realtime_input: bool = False,
         clear_audio: Callable[[], Awaitable[None]] | None = None,
+        system_instruction: str | None = None,
+        initial_greeting: str | None = None,
     ):
         self.call_id = call_id
         self.call_sample_rate = call_sample_rate
@@ -55,6 +65,8 @@ class GeminiCallBridge:
         self.clear_audio = clear_audio
         self.explicit_vad = explicit_vad
         self.send_initial_greeting = send_initial_greeting
+        self.system_instruction = system_instruction
+        self.initial_greeting = initial_greeting
         self.realtime_input = realtime_input
         self.input_activity_active = False
         self.client = genai.Client(api_key=require_env("GEMINI_API_KEY"))
@@ -83,10 +95,10 @@ class GeminiCallBridge:
                 max_output_tokens=config.gemini.max_output_tokens,
                 speech_config=_speech_config(),
                 system_instruction=types.Content(
-                    parts=[types.Part(text=gemini_system_instruction())]
+                    parts=[types.Part(text=self.system_instruction or gemini_system_instruction())]
                 ),
-                input_audio_transcription=types.AudioTranscriptionConfig(),
-                output_audio_transcription=types.AudioTranscriptionConfig(),
+                input_audio_transcription=_audio_transcription_config(),
+                output_audio_transcription=_audio_transcription_config(),
                 realtime_input_config=types.RealtimeInputConfig(
                     automatic_activity_detection=_automatic_activity_detection(self.explicit_vad),
                     activity_handling=types.ActivityHandling.NO_INTERRUPTION,
@@ -108,7 +120,7 @@ class GeminiCallBridge:
                     types.Part(
                         text=(
                             "အောက်ပါစာကြောင်းကို အတိအကျသာ ပြောပါ။ အခြားအကြောင်းအရာ မထည့်ပါနှင့်: "
-                            f"{config.gemini.initial_greeting}"
+                            f"{self.initial_greeting or config.gemini.initial_greeting}"
                         )
                     )
                 ],

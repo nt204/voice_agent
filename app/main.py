@@ -1,6 +1,7 @@
 import base64
 import asyncio
 import audioop
+import httpx
 import json
 from collections import deque
 from html import escape
@@ -9,7 +10,7 @@ from urllib.parse import parse_qsl
 from urllib.parse import urlencode
 from urllib.parse import urljoin, urlparse, urlunparse
 
-from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import FileResponse
 
 from app.audio import (
@@ -19,7 +20,7 @@ from app.audio import (
     signalwire_payload_to_pcm16,
     telnyx_payload_to_pcm16,
 )
-from app.config import config
+from app.config import config, gemini_system_instruction
 from app.gemini_bridge import GeminiCallBridge
 from app.logging_utils import log
 
@@ -199,6 +200,26 @@ async def health() -> dict[str, bool]:
     return {"ok": True}
 
 
+async def _request_payload(request: Request) -> dict:
+    payload = dict(request.query_params)
+    if request.method == "POST":
+        content_type = request.headers.get("content-type", "")
+        if "application/json" in content_type:
+            payload.update(await request.json())
+        else:
+            body = (await request.body()).decode("utf-8", errors="replace")
+            payload.update(dict(parse_qsl(body)))
+    return payload
+
+
+def _telnyx_error_detail(response: httpx.Response) -> str:
+    try:
+        data = response.json()
+    except ValueError:
+        return f"Telnyx API error {response.status_code}: {response.text}"
+    return f"Telnyx API error {response.status_code}: {data}"
+
+
 @app.post("/infobip/events")
 async def infobip_events(payload: dict) -> dict[str, bool]:
     print("Infobip event:", json.dumps(payload, ensure_ascii=False))
@@ -216,6 +237,13 @@ async def telnyx_stream_status(request: Request) -> dict[str, bool]:
             body = (await request.body()).decode("utf-8", errors="replace")
             payload.update(dict(parse_qsl(body)))
     log(f"Telnyx stream status: {payload}")
+    return {"ok": True}
+
+
+@app.api_route("/telnyx/outbound/status", methods=["GET", "POST"])
+async def telnyx_outbound_stream_status(request: Request) -> dict[str, bool]:
+    payload = await _request_payload(request)
+    log(f"Telnyx outbound stream status: {payload}")
     return {"ok": True}
 
 
@@ -239,13 +267,130 @@ async def telnyx_answer() -> Response:
     return Response(content=texml, media_type="application/xml")
 
 
+@app.api_route("/telnyx/outbound/answer", methods=["GET", "POST"])
+async def telnyx_outbound_answer() -> Response:
+    stream_url = _public_ws_url("/telnyx/outbound/ws")
+    status_url = _public_http_url("/telnyx/outbound/status")
+    stream_track = getattr(config.telnyx, "stream_track", "inbound_track")
+    pause_length_seconds = getattr(config.telnyx, "pause_length_seconds", 600)
+    greeting_delay_seconds = max(
+        0,
+        int(getattr(config.telnyx, "outbound_greeting_delay_seconds", 2)),
+    )
+    if config.telnyx.stream_token:
+        stream_url = f"{stream_url}?{urlencode({'token': config.telnyx.stream_token})}"
+
+    texml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Pause length="{greeting_delay_seconds}" />
+  <Connect>
+    <Stream url="{escape(stream_url)}" track="{escape(stream_track)}" codec="{escape(config.telnyx.stream_codec)}" bidirectionalMode="rtp" bidirectionalCodec="{escape(config.telnyx.stream_codec)}" bidirectionalSamplingRate="{config.telnyx.stream_sample_rate}" statusCallback="{escape(status_url)}" statusCallbackMethod="POST"></Stream>
+  </Connect>
+  <Pause length="{pause_length_seconds}" />
+</Response>
+"""
+    return Response(content=texml, media_type="application/xml")
+
+
+@app.post("/telnyx/outbound/call")
+async def telnyx_outbound_call(request: Request) -> dict[str, object]:
+    payload = await request.json()
+    to_number = str(payload.get("to_number") or "").strip()
+    from_number = str(
+        payload.get("from_number") or config.telnyx.outbound_from_number or ""
+    ).strip()
+    if not to_number:
+        raise HTTPException(status_code=400, detail="Missing to_number")
+    if not from_number:
+        raise HTTPException(status_code=400, detail="Missing from_number or TELNYX_OUTBOUND_FROM_NUMBER")
+
+    missing = [
+        name
+        for name, value in {
+            "TELNYX_API_KEY": config.telnyx.api_key,
+            "TELNYX_ACCOUNT_SID": config.telnyx.account_sid,
+            "TELNYX_TEXML_APP_ID": config.telnyx.texml_app_id,
+            "PUBLIC_BASE_URL": config.public_base_url,
+        }.items()
+        if not value
+    ]
+    if missing:
+        raise HTTPException(status_code=500, detail=f"Missing config: {', '.join(missing)}")
+
+    url = f"https://api.telnyx.com/v2/texml/Accounts/{config.telnyx.account_sid}/Calls"
+    texml_url = _public_http_url("/telnyx/outbound/answer")
+    status_callback = _public_http_url("/telnyx/outbound/status")
+    body = {
+        "ApplicationSid": config.telnyx.texml_app_id,
+        "To": to_number,
+        "From": from_number,
+        "Url": texml_url,
+        "UrlMethod": "POST",
+        "StatusCallback": status_callback,
+        "StatusCallbackMethod": "POST",
+    }
+    headers = {
+        "Authorization": f"Bearer {config.telnyx.api_key}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=config.telnyx.outbound_call_timeout_seconds) as client:
+            response = await client.post(url, json=body, headers=headers)
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        detail = _telnyx_error_detail(exc.response)
+        raise HTTPException(status_code=502, detail=detail) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"Telnyx request failed: {exc}") from exc
+
+    data = response.json()
+    call_sid = data.get("sid") or data.get("call_sid") or (data.get("data") or {}).get("sid")
+    log(f"Telnyx outbound call requested: to={to_number} from={from_number} sid={call_sid}")
+    return {"ok": True, "call_sid": call_sid, "telnyx": data}
+
+
 @app.get("/telnyx/greeting.wav")
 async def telnyx_greeting() -> FileResponse:
     return FileResponse(_telnyx_greeting_audio_path(), media_type="audio/wav")
 
 
+@app.websocket("/telnyx/outbound/ws")
+async def telnyx_outbound_ws(websocket: WebSocket) -> None:
+    await _telnyx_ws(websocket, mode="outbound")
+
+
 @app.websocket("/telnyx/ws")
 async def telnyx_ws(websocket: WebSocket) -> None:
+    await _telnyx_ws(websocket, mode="inbound")
+
+
+def _telnyx_bridge_options(mode: str) -> dict[str, object]:
+    return {
+        "send_initial_greeting": True,
+        "system_instruction": (
+            gemini_system_instruction("outbound") if mode == "outbound" else None
+        ),
+    }
+
+
+def _telnyx_input_gate_options(mode: str) -> dict[str, object]:
+    return {
+        "speech_threshold": config.telnyx.speech_threshold,
+        "speech_start_frames": getattr(config.telnyx, "speech_start_frames", 2),
+        "speech_end_silence_frames": getattr(config.telnyx, "speech_end_silence_frames", 30),
+        "require_initial_turn": mode == "outbound",
+        "wait_for_turn_before_commit": False,
+        "adaptive_threshold": getattr(config.telnyx, "adaptive_threshold", True),
+        "noise_multiplier": getattr(config.telnyx, "noise_multiplier", 3.0),
+        "noise_margin": getattr(config.telnyx, "noise_margin", 80),
+        "barge_in_threshold": getattr(config.telnyx, "barge_in_threshold", 900),
+        "echo_suppression_ms": getattr(config.telnyx, "echo_suppression_ms", 700),
+    }
+
+
+async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
     expected_token = config.telnyx.stream_token
     token = websocket.query_params.get("token")
     if expected_token and token != expected_token:
@@ -319,8 +464,9 @@ async def telnyx_ws(websocket: WebSocket) -> None:
                     f"[{call_id}] Telnyx realtime mode: explicit_vad=True "
                     f"speech_threshold={config.telnyx.speech_threshold} "
                 )
-                speech_start_frames = getattr(config.telnyx, "speech_start_frames", 2)
-                speech_end_silence_frames = getattr(config.telnyx, "speech_end_silence_frames", 30)
+                input_gate_options = _telnyx_input_gate_options(mode)
+                speech_start_frames = input_gate_options["speech_start_frames"]
+                speech_end_silence_frames = input_gate_options["speech_end_silence_frames"]
                 log(
                     f"[{call_id}] Telnyx VAD gate: "
                     f"speech_start_frames={speech_start_frames} "
@@ -337,28 +483,30 @@ async def telnyx_ws(websocket: WebSocket) -> None:
                     )
                     log(f"[{call_id}] Sent Telnyx clear event")
 
+                bridge_options = _telnyx_bridge_options(mode)
                 bridge = GeminiCallBridge(
                     call_id=call_id,
                     call_sample_rate=sample_rate,
                     send_audio=send_audio,
                     clear_audio=clear_audio,
                     explicit_vad=True,
-                    send_initial_greeting=True,
+                    send_initial_greeting=bridge_options["send_initial_greeting"],
                     realtime_input=True,
+                    system_instruction=bridge_options["system_instruction"],
                 )
                 input_gate = RealtimeInputGate(
                     bridge,
                     call_id,
-                    speech_threshold=config.telnyx.speech_threshold,
+                    speech_threshold=input_gate_options["speech_threshold"],
                     speech_start_frames=speech_start_frames,
                     speech_end_silence_frames=speech_end_silence_frames,
-                    require_initial_turn=False,
-                    wait_for_turn_before_commit=False,
-                    adaptive_threshold=config.telnyx.adaptive_threshold,
-                    noise_multiplier=config.telnyx.noise_multiplier,
-                    noise_margin=config.telnyx.noise_margin,
-                    barge_in_threshold=config.telnyx.barge_in_threshold,
-                    echo_suppression_ms=config.telnyx.echo_suppression_ms,
+                    require_initial_turn=input_gate_options["require_initial_turn"],
+                    wait_for_turn_before_commit=input_gate_options["wait_for_turn_before_commit"],
+                    adaptive_threshold=input_gate_options["adaptive_threshold"],
+                    noise_multiplier=input_gate_options["noise_multiplier"],
+                    noise_margin=input_gate_options["noise_margin"],
+                    barge_in_threshold=input_gate_options["barge_in_threshold"],
+                    echo_suppression_ms=input_gate_options["echo_suppression_ms"],
                 )
                 await bridge.start()
 
@@ -644,7 +792,7 @@ def _public_http_url(path: str) -> str:
 
 
 def _telnyx_greeting_audio_path() -> Path:
-    path = Path(config.telnyx.greeting_audio_path)
+    path = Path(getattr(config.telnyx, "greeting_audio_path", "assets/telnyx-greeting.wav"))
     if not path.is_absolute():
         path = Path(__file__).resolve().parent.parent / path
     return path
