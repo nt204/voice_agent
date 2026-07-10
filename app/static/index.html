@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quản lý cuộc gọi AI</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-mark" aria-hidden="true">
+      <span class="brand-head"></span>
+      <span class="brand-body"></span>
+    </div>
+    <div class="brand-copy">
+      <h1>Quản lý cuộc gọi AI</h1>
+      <p>Lịch sử cuộc gọi và thông tin khách hàng</p>
+    </div>
+    <div class="topbar-actions">
+      <button id="refreshButton" class="refresh-button" type="button">Làm mới</button>
+      <span class="system-status"><i></i> Hệ thống hoạt động</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="metrics" aria-label="Tổng quan">
+      <button class="metric active" data-direction="">
+        <span class="metric-icon all-calls" aria-hidden="true">●</span>
+        <span class="metric-copy"><small>Tổng cuộc gọi</small><b>Tất cả lịch sử</b></span>
+        <strong id="countAll">0</strong>
+      </button>
+      <button class="metric" data-direction="inbound">
+        <span class="metric-icon inbound" aria-hidden="true">↙</span>
+        <span class="metric-copy"><small>Khách hàng liên hệ</small><b>Cuộc gọi đến</b></span>
+        <strong id="countInbound">0</strong>
+      </button>
+      <button class="metric" data-direction="outbound">
+        <span class="metric-icon outbound" aria-hidden="true">↗</span>
+        <span class="metric-copy"><small>Nhân viên liên hệ</small><b>Cuộc gọi đi</b></span>
+        <strong id="countOutbound">0</strong>
+      </button>
+    </section>
+
+    <section class="interest-toolbar" aria-label="Lọc theo nhu cầu khách hàng">
+      <span>Trạng thái tư vấn</span>
+      <button class="interest-filter active" data-interest="" type="button">
+        Tất cả
+      </button>
+      <button class="interest-filter consultation" data-interest="needs_consultation" type="button">
+        Cần tư vấn <strong id="countConsultation">0</strong>
+      </button>
+      <button class="interest-filter no-need" data-interest="no_need" type="button">
+        Chưa có nhu cầu <strong id="countNoNeed">0</strong>
+      </button>
+      <button class="interest-filter unknown" data-interest="unknown" type="button">
+        Chưa xác định <strong id="countUnknown">0</strong>
+      </button>
+    </section>
+
+    <section class="workspace">
+      <div class="list-panel">
+        <label class="search">
+          <span class="sr-only">Tìm kiếm</span>
+          <span class="search-icon" aria-hidden="true"></span>
+          <input id="searchInput" type="search" placeholder="Tìm tên, số điện thoại, nhu cầu..." autocomplete="off">
+        </label>
+        <div id="callList" class="call-list" aria-live="polite"></div>
+      </div>
+
+      <aside id="detailPanel" class="detail-panel">
+        <div class="empty-detail">
+          <div class="empty-illustration" aria-hidden="true">
+            <span class="phone-handle"></span>
+            <span class="phone-base">●</span>
+          </div>
+          <h3>Chọn một cuộc gọi</h3>
+          <p>Chi tiết khách hàng và nội dung hội thoại sẽ xuất hiện tại đây.</p>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <template id="emptyTemplate">
+    <div class="empty-list">
+      <div class="contact-book" aria-hidden="true">☎</div>
+      <h3>Chưa có cuộc gọi</h3>
+      <p>Cuộc gọi mới sẽ tự động xuất hiện ở đây.</p>
+    </div>
+  </template>
+  <script src="/static/dashboard.js" defer></script>
+</body>
+</html>

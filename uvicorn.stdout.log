@@ -1,0 +1,133 @@
+[telnyx] WebSocket connected
+[telnyx-myanmar-audio-after-fix] Telnyx stream started: telnyx-myanmar-audio-after-fix-stream PCMU 8000Hz
+[telnyx-myanmar-audio-after-fix] Telnyx buffered mode: explicit_vad=False speech_threshold=450 speech_start_frames=3 speech_end_silence_frames=8 buffered_turns=True
+[telnyx-myanmar-audio-after-fix] Gemini Live connected
+[telnyx-myanmar-audio-after-fix] Gemini: \u1019\u1004\u103a\u1039\u1002\u101c\u102c\u1015\u102b\u104b \u1006\u102d\u102f\u1004\u103a\u101b\u1032\u1037
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 1 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 1 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 2 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 2 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 3 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 3 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 50 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 50 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1021\u1000\u103c\u1036\u1015\u1031\u1038\u1021\u1000\u1030\u1021\u100a\u102e\u1016\u103c\u1005\u103a\u1015\u102b\u1010\u101a\u103a\u104b
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 100 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 100 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1018\u101a\u103a\u101c\u102d\u102f\u1000\u1030\u100a\u102e\u1015\u1031\u1038\u101b\u1019\u101c\u1032\u101b\u103e\u1004\u103a\u104b
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 150 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 150 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 200 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 200 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Telnyx inbound media 1 (160 bytes PCMU, timestamp=0ms, rms=0)
+[telnyx-myanmar-audio-after-fix] Telnyx inbound media 2 (160 bytes PCMU, timestamp=20ms, rms=0)
+[telnyx-myanmar-audio-after-fix] Telnyx inbound media 3 (160 bytes PCMU, timestamp=40ms, rms=0)
+[telnyx-myanmar-audio-after-fix] Gemini turn complete
+[telnyx-myanmar-audio-after-fix] Gemini output muted
+[telnyx-myanmar-audio-after-fix] Speech started (timestamp=1100ms, rms=866)
+[telnyx-myanmar-audio-after-fix] Speech ended (timestamp=1920ms)
+[telnyx-myanmar-audio-after-fix] Gemini output unmuted
+[telnyx-myanmar-audio-after-fix] Committed input audio turn (28158 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Telnyx inbound media 100 (160 bytes PCMU, timestamp=1980ms, rms=0)
+[telnyx-myanmar-audio-after-fix] Gemini: \u1012\u102e\u1014\u1031\u1037 Venus
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 250 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 250 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  BigOne
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1014\u102d\u102f\u1037\u1019\u103e\u102f\u1014\u1037\u103a
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1021\u1000\u103c\u1031\u102c\u1004\u103a\u1038
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 300 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 300 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1010\u102c\u101c\u102c\u1038\u101b\u103e\u1004\u103a\u104b
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 350 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 350 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1018\u102c\u1019\u103b\u102c\u1038
+[telnyx-myanmar-audio-after-fix] Gemini:  \u101e\u102d\u1001\u103b\u1004\u103a\u1015\u102b\u101e\u101c\u1032\u101b\u103e\u1004\u103a\u104b
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 400 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 400 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini turn complete
+[telnyx-myanmar-audio-after-fix] Telnyx inbound media 200 (160 bytes PCMU, timestamp=3980ms, rms=1924)
+[telnyx-myanmar-audio-after-fix] Gemini output muted
+[telnyx-myanmar-audio-after-fix] Speech started (timestamp=4220ms, rms=2091)
+[telnyx-myanmar-audio-after-fix] Speech ended (timestamp=4900ms)
+[telnyx-myanmar-audio-after-fix] Gemini output unmuted
+[telnyx-myanmar-audio-after-fix] Committed input audio turn (26238 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini: Venus BigOne
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 450 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 450 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Telnyx inbound media 300 (160 bytes PCMU, timestamp=5980ms, rms=0)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1014\u102d\u102f\u1037\u1019\u103e\u102f\u1014\u1037\u103a
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 500 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 500 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1010\u1005\u103a\u1017\u1030\u1038\u1000\u102d\u102f
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1041\u1042\u1040,\u1040\u1040\u1040
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 550 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 550 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1000\u103b\u1015\u103a\u1015\u102b\u101b\u103e\u1004\u103a\u104b
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 600 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 600 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini turn complete
+[telnyx-myanmar-audio-after-fix] Gemini output muted
+[telnyx-myanmar-audio-after-fix] Speech started (timestamp=6900ms, rms=5035)
+[telnyx-myanmar-audio-after-fix] Telnyx inbound media 400 (160 bytes PCMU, timestamp=7980ms, rms=243)
+[telnyx-myanmar-audio-after-fix] Speech ended (timestamp=8120ms)
+[telnyx-myanmar-audio-after-fix] Gemini output unmuted
+[telnyx-myanmar-audio-after-fix] Committed input audio turn (44798 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini: \u1021\u1013\u102d\u1000\u1000\u1010\u1031\u102c\u1037 \u101b\u1004\u103a\u101e\u102c\u1038\u1015\u102d\u102f\u1004\u103a\u1038
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 650 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 650 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1010\u1004\u103a\u1038\u101b\u1004\u103a\u1038\u1015\u103c\u102e\u1038
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 700 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 700 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1015\u103c\u100a\u1037\u103a\u101d\u101c\u102c\u1016\u102d\u102f\u1037\u1014\u1032\u1037
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1021\u1019\u103b\u102d\u102f\u1038\u101e\u1019\u102e\u1038
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 750 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 750 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u101f\u1031\u102c\u103a\u1019\u102f\u1014\u103a\u1038\u1019\u103b\u103e\u1010\u1016\u102d\u102f\u1037
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 800 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 800 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1021\u1011\u1031\u102c\u1000\u103a\u1021\u1000\u1030\u1015\u103c\u102f\u1014\u102d\u102f\u1004\u103a\u1010\u102c\u1015\u102b\u101b\u103e\u1004\u103a\u104b
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 850 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 850 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Telnyx inbound media 500 (160 bytes PCMU, timestamp=9980ms, rms=0)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1021\u101e\u102c\u1038\u1021\u101b\u1031\u1014\u1032\u1037
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 900 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 900 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1000\u102d\u102f\u101a\u103a\u1001\u1036\u1021\u102c\u1038\u1021\u1010\u103d\u1000\u103a\u101c\u100a\u103a\u1038
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 950 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 950 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1000\u1031\u102c\u1004\u103a\u1038\u1019\u103d\u1014\u103a\u1005\u1031\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u1010\u101a\u103a\u104b
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 1000 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 1000 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Telnyx inbound media 600 (160 bytes PCMU, timestamp=11980ms, rms=0)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u101b\u101c\u1012\u103a\u1000\u1010\u1031\u102c\u1037
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 1050 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 1050 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1010\u1005\u103a\u1026\u1038\u1014\u1032\u1037\u1010\u1005\u103a\u1026\u1038
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 1100 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 1100 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1000\u103d\u1032\u1015\u103c\u102c\u1038\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u1010\u101a\u103a\u101b\u103e\u1004\u103a\u104b
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 1150 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 1150 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini turn complete
+[telnyx-myanmar-audio-after-fix] Gemini output muted
+[telnyx-myanmar-audio-after-fix] Speech started (timestamp=13580ms, rms=6465)
+[telnyx-myanmar-audio-after-fix] Telnyx inbound media 700 (160 bytes PCMU, timestamp=13980ms, rms=5601)
+[telnyx-myanmar-audio-after-fix] Speech ended (timestamp=15020ms)
+[telnyx-myanmar-audio-after-fix] Gemini output unmuted
+[telnyx-myanmar-audio-after-fix] Committed input audio turn (51198 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini: \u101f\u102f\u1010\u103a\u1000\u1032\u1037\u104a \u1015\u102d\u102f\u1037\u1006\u1031\u102c\u1004\u103a\u1015\u1031\u1038\u1015\u102b\u1010\u101a\u103a\u101b\u103e\u1004\u103a\u104b
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 1200 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 1200 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Telnyx inbound media 800 (160 bytes PCMU, timestamp=15980ms, rms=0)
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 1250 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 1250 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1042 \u1017\u1030\u1038\u1014\u1032\u1037\u1021\u1011\u1000\u103a
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 1300 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 1300 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini:  \u101d\u101a\u103a\u101a\u1030\u101b\u1004\u103a
+[telnyx-myanmar-audio-after-fix] Gemini:  \u1015\u102d\u102f\u1037\u1001\u1021\u1001\u1019\u1032\u1037\u1015\u102b\u101b\u103e\u1004\u103a\u104b
+[telnyx-myanmar-audio-after-fix] Telnyx outbound media 1350 (160 bytes PCMU)
+[telnyx-myanmar-audio-after-fix] Sent audio frame 1350 (320 bytes PCM)
+[telnyx-myanmar-audio-after-fix] Gemini turn complete
+[telnyx-myanmar-audio-after-fix] Telnyx stream stopped
+[telnyx-myanmar-audio-after-fix] Gemini Live closed
