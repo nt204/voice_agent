@@ -1,0 +1,55 @@
+[telnyx] WebSocket connected
+[mock-telnyx-call] Telnyx stream started: mock-telnyx-stream PCMU 8000Hz
+[mock-telnyx-call] Telnyx realtime mode: explicit_vad=True speech_threshold=300 
+[mock-telnyx-call] Telnyx VAD gate: speech_start_frames=5 speech_end_silence_frames=8 adaptive_threshold=True
+[mock-telnyx-call] Gemini Live connected
+[mock-telnyx-call] Telnyx inbound media 1 (160 bytes PCMU, timestamp=0ms, rms=0)
+[mock-telnyx-call] Telnyx inbound media 2 (160 bytes PCMU, timestamp=20ms, rms=0)
+[mock-telnyx-call] Telnyx inbound media 3 (160 bytes PCMU, timestamp=40ms, rms=0)
+[mock-telnyx-call] Gemini: \u1019\u1004\u103a\u1039\u1002\u101c\u102c\u1015\u102b\u104b \u1006\u102d\u102f\u1004\u103a\u101b\u1032\u1037
+[mock-telnyx-call] Telnyx outbound media 1 (160 bytes PCMU)
+[mock-telnyx-call] Sent audio frame 1 (320 bytes PCM)
+[mock-telnyx-call] Telnyx outbound media 2 (160 bytes PCMU)
+[mock-telnyx-call] Sent audio frame 2 (320 bytes PCM)
+[mock-telnyx-call] Telnyx outbound media 3 (160 bytes PCMU)
+[mock-telnyx-call] Sent audio frame 3 (320 bytes PCM)
+[mock-telnyx-call] Gemini:  \u1021\u1000\u103c\u1036\u1015\u1031\u1038\u1021\u1000\u1030\u1021\u100a\u102e\u1016\u103c\u1005\u103a\u1015\u102b\u1010\u101a\u103a\u104b
+[mock-telnyx-call] Telnyx inbound media 100 (160 bytes PCMU, timestamp=1980ms, rms=0)
+[mock-telnyx-call] Telnyx outbound media 50 (160 bytes PCMU)
+[mock-telnyx-call] Sent audio frame 50 (320 bytes PCM)
+[mock-telnyx-call] Gemini:  \u1018\u101a\u103a\u101c\u102d\u102f\u1000\u1030\u100a\u102e\u1015\u1031\u1038\u101b\u1019\u101c\u1032\u101b\u103e\u1004\u103a\u104b
+[mock-telnyx-call] Telnyx outbound media 100 (160 bytes PCMU)
+[mock-telnyx-call] Sent audio frame 100 (320 bytes PCM)
+[mock-telnyx-call] Telnyx inbound media 200 (160 bytes PCMU, timestamp=3980ms, rms=0)
+[mock-telnyx-call] Telnyx outbound media 150 (160 bytes PCMU)
+[mock-telnyx-call] Sent audio frame 150 (320 bytes PCM)
+[mock-telnyx-call] Telnyx outbound media 200 (160 bytes PCMU)
+[mock-telnyx-call] Sent audio frame 200 (320 bytes PCM)
+[mock-telnyx-call] Gemini turn complete
+[mock-telnyx-call] Telnyx inbound media 300 (160 bytes PCMU, timestamp=5980ms, rms=0)
+[mock-telnyx-call] Sent Telnyx clear event
+[mock-telnyx-call] Gemini output muted
+[mock-telnyx-call] Speech started (timestamp=6740ms, rms=3683, threshold=300)
+[mock-telnyx-call] Gemini input activity started
+[mock-telnyx-call] Speech ended (timestamp=7580ms)
+[mock-telnyx-call] Gemini input activity ended
+[mock-telnyx-call] Gemini output unmuted
+[mock-telnyx-call] User: He bet short.
+[mock-telnyx-call] Telnyx inbound media 400 (160 bytes PCMU, timestamp=7980ms, rms=2515)
+[mock-telnyx-call] Gemini: \u101f\u102f\u1010\u103a\u1000\u1032\u1037\u1015\u102b\u101b\u103e\u1004\u103a\u104b \u1018\u102c\u1019\u103b\u102c\u1038
+[mock-telnyx-call] Telnyx outbound media 250 (160 bytes PCMU)
+[mock-telnyx-call] Sent audio frame 250 (320 bytes PCM)
+[mock-telnyx-call] Gemini:  \u1000\u1030\u100a\u102e\u1015\u1031\u1038\u101b\u1019\u101c\u1032\u101b\u103e\u1004\u103a\u104b
+[mock-telnyx-call] Telnyx outbound media 300 (160 bytes PCMU)
+[mock-telnyx-call] Sent audio frame 300 (320 bytes PCM)
+[mock-telnyx-call] Telnyx inbound media 500 (160 bytes PCMU, timestamp=9980ms, rms=0)
+[mock-telnyx-call] Telnyx outbound media 350 (160 bytes PCMU)
+[mock-telnyx-call] Sent audio frame 350 (320 bytes PCM)
+[mock-telnyx-call] Gemini turn complete
+[mock-telnyx-call] Telnyx inbound media 600 (160 bytes PCMU, timestamp=11980ms, rms=0)
+[mock-telnyx-call] Telnyx inbound media 700 (160 bytes PCMU, timestamp=13980ms, rms=0)
+[mock-telnyx-call] Telnyx inbound media 800 (160 bytes PCMU, timestamp=15980ms, rms=0)
+[mock-telnyx-call] Telnyx inbound media 900 (160 bytes PCMU, timestamp=17980ms, rms=0)
+[mock-telnyx-call] Telnyx stream stopped
+[mock-telnyx-call] Gemini realtime audio stream ended
+[mock-telnyx-call] Gemini Live closed

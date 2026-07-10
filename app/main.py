@@ -58,6 +58,7 @@ class RealtimeInputGate:
         self.noise_floor = 0.0
         self.prebuffer: deque[bytes] = deque(maxlen=prebuffer_frames)
         self.speech_active = False
+        self.waiting_for_response = False
         self.speech_frames = 0
         self.silence_frames = 0
         self.last_frame_bytes = 0
@@ -74,6 +75,14 @@ class RealtimeInputGate:
             if self.silence_frames >= self.speech_end_silence_frames:
                 await self.force_end(timestamp_ms, flush_silence=False)
             return
+
+        if self.waiting_for_response:
+            if self.bridge.turn_complete.is_set():
+                self.waiting_for_response = False
+            else:
+                self.speech_frames = 0
+                self.prebuffer.clear()
+                return
 
         # If configured, wait for the initial AI greeting to finish before
         # listening. After that, strong caller speech is treated as barge-in.
@@ -96,7 +105,7 @@ class RealtimeInputGate:
 
         self.speech_active = True
         self.silence_frames = 0
-        if self.bridge.completed_turn_count > 0:
+        if hasattr(self.bridge, "set_output_muted"):
             await self.bridge.set_output_muted(True)
         if timestamp_ms is None:
             log(f"[{self.call_id}] Speech started (rms={rms}, threshold={threshold})")
@@ -134,9 +143,11 @@ class RealtimeInputGate:
             for _ in range(self.speech_end_silence_frames):
                 await self.bridge.send_input_audio(silence)
         await self.bridge.end_input_activity()
+        self.waiting_for_response = not self.bridge.turn_complete.is_set()
         if self.wait_for_turn_before_commit:
             try:
                 await asyncio.wait_for(self.bridge.turn_complete.wait(), timeout=30)
+                self.waiting_for_response = False
             except asyncio.TimeoutError:
                 log(f"[{self.call_id}] Timed out waiting for current Gemini turn before commit")
         if hasattr(self.bridge, "set_output_muted"):

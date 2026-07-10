@@ -22,8 +22,10 @@ class FakeBridge:
     def __init__(self) -> None:
         self.sent_frames: list[bytes] = []
         self.started = False
+        self.start_count = 0
         self.ended = False
         self.committed = False
+        self.muted_states: list[bool] = []
         self.turn_complete = asyncio.Event()
 
     def output_recent(self, seconds: float = 1.0) -> bool:
@@ -31,12 +33,17 @@ class FakeBridge:
 
     async def start_input_activity(self) -> None:
         self.started = True
+        self.start_count += 1
+        self.turn_complete.clear()
 
     async def send_input_audio(self, pcm: bytes) -> None:
         self.sent_frames.append(pcm)
 
     async def end_input_activity(self) -> None:
         self.ended = True
+
+    async def set_output_muted(self, muted: bool) -> None:
+        self.muted_states.append(muted)
 
     async def commit_input_audio_turn(self) -> None:
         self.committed = True
@@ -49,13 +56,22 @@ class FakeGeminiSession:
     def __init__(self) -> None:
         self.realtime_audio = []
         self.realtime_end = False
+        self.activity_started = False
         self.activity_ended = False
 
-    async def send_realtime_input(self, audio=None, audio_stream_end=None, activity_end=None):
+    async def send_realtime_input(
+        self,
+        audio=None,
+        audio_stream_end=None,
+        activity_start=None,
+        activity_end=None,
+    ):
         if audio is not None:
             self.realtime_audio.append(audio)
         if audio_stream_end is not None:
             self.realtime_end = audio_stream_end
+        if activity_start is not None:
+            self.activity_started = True
         if activity_end is not None:
             self.activity_ended = True
 
@@ -191,6 +207,38 @@ class TelnyxAdapterTests(unittest.TestCase):
         self.assertTrue(bridge.ended)
         self.assertTrue(bridge.committed)
 
+    def test_telnyx_gate_waits_for_gemini_turn_before_new_activity(self) -> None:
+        async def run() -> FakeBridge:
+            bridge = FakeBridge()
+            bridge.turn_complete.set()
+            gate = RealtimeInputGate(
+                bridge,
+                "telnyx-test-call",
+                speech_threshold=300,
+                speech_start_frames=1,
+                speech_end_silence_frames=1,
+                require_initial_turn=False,
+                wait_for_turn_before_commit=False,
+            )
+
+            await gate.push(b"\x01\x04" * 160, rms=1000, timestamp_ms=20)
+            await gate.push(b"\x00\x00" * 160, rms=0, timestamp_ms=40)
+            frames_after_first_turn = len(bridge.sent_frames)
+
+            await gate.push(b"\x01\x04" * 160, rms=1000, timestamp_ms=60)
+            await gate.push(b"\x01\x04" * 160, rms=1000, timestamp_ms=80)
+            self.assertEqual(bridge.start_count, 1)
+            self.assertEqual(len(bridge.sent_frames), frames_after_first_turn)
+
+            bridge.turn_complete.set()
+            await gate.push(b"\x01\x04" * 160, rms=1000, timestamp_ms=100)
+            return bridge
+
+        bridge = asyncio.run(run())
+
+        self.assertEqual(bridge.start_count, 2)
+        self.assertEqual(bridge.muted_states, [True, False, True])
+
     def test_telnyx_passthrough_streams_every_frame_without_gate_commit(self) -> None:
         async def run() -> FakeBridge:
             bridge = FakeBridge()
@@ -250,6 +298,26 @@ class TelnyxAdapterTests(unittest.TestCase):
         self.assertFalse(session.realtime_end)
         self.assertEqual(bridge.input_turn_buffer, bytearray(b"stale"))
 
+    def test_gemini_bridge_clears_turn_complete_when_activity_starts(self) -> None:
+        async def run() -> tuple[FakeGeminiSession, GeminiCallBridge]:
+            session = FakeGeminiSession()
+            bridge = GeminiCallBridge.__new__(GeminiCallBridge)
+            bridge.session = session
+            bridge.call_id = "telnyx-test-call"
+            bridge.explicit_vad = True
+            bridge.input_activity_active = False
+            bridge.turn_complete = asyncio.Event()
+            bridge.turn_complete.set()
+
+            await GeminiCallBridge.start_input_activity(bridge)
+            return session, bridge
+
+        session, bridge = asyncio.run(run())
+
+        self.assertTrue(session.activity_started)
+        self.assertTrue(bridge.input_activity_active)
+        self.assertFalse(bridge.turn_complete.is_set())
+
     def test_explicit_vad_config_disables_automatic_detection_only(self) -> None:
         vad = _automatic_activity_detection(explicit_vad=True)
 
@@ -269,6 +337,8 @@ class TelnyxAdapterTests(unittest.TestCase):
         self.assertIn("မြန်မာဘာသာဖြင့်သာ", instruction)
         self.assertIn("နောက်ဆက်တွဲမေးခွန်းကို ၁ ခုသာ မေးပါ", instruction)
         self.assertIn("နောက်ဆုံးအသံဖြေကြားစည်းကမ်း", instruction)
+        self.assertIn("what is that", instruction)
+        self.assertIn("never stay silent", instruction)
 
     def test_safe_stdout_does_not_crash_on_vietnamese_text(self) -> None:
         class FakeStdout:

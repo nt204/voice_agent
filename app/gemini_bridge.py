@@ -183,6 +183,7 @@ class GeminiCallBridge:
     async def start_input_activity(self) -> None:
         if not self.session or not self.explicit_vad or self.input_activity_active:
             return
+        self.turn_complete.clear()
         await self.session.send_realtime_input(activity_start=types.ActivityStart())
         self.input_activity_active = True
         log(f"[{self.call_id}] Gemini input activity started")
