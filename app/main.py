@@ -277,6 +277,11 @@ async def api_admin_summary() -> dict[str, object]:
     }
 
 
+@app.get("/api/orders")
+async def api_orders(limit: int = 100) -> dict[str, object]:
+    return {"orders": call_history.list_orders(limit=limit)}
+
+
 @app.get("/api/outbound/requests")
 async def api_outbound_requests(limit: int = 50) -> dict[str, object]:
     return {"requests": call_history.list_outbound_requests(limit=limit)}

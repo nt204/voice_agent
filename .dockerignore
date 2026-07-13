@@ -1,0 +1,17 @@
+.git
+.venv
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.log
+*.db
+.env
+data/
+conversations/
+docs/
+scripts/
+tests/
+test_*.py
+tester.py
+test-call.wav

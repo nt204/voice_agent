@@ -4,12 +4,14 @@ const state = {
   query: "",
   selectedId: null,
   calls: [],
+  orders: [],
 };
 
 const callList = document.querySelector("#callList");
 const detailPanel = document.querySelector("#detailPanel");
 const syncStatus = document.querySelector("#syncStatus");
 const outboundRequestList = document.querySelector("#outboundRequestList");
+const orderList = document.querySelector("#orderList");
 const outboundCallForm = document.querySelector("#outboundCallForm");
 const outboundCallStatus = document.querySelector("#outboundCallStatus");
 const startCallButton = document.querySelector("#startCallButton");
@@ -32,6 +34,10 @@ const formatDay = value => value
   ? new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(new Date(value))
   : "";
 
+const formatMoney = value => value
+  ? `${Number(value).toLocaleString("vi-VN")} đ`
+  : "Chưa có";
+
 const formatPercent = value => `${Math.round((value || 0) * 100)}%`;
 
 function interestLabel(status) {
@@ -42,12 +48,59 @@ function interestLabel(status) {
   }[status] || "Chưa xác định";
 }
 
+function intentLabel(status) {
+  return {
+    ready_to_order: "Sẵn sàng mua",
+    needs_consultation: "Cần tư vấn",
+    considering: "Đang phân vân",
+    price_checking: "Hỏi giá",
+    no_need: "Chưa có nhu cầu",
+    unknown: "Chưa rõ",
+  }[status] || "Chưa rõ";
+}
+
+function orderStatusLabel(status) {
+  return {
+    ready_to_confirm: "Chờ xác nhận",
+    missing_info: "Thiếu thông tin",
+    draft: "Đơn nháp",
+    confirmed: "Đã xác nhận",
+    cancelled: "Đã hủy",
+  }[status] || "Đơn nháp";
+}
+
+function requestStatusLabel(status) {
+  return {
+    queued: "Đang chờ",
+    started: "Đã gửi",
+    completed: "Hoàn tất",
+    no_answer: "Không nghe máy",
+    busy: "Máy bận",
+    canceled: "Đã hủy",
+    failed: "Lỗi",
+  }[status] || "Không rõ";
+}
+
+function nextAction(call) {
+  const analysis = call.analysis || {};
+  if (analysis.next_action) return analysis.next_action;
+  return {
+    needs_consultation: "Tư vấn thêm và hẹn thời điểm chốt đơn phù hợp.",
+    no_need: "Lưu lại để chăm sóc sau, không nên gọi dồn.",
+    unknown: "Rà lại transcript và xác định bước xử lý tiếp theo.",
+  }[call.interest_status || "unknown"] || "Rà lại transcript và xác định bước xử lý tiếp theo.";
+}
+
 function directionLabel(direction) {
   return direction === "outbound" ? "Gọi ra" : "Gọi vào";
 }
 
 function directionIcon(direction) {
   return direction === "outbound" ? "↗" : "↙";
+}
+
+function ratio(value, total) {
+  return total ? value / total : 0;
 }
 
 async function fetchJson(url) {
@@ -77,21 +130,44 @@ async function loadDashboard() {
   if (outboundRequestList) {
     outboundRequestList.innerHTML = '<div class="request-state">Đang tải...</div>';
   }
+  if (orderList) {
+    orderList.innerHTML = '<div class="request-state">Đang tải...</div>';
+  }
+
   const params = new URLSearchParams();
   if (state.direction) params.set("direction", state.direction);
   if (state.interest) params.set("interest_status", state.interest);
   if (state.query) params.set("q", state.query);
 
   try {
-    const [summary, listing, outboundRequests] = await Promise.all([
+    const [summary, listing] = await Promise.all([
       fetchJson("/api/admin/summary"),
       fetchJson(`/api/calls?${params}`),
-      fetchJson("/api/outbound/requests?limit=100"),
     ]);
     renderSummary(summary.stats);
     state.calls = listing.calls;
     renderCalls(listing.calls);
-    renderOutboundRequests(outboundRequests.requests || []);
+
+    fetchJson("/api/orders?limit=100")
+      .then(orders => {
+        state.orders = orders.orders || [];
+        renderOrders(state.orders);
+      })
+      .catch(error => {
+        state.orders = [];
+        if (orderList) {
+          orderList.innerHTML = `<div class="request-state error">${escapeHtml(error.message)}</div>`;
+        }
+      });
+
+    fetchJson("/api/outbound/requests?limit=100")
+      .then(outboundRequests => renderOutboundRequests(outboundRequests.requests || []))
+      .catch(error => {
+        if (outboundRequestList) {
+          outboundRequestList.innerHTML = `<div class="request-state error">${escapeHtml(error.message)}</div>`;
+        }
+      });
+
     if (syncStatus) {
       syncStatus.textContent = `Cập nhật ${new Intl.DateTimeFormat("vi-VN", { timeStyle: "short" }).format(new Date())}`;
     }
@@ -100,6 +176,9 @@ async function loadDashboard() {
     callList.innerHTML = `<div class="error-state">${escapeHtml(error.message)}</div>`;
     if (outboundRequestList) {
       outboundRequestList.innerHTML = `<div class="request-state error">${escapeHtml(error.message)}</div>`;
+    }
+    if (orderList) {
+      orderList.innerHTML = `<div class="request-state error">${escapeHtml(error.message)}</div>`;
     }
   }
 }
@@ -125,10 +204,6 @@ function renderSummary(stats) {
   document.querySelector("#funnelUnknown").textContent = interest.unknown || 0;
   document.querySelector("#resultCount").textContent =
     `${directions.inbound || 0} gọi vào, ${directions.outbound || 0} gọi ra`;
-}
-
-function ratio(value, total) {
-  return total ? value / total : 0;
 }
 
 function renderCalls(calls) {
@@ -172,16 +247,29 @@ function renderCalls(calls) {
   });
 }
 
-function requestStatusLabel(status) {
-  return {
-    queued: "Đang chờ",
-    started: "Đã gửi",
-    completed: "Hoàn tất",
-    no_answer: "Không nghe máy",
-    busy: "Máy bận",
-    canceled: "Đã hủy",
-    failed: "Lỗi",
-  }[status] || "Không rõ";
+function renderOrders(orders) {
+  if (!orderList) return;
+  if (!orders.length) {
+    orderList.innerHTML = '<div class="request-state">Chưa có đơn hàng</div>';
+    return;
+  }
+
+  orderList.innerHTML = orders.map(order => `
+    <button class="order-item ${state.selectedId === order.call_id ? "selected" : ""}" data-call-id="${escapeHtml(order.call_id)}" type="button">
+      <span>
+        <strong>${escapeHtml(order.customer_phone || order.call_id)}</strong>
+        <small>${escapeHtml(order.product_name || "Chưa có sản phẩm")} · ${order.quantity || 0} hộp</small>
+      </span>
+      <span class="order-meta">
+        <b>${formatMoney(order.total_price)}</b>
+        <em class="order-status ${escapeHtml(order.status)}">${orderStatusLabel(order.status)}</em>
+      </span>
+    </button>
+  `).join("");
+
+  document.querySelectorAll(".order-item").forEach(button => {
+    button.addEventListener("click", () => loadDetail(button.dataset.callId));
+  });
 }
 
 function renderOutboundRequests(requests) {
@@ -208,6 +296,9 @@ async function loadDetail(callId) {
   document.querySelectorAll(".lead-row").forEach(row => {
     row.classList.toggle("selected", row.dataset.id === callId);
   });
+  document.querySelectorAll(".order-item").forEach(row => {
+    row.classList.toggle("selected", row.dataset.callId === callId);
+  });
   detailPanel.innerHTML = '<div class="empty-state"><p>Đang tải chi tiết...</p></div>';
   try {
     renderDetail(await fetchJson(`/api/calls/${encodeURIComponent(callId)}`));
@@ -219,6 +310,7 @@ async function loadDetail(callId) {
 function renderDetail(call) {
   const customer = call.customer || {};
   const field = value => escapeHtml(value || "Chưa cung cấp");
+  const order = call.order;
   const transcript = call.transcript && call.transcript.length
     ? call.transcript.map(item => `
         <div class="message ${escapeHtml(item.speaker)}">
@@ -242,6 +334,34 @@ function renderDetail(call) {
       <div class="wide"><span>Nhu cầu</span><strong>${field(customer.need)}</strong></div>
       <div class="wide"><span>Địa chỉ</span><strong>${field(customer.address)}</strong></div>
     </div>
+
+    <div class="sales-notes">
+      <h3>Gợi ý xử lý</h3>
+      <p>${escapeHtml(nextAction(call))}</p>
+    </div>
+
+    ${order ? `
+      <div class="order-card">
+        <div class="order-head">
+          <h3>Đơn hàng AI</h3>
+          <span class="order-status ${escapeHtml(order.status)}">${orderStatusLabel(order.status)}</span>
+        </div>
+        <div class="analysis-grid">
+          <div><span>Sản phẩm</span><strong>${field(order.product_name)}</strong></div>
+          <div><span>Số lượng</span><strong>${order.quantity || "Chưa có"}</strong></div>
+          <div><span>Tổng tiền</span><strong>${formatMoney(order.total_price)}</strong></div>
+          <div><span>Thiếu</span><strong>${order.missing_fields && order.missing_fields.length ? order.missing_fields.join(", ") : "Không"}</strong></div>
+        </div>
+      </div>
+    ` : `
+      <div class="order-card">
+        <div class="order-head">
+          <h3>Đơn hàng AI</h3>
+          <span class="order-status missing_info">Chưa tạo</span>
+        </div>
+        <p>Cuộc gọi này chưa đủ tín hiệu mua hàng để tự động tạo đơn.</p>
+      </div>
+    `}
 
     <h3 class="section-title">Transcript</h3>
     <div class="transcript">${transcript}</div>`;

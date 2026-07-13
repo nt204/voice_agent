@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.sales_analysis import analyze_call
+
 
 CUSTOMER_FIELDS = ("name", "phone", "address", "need", "notes")
 INTEREST_STATUSES = ("needs_consultation", "no_need", "unknown")
@@ -197,10 +199,43 @@ class CallHistoryStore:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS call_analysis (
+                    call_id TEXT PRIMARY KEY REFERENCES calls(id) ON DELETE CASCADE,
+                    intent_status TEXT NOT NULL DEFAULT 'unknown',
+                    sentiment TEXT NOT NULL DEFAULT 'unknown',
+                    urgency TEXT NOT NULL DEFAULT 'unknown',
+                    objection TEXT NOT NULL DEFAULT 'unknown',
+                    summary TEXT NOT NULL DEFAULT '',
+                    next_action TEXT NOT NULL DEFAULT '',
+                    confidence REAL NOT NULL DEFAULT 0,
+                    gender TEXT NOT NULL DEFAULT 'unknown',
+                    gender_confidence REAL NOT NULL DEFAULT 0,
+                    age_range TEXT NOT NULL DEFAULT 'unknown',
+                    age_confidence REAL NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS orders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    call_id TEXT NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
+                    customer_phone TEXT NOT NULL DEFAULT '',
+                    customer_name TEXT NOT NULL DEFAULT '',
+                    shipping_address TEXT NOT NULL DEFAULT '',
+                    product_name TEXT NOT NULL DEFAULT '',
+                    quantity INTEGER NOT NULL DEFAULT 0,
+                    unit_price INTEGER NOT NULL DEFAULT 0,
+                    total_price INTEGER NOT NULL DEFAULT 0,
+                    status TEXT NOT NULL DEFAULT 'draft',
+                    missing_fields TEXT NOT NULL DEFAULT '',
+                    confidence REAL NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
                 CREATE INDEX IF NOT EXISTS idx_calls_started_at ON calls(started_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_transcripts_call_id ON transcripts(call_id, id);
                 CREATE INDEX IF NOT EXISTS idx_outbound_requests_created_at
                     ON outbound_call_requests(created_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_orders_call_id ON orders(call_id);
                 """
             )
             columns = {
@@ -375,7 +410,12 @@ class CallHistoryStore:
             return
         extracted = extract_customer_info(call["transcript"])
         interest_status = classify_customer_interest(call["transcript"])
+        sales_result = analyze_call(call["transcript"])
+        sales_customer = sales_result["customer"]
         phone = extracted["phone"] or call["customer"]["phone"]
+        phone = sales_customer["phone"] or phone
+        address = extracted["address"] or sales_customer["address"]
+        need = extracted["need"] or sales_customer["need"]
         with self._lock, closing(self._connect()) as connection, connection:
             connection.execute(
                 """
@@ -388,13 +428,14 @@ class CallHistoryStore:
                     _now(),
                     extracted["name"],
                     phone,
-                    extracted["address"],
-                    extracted["need"],
+                    address,
+                    need,
                     extracted["notes"],
                     interest_status,
                     call_id,
                 ),
             )
+            self._save_analysis(connection, call_id, sales_result)
 
     def list_calls(
         self,
@@ -436,9 +477,117 @@ class CallHistoryStore:
                 "SELECT speaker, text, created_at FROM transcripts WHERE call_id = ? ORDER BY id",
                 (call_id,),
             ).fetchall()
+            analysis_row = connection.execute(
+                "SELECT * FROM call_analysis WHERE call_id = ?",
+                (call_id,),
+            ).fetchone()
+            order_row = connection.execute(
+                "SELECT * FROM orders WHERE call_id = ? ORDER BY id DESC LIMIT 1",
+                (call_id,),
+            ).fetchone()
         result = self._call_summary(row)
         result["transcript"] = [dict(item) for item in transcript_rows]
+        result["analysis"] = self._analysis_summary(analysis_row) if analysis_row else None
+        result["order"] = self._order_summary(order_row) if order_row else None
         return result
+
+    def list_orders(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self._lock, closing(self._connect()) as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    orders.*,
+                    calls.direction,
+                    calls.provider,
+                    calls.customer_need,
+                    calls.started_at AS call_started_at
+                FROM orders
+                JOIN calls ON calls.id = orders.call_id
+                ORDER BY orders.created_at DESC, orders.id DESC
+                LIMIT ?
+                """,
+                (max(1, min(limit, 500)),),
+            ).fetchall()
+        return [self._order_summary(row) for row in rows]
+
+    def _save_analysis(
+        self,
+        connection: sqlite3.Connection,
+        call_id: str,
+        result: dict[str, Any],
+    ) -> None:
+        now = _now()
+        analysis = result["analysis"]
+        customer = result["customer"]
+        connection.execute(
+            """
+            INSERT INTO call_analysis (
+                call_id, intent_status, sentiment, urgency, objection, summary,
+                next_action, confidence, gender, gender_confidence, age_range,
+                age_confidence, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(call_id) DO UPDATE SET
+                intent_status=excluded.intent_status,
+                sentiment=excluded.sentiment,
+                urgency=excluded.urgency,
+                objection=excluded.objection,
+                summary=excluded.summary,
+                next_action=excluded.next_action,
+                confidence=excluded.confidence,
+                gender=excluded.gender,
+                gender_confidence=excluded.gender_confidence,
+                age_range=excluded.age_range,
+                age_confidence=excluded.age_confidence,
+                updated_at=excluded.updated_at
+            """,
+            (
+                call_id,
+                analysis["intent_status"],
+                analysis["sentiment"],
+                analysis["urgency"],
+                analysis["objection"],
+                analysis["summary"],
+                analysis["next_action"],
+                analysis["confidence"],
+                customer["gender"],
+                customer["gender_confidence"],
+                customer["age_range"],
+                customer["age_confidence"],
+                now,
+                now,
+            ),
+        )
+
+        connection.execute("DELETE FROM orders WHERE call_id = ?", (call_id,))
+        order = result.get("order")
+        if not order:
+            return
+        connection.execute(
+            """
+            INSERT INTO orders (
+                call_id, customer_phone, customer_name, shipping_address,
+                product_name, quantity, unit_price, total_price, status,
+                missing_fields, confidence, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                call_id,
+                order["customer_phone"],
+                order["customer_name"],
+                order["shipping_address"],
+                order["product_name"],
+                order["quantity"],
+                order["unit_price"],
+                order["total_price"],
+                order["status"],
+                ",".join(order["missing_fields"]),
+                order["confidence"],
+                now,
+                now,
+            ),
+        )
 
     def sales_statistics(self) -> dict[str, Any]:
         with self._lock, closing(self._connect()) as connection:
@@ -548,3 +697,52 @@ class CallHistoryStore:
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
         }
+
+    @staticmethod
+    def _analysis_summary(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "intent_status": row["intent_status"],
+            "sentiment": row["sentiment"],
+            "urgency": row["urgency"],
+            "objection": row["objection"],
+            "summary": row["summary"],
+            "next_action": row["next_action"],
+            "confidence": row["confidence"],
+            "gender": row["gender"],
+            "gender_confidence": row["gender_confidence"],
+            "age_range": row["age_range"],
+            "age_confidence": row["age_confidence"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+
+    @staticmethod
+    def _order_summary(row: sqlite3.Row) -> dict[str, Any]:
+        missing_fields = [
+            field for field in row["missing_fields"].split(",") if field
+        ]
+        result = {
+            "id": row["id"],
+            "call_id": row["call_id"],
+            "customer_phone": row["customer_phone"],
+            "customer_name": row["customer_name"],
+            "shipping_address": row["shipping_address"],
+            "product_name": row["product_name"],
+            "quantity": row["quantity"],
+            "unit_price": row["unit_price"],
+            "total_price": row["total_price"],
+            "status": row["status"],
+            "missing_fields": missing_fields,
+            "confidence": row["confidence"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+        keys = set(row.keys())
+        if "direction" in keys:
+            result["call"] = {
+                "direction": row["direction"],
+                "provider": row["provider"],
+                "need": row["customer_need"],
+                "started_at": row["call_started_at"],
+            }
+        return result

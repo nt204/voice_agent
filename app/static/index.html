@@ -42,7 +42,7 @@
         </div>
       </article>
       <article class="kpi-card accent">
-        <div class="kpi-icon lead-icon" aria-hidden="true">♙</div>
+        <div class="kpi-icon lead-icon" aria-hidden="true">♟</div>
         <div>
           <span>Lead cần tư vấn</span>
           <strong id="kpiLeads">0</strong>
@@ -88,9 +88,14 @@
             <span>Số khách hàng</span>
             <input id="toNumberInput" name="to_number" type="tel" placeholder="+84901234567" autocomplete="tel" required>
           </label>
-          <button id="startCallButton" class="call-button" type="submit">Bắt đầu gọi</button>
+          <button id="startCallButton" class="call-button" type="submit">☎ Bắt đầu gọi</button>
           <p id="outboundCallStatus" class="form-status" role="status"></p>
         </form>
+
+        <div class="panel-heading compact">
+          <h2>Đơn hàng AI</h2>
+        </div>
+        <div id="orderList" class="order-list" aria-live="polite"></div>
 
         <div class="panel-heading compact">
           <h2>Lịch sử gọi ra</h2>

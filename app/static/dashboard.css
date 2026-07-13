@@ -290,7 +290,8 @@ button { cursor: pointer; }
 .request-item small,
 .error-state { color: var(--danger); }
 
-.request-list {
+.request-list,
+.order-list {
   min-height: 0;
   max-height: none;
   flex: 1;
@@ -298,26 +299,52 @@ button { cursor: pointer; }
   padding-right: 4px;
   overflow-y: auto;
 }
-.request-item {
+.request-item,
+.order-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   padding: 9px 10px;
+  border: 0;
   background: var(--panel);
+  color: inherit;
+  text-align: left;
+  font: inherit;
 }
-.request-item div {
+.order-item {
+  width: 100%;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.order-item:hover,
+.order-item.selected {
+  background: var(--accent-soft);
+}
+.request-item div,
+.order-item > span:first-child,
+.order-meta {
   min-width: 0;
   display: grid;
   gap: 3px;
 }
 .request-item strong,
 .request-item span,
-.request-item small {
+.request-item small,
+.order-item strong,
+.order-item small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.request-item strong { font-size: 13px; }
+.request-item strong,
+.order-item strong { font-size: 13px; }
+.order-meta {
+  justify-items: end;
+}
+.order-meta b {
+  font-size: 13px;
+  white-space: nowrap;
+}
 .request-status {
   padding: 5px 7px;
   border-radius: 999px;
@@ -560,7 +587,9 @@ button { cursor: pointer; }
   gap: 12px;
   margin: 18px 0 12px;
 }
-.info-grid div {
+.info-grid div,
+.sales-notes,
+.order-card {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -575,9 +604,67 @@ button { cursor: pointer; }
   font-size: 14px;
   overflow-wrap: anywhere;
 }
+.sales-notes h3,
+.order-card h3,
 .section-title {
   margin: 12px 0 8px;
   font-size: 15px;
+}
+.sales-notes p,
+.order-card p {
+  margin: 0;
+  color: #344452;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.order-card {
+  margin-bottom: 12px;
+}
+.analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.analysis-grid div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #e6eef2;
+  border-radius: 8px;
+  background: #fff;
+}
+.analysis-grid span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.analysis-grid strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+.order-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.order-status {
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.order-status.missing_info {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+.order-status.cancelled {
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 .transcript {
   min-height: 0;

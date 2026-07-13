@@ -1,19 +1,19 @@
 services:
-  postgres:
-    image: postgres:16-alpine
+  app:
+    build: .
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: telnyx_calls
-      POSTGRES_USER: telnyx
-      POSTGRES_PASSWORD: telnyx_password
+      DATABASE_URL: sqlite:////app/data/recordings.db
+      CALL_RECORDINGS_DIR: /app/recordings
     ports:
-      - "5432:5432"
+      - "${APP_PORT:-3001}:3000"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U telnyx -d telnyx_calls"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - app_data:/app/data
+      - app_recordings:/app/recordings
+      - ./assets:/app/assets:ro
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
+  app_data:
+  app_recordings:
