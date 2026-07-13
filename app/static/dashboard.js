@@ -9,6 +9,7 @@ const state = {
   callPageSize: 10,
   orderPage: 1,
   orderPageSize: 8,
+  refreshing: false,
 };
 
 const callList = document.querySelector("#callList");
@@ -102,14 +103,18 @@ async function postJson(url, body) {
   return data;
 }
 
-async function loadDashboard() {
-  if (syncStatus) syncStatus.textContent = "Đang tải dữ liệu";
-  callList.innerHTML = document.querySelector("#loadingTemplate").innerHTML;
-  if (orderList) {
-    orderList.innerHTML = '<div class="request-state">Đang tải...</div>';
+async function loadDashboard({ silent = false } = {}) {
+  if (state.refreshing) return;
+  state.refreshing = true;
+  if (!silent) {
+    if (syncStatus) syncStatus.textContent = "Đang tải dữ liệu";
+    callList.innerHTML = document.querySelector("#loadingTemplate").innerHTML;
+    if (orderList) {
+      orderList.innerHTML = '<div class="request-state">Đang tải...</div>';
+    }
+    if (orderRange) orderRange.textContent = "Đang tải";
+    if (orderPager) orderPager.innerHTML = "";
   }
-  if (orderRange) orderRange.textContent = "Đang tải";
-  if (orderPager) orderPager.innerHTML = "";
 
   const params = new URLSearchParams();
   if (state.direction) params.set("direction", state.direction);
@@ -124,6 +129,9 @@ async function loadDashboard() {
     renderSummary(summary.stats);
     state.calls = listing.calls;
     renderCalls(listing.calls);
+    if (state.selectedId) {
+      await loadDetail(state.selectedId, { silent: true });
+    }
 
     fetchJson("/api/orders?limit=100")
       .then(orders => {
@@ -143,13 +151,17 @@ async function loadDashboard() {
       syncStatus.textContent = `Cập nhật ${new Intl.DateTimeFormat("vi-VN", { timeStyle: "short" }).format(new Date())}`;
     }
   } catch (error) {
-    if (syncStatus) syncStatus.textContent = "Lỗi tải dữ liệu";
-    callList.innerHTML = `<div class="error-state">${escapeHtml(error.message)}</div>`;
-    if (orderList) {
-      orderList.innerHTML = `<div class="request-state error">${escapeHtml(error.message)}</div>`;
+    if (!silent) {
+      if (syncStatus) syncStatus.textContent = "Lỗi tải dữ liệu";
+      callList.innerHTML = `<div class="error-state">${escapeHtml(error.message)}</div>`;
+      if (orderList) {
+        orderList.innerHTML = `<div class="request-state error">${escapeHtml(error.message)}</div>`;
+      }
+      if (orderRange) orderRange.textContent = "0 đơn";
+      if (orderPager) orderPager.innerHTML = "";
     }
-    if (orderRange) orderRange.textContent = "0 đơn";
-    if (orderPager) orderPager.innerHTML = "";
+  } finally {
+    state.refreshing = false;
   }
 }
 
@@ -308,7 +320,7 @@ function renderComboCard(call) {
     </div>`;
 }
 
-async function loadDetail(callId) {
+async function loadDetail(callId, { silent = false } = {}) {
   state.selectedId = callId;
   document.querySelectorAll(".lead-row").forEach(row => {
     row.classList.toggle("selected", row.dataset.id === callId);
@@ -316,11 +328,15 @@ async function loadDetail(callId) {
   document.querySelectorAll(".order-item").forEach(row => {
     row.classList.toggle("selected", row.dataset.callId === callId);
   });
-  detailPanel.innerHTML = '<div class="empty-state"><p>Đang tải chi tiết...</p></div>';
+  if (!silent) {
+    detailPanel.innerHTML = '<div class="empty-state"><p>Đang tải chi tiết...</p></div>';
+  }
   try {
     renderDetail(await fetchJson(`/api/calls/${encodeURIComponent(callId)}`));
   } catch (error) {
-    detailPanel.innerHTML = `<div class="error-state">${escapeHtml(error.message)}</div>`;
+    if (!silent) {
+      detailPanel.innerHTML = `<div class="error-state">${escapeHtml(error.message)}</div>`;
+    }
   }
 }
 
@@ -420,4 +436,10 @@ outboundCallForm?.addEventListener("submit", async event => {
 });
 
 document.querySelector("#refreshButton")?.addEventListener("click", loadDashboard);
+const refreshDashboardSilently = () => {
+  if (!document.hidden) loadDashboard({ silent: true });
+};
+setInterval(refreshDashboardSilently, 3000);
+document.addEventListener("visibilitychange", refreshDashboardSilently);
+window.addEventListener("focus", refreshDashboardSilently);
 loadDashboard();

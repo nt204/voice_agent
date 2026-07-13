@@ -1,0 +1,74 @@
+[
+  {
+    "scenario_id": "my-buy-complete",
+    "turn_index": 2,
+    "speaker": "customer",
+    "text": "Venus BigOne က ဘာအတွက်သောက်တာလဲ၊ ဈေးဘယ်လောက်လဲ။",
+    "voice": "my-MM-NilarNeural",
+    "path": "test_artifacts\\myanmar_audio\\my-buy-complete\\02-customer.mp3"
+  },
+  {
+    "scenario_id": "my-buy-complete",
+    "turn_index": 4,
+    "speaker": "customer",
+    "text": "စိတ်ဝင်စားတယ်။ Venus BigOne 2 ဘူး မှာမယ်။",
+    "voice": "my-MM-NilarNeural",
+    "path": "test_artifacts\\myanmar_audio\\my-buy-complete\\04-customer.mp3"
+  },
+  {
+    "scenario_id": "my-buy-complete",
+    "turn_index": 6,
+    "speaker": "customer",
+    "text": "ဖုန်း 0961695448 ပါ။",
+    "voice": "my-MM-NilarNeural",
+    "path": "test_artifacts\\myanmar_audio\\my-buy-complete\\06-customer.mp3"
+  },
+  {
+    "scenario_id": "my-buy-complete",
+    "turn_index": 8,
+    "speaker": "customer",
+    "text": "လိပ်စာ Yangon Hledan, Insein Road ပါ။ အသက် 28 အမျိုးသမီးပါ။",
+    "voice": "my-MM-NilarNeural",
+    "path": "test_artifacts\\myanmar_audio\\my-buy-complete\\08-customer.mp3"
+  },
+  {
+    "scenario_id": "my-consultation-no-order-yet",
+    "turn_index": 2,
+    "speaker": "customer",
+    "text": "အသက် 30 အမျိုးသမီးပါ။ သောက်နည်းနဲ့ ဘေးထွက်ဆိုးကျိုး ရှိမရှိ သိချင်ပါတယ်။",
+    "voice": "my-MM-NilarNeural",
+    "path": "test_artifacts\\myanmar_audio\\my-consultation-no-order-yet\\02-customer.mp3"
+  },
+  {
+    "scenario_id": "my-consultation-no-order-yet",
+    "turn_index": 4,
+    "speaker": "customer",
+    "text": "အိုကေ၊ စိတ်ဝင်စားပါတယ် ဒါပေမယ့် အခု မမှာသေးဘူး၊ နောက်မှပြန်ဆက်ပါ။",
+    "voice": "my-MM-NilarNeural",
+    "path": "test_artifacts\\myanmar_audio\\my-consultation-no-order-yet\\04-customer.mp3"
+  },
+  {
+    "scenario_id": "my-not-interested",
+    "turn_index": 2,
+    "speaker": "customer",
+    "text": "မလိုချင်ပါဘူး။ အခု မဝယ်ချင်ဘူး၊ စိတ်မဝင်စားပါဘူး။",
+    "voice": "my-MM-NilarNeural",
+    "path": "test_artifacts\\myanmar_audio\\my-not-interested\\02-customer.mp3"
+  },
+  {
+    "scenario_id": "my-considering-price-objection",
+    "turn_index": 2,
+    "speaker": "customer",
+    "text": "Combo ဈေးလေး သိချင်တယ်။ 2 ဘူးဝယ်ရင် ဘယ်လောက်လဲ။",
+    "voice": "my-MM-NilarNeural",
+    "path": "test_artifacts\\myanmar_audio\\my-considering-price-objection\\02-customer.mp3"
+  },
+  {
+    "scenario_id": "my-considering-price-objection",
+    "turn_index": 4,
+    "speaker": "customer",
+    "text": "စျေးနည်းနည်းများတယ်။ စဉ်းစားဦးမယ်၊ အိမ်ကလူနဲ့ တိုင်ပင်ပြီးမှ ဆုံးဖြတ်မယ်။",
+    "voice": "my-MM-NilarNeural",
+    "path": "test_artifacts\\myanmar_audio\\my-considering-price-objection\\04-customer.mp3"
+  }
+]

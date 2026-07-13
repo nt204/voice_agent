@@ -28,7 +28,12 @@ from app.logging_utils import log
 
 app = FastAPI(title="Viber Gemini Live Bridge")
 BASE_DIR = Path(__file__).resolve().parent.parent
-call_history = CallHistoryStore(BASE_DIR / "data" / "call_history.db")
+call_history = CallHistoryStore(config.database_url)
+legacy_call_history_path = BASE_DIR / "data" / "call_history.db"
+if not config.database_url.startswith("sqlite") and legacy_call_history_path.exists():
+    migrated_counts = call_history.migrate_from_sqlite(legacy_call_history_path)
+    if migrated_counts:
+        log(f"Migrated SQLite call history to PostgreSQL: {migrated_counts}")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
 
 
@@ -344,7 +349,22 @@ async def telnyx_outbound_stream_status(request: Request) -> dict[str, bool]:
     call_sid = str(payload.get("CallSid") or payload.get("call_sid") or "").strip()
     call_status = str(payload.get("CallStatus") or payload.get("call_status") or "").strip()
     if call_sid and call_status:
-        call_history.update_outbound_request_by_call_sid(call_sid, call_status)
+        call_history.update_outbound_request_by_call_sid(
+            call_sid,
+            call_status,
+            customer_phone=str(payload.get("To") or payload.get("to") or "").strip(),
+            started_at=str(
+                payload.get("AnsweredTime")
+                or payload.get("StartTime")
+                or payload.get("start_time")
+                or ""
+            ).strip(),
+            ended_at=str(
+                payload.get("EndTime")
+                or payload.get("end_time")
+                or ""
+            ).strip(),
+        )
     return {"ok": True}
 
 

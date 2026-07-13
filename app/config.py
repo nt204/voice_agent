@@ -124,6 +124,7 @@ class GeminiConfig:
 class AppConfig:
     port: int = _int_env("PORT", 3000)
     public_base_url: str | None = os.getenv("PUBLIC_BASE_URL")
+    database_url: str = os.getenv("DATABASE_URL", "sqlite:///data/call_history.db")
     infobip: InfobipConfig = InfobipConfig()
     signalwire: SignalWireConfig = SignalWireConfig()
     telnyx: TelnyxConfig = TelnyxConfig()

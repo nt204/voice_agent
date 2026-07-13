@@ -4,7 +4,23 @@ import threading
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
+
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    Text,
+    create_engine,
+    text as sql_text,
+)
+from sqlalchemy.engine import Connection, Engine
 
 from app.sales_analysis import analyze_call
 
@@ -21,13 +37,99 @@ OUTBOUND_REQUEST_STATUSES = (
     "failed",
 )
 
+metadata = MetaData()
+calls_table = Table(
+    "calls",
+    metadata,
+    Column("id", Text, primary_key=True),
+    Column("direction", String(20), nullable=False),
+    Column("provider", String(50), nullable=False),
+    Column("status", String(30), nullable=False),
+    Column("customer_phone", Text, nullable=False, server_default=""),
+    Column("started_at", Text, nullable=False),
+    Column("ended_at", Text),
+    Column("customer_name", Text, nullable=False, server_default=""),
+    Column("customer_address", Text, nullable=False, server_default=""),
+    Column("customer_need", Text, nullable=False, server_default=""),
+    Column("customer_notes", Text, nullable=False, server_default=""),
+    Column("interest_status", String(30), nullable=False, server_default="unknown"),
+    CheckConstraint("direction IN ('inbound', 'outbound')", name="ck_calls_direction"),
+    CheckConstraint(
+        "interest_status IN ('needs_consultation', 'no_need', 'unknown')",
+        name="ck_calls_interest_status",
+    ),
+)
+transcripts_table = Table(
+    "transcripts",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("call_id", Text, ForeignKey("calls.id", ondelete="CASCADE"), nullable=False),
+    Column("speaker", String(20), nullable=False),
+    Column("text", Text, nullable=False),
+    Column("created_at", Text, nullable=False),
+    CheckConstraint("speaker IN ('customer', 'agent')", name="ck_transcripts_speaker"),
+)
+outbound_requests_table = Table(
+    "outbound_call_requests",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("to_number", Text, nullable=False),
+    Column("from_number", Text, nullable=False, server_default=""),
+    Column("status", String(30), nullable=False, server_default="queued"),
+    Column("call_sid", Text, nullable=False, server_default=""),
+    Column("error", Text, nullable=False, server_default=""),
+    Column("created_at", Text, nullable=False),
+    Column("updated_at", Text, nullable=False),
+)
+analysis_table = Table(
+    "call_analysis",
+    metadata,
+    Column("call_id", Text, ForeignKey("calls.id", ondelete="CASCADE"), primary_key=True),
+    Column("intent_status", String(30), nullable=False, server_default="unknown"),
+    Column("sentiment", String(30), nullable=False, server_default="unknown"),
+    Column("urgency", String(30), nullable=False, server_default="unknown"),
+    Column("objection", String(30), nullable=False, server_default="unknown"),
+    Column("summary", Text, nullable=False, server_default=""),
+    Column("next_action", Text, nullable=False, server_default=""),
+    Column("confidence", Float, nullable=False, server_default="0"),
+    Column("gender", String(30), nullable=False, server_default="unknown"),
+    Column("gender_confidence", Float, nullable=False, server_default="0"),
+    Column("age_range", String(30), nullable=False, server_default="unknown"),
+    Column("age_confidence", Float, nullable=False, server_default="0"),
+    Column("created_at", Text, nullable=False),
+    Column("updated_at", Text, nullable=False),
+)
+orders_table = Table(
+    "orders",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("call_id", Text, ForeignKey("calls.id", ondelete="CASCADE"), nullable=False),
+    Column("customer_phone", Text, nullable=False, server_default=""),
+    Column("customer_name", Text, nullable=False, server_default=""),
+    Column("shipping_address", Text, nullable=False, server_default=""),
+    Column("product_name", Text, nullable=False, server_default=""),
+    Column("quantity", Integer, nullable=False, server_default="0"),
+    Column("unit_price", Integer, nullable=False, server_default="0"),
+    Column("total_price", Integer, nullable=False, server_default="0"),
+    Column("status", String(30), nullable=False, server_default="draft"),
+    Column("missing_fields", Text, nullable=False, server_default=""),
+    Column("confidence", Float, nullable=False, server_default="0"),
+    Column("created_at", Text, nullable=False),
+    Column("updated_at", Text, nullable=False),
+)
+Index("idx_calls_started_at", calls_table.c.started_at)
+Index("idx_transcripts_call_id", transcripts_table.c.call_id, transcripts_table.c.id)
+Index("idx_outbound_requests_created_at", outbound_requests_table.c.created_at)
+Index("idx_orders_call_id", orders_table.c.call_id)
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def _clean(value: str) -> str:
-    return value.strip(" \t\r\n,.;:-")
+    cleaned = value.strip(" \t\r\n,.;:-။၊")
+    return re.sub(r"\s*(?:ပါရှင်|ပါတယ်|ပါ)$", "", cleaned).rstrip()
 
 
 def classify_customer_interest(transcript: list[dict[str, Any]]) -> str:
@@ -63,6 +165,32 @@ def classify_customer_interest(transcript: list[dict[str, Any]]) -> str:
             "can mua",
             "quan tam",
             "hoi them",
+        )
+    ):
+        return "needs_consultation"
+
+    if any(
+        phrase in customer_text
+        for phrase in (
+            "မလိုချင်",
+            "မဝယ်ချင်",
+            "မလိုအပ်",
+            "စိတ်မဝင်စား",
+        )
+    ):
+        return "no_need"
+    if any(
+        phrase in customer_text
+        for phrase in (
+            "စိတ်ဝင်စား",
+            "သိချင်",
+            "မေးချင်",
+            "အကြံ",
+            "ဝယ်ချင်",
+            "ဝယ်မယ်",
+            "ယူမယ်",
+            "မှာမယ်",
+            "အော်ဒါ",
         )
     ):
         return "needs_consultation"
@@ -147,10 +275,18 @@ def extract_customer_info(transcript: list[dict[str, Any]]) -> dict[str, str]:
         match = re.search(pattern, customer_text)
         if match:
             result[field] = _clean(match.group(1))
+    if not result["phone"]:
+        match = re.search(r"(?:ဖုန်းနံပါတ်|ဖုန်း)?\s*(\+?[\d၀-၉][\d၀-၉ .-]{7,}[\d၀-၉])", customer_text)
+        if match:
+            result["phone"] = _clean(match.group(1)).translate(str.maketrans("၀၁၂၃၄၅၆၇၈၉", "0123456789"))
+    if not result["address"]:
+        match = re.search(r"လိပ်စာ\s*(?:က|မှာ|:)?\s*(.+?)(?=[။;]|\s*(?:ဖုန်း|ဝယ်ချင်|လိုချင်|မှာမယ်)|$)", customer_text)
+        if match:
+            result["address"] = _clean(match.group(1))
     return result
 
 
-class CallHistoryStore:
+class SQLiteCallHistoryStore:
     def __init__(self, db_path: str | Path) -> None:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -276,6 +412,38 @@ class CallHistoryStore:
                         ON outbound_call_requests(created_at DESC);
                     """
                 )
+            self._backfill_outbound_request_calls(connection)
+
+    def _backfill_outbound_request_calls(self, connection: sqlite3.Connection) -> None:
+        connection.execute(
+            """
+            INSERT INTO calls (
+                id, direction, provider, status, customer_phone, started_at, ended_at
+            )
+            SELECT
+                call_sid,
+                'outbound',
+                'telnyx',
+                CASE
+                    WHEN status IN ('queued', 'started') THEN 'active'
+                    WHEN status = 'completed' THEN 'completed'
+                    ELSE 'failed'
+                END,
+                to_number,
+                created_at,
+                CASE
+                    WHEN status IN ('completed', 'no_answer', 'busy', 'canceled', 'failed')
+                    THEN updated_at
+                    ELSE NULL
+                END
+            FROM outbound_call_requests
+            WHERE call_sid <> ''
+              AND status IN ('queued', 'started', 'completed', 'no_answer', 'busy', 'canceled', 'failed')
+              AND NOT EXISTS (
+                  SELECT 1 FROM calls WHERE calls.id = outbound_call_requests.call_sid
+              )
+            """
+        )
 
     def create_outbound_request(
         self,
@@ -310,10 +478,18 @@ class CallHistoryStore:
             error=error,
         )
 
-    def update_outbound_request_by_call_sid(self, call_sid: str, status: str) -> None:
+    def update_outbound_request_by_call_sid(
+        self,
+        call_sid: str,
+        status: str,
+        customer_phone: str = "",
+        started_at: str = "",
+        ended_at: str = "",
+    ) -> None:
         normalized_status = status.replace("-", "_")
         if normalized_status not in OUTBOUND_REQUEST_STATUSES:
             return
+        call_status = self._call_status_from_outbound_status(normalized_status)
         with self._lock, closing(self._connect()) as connection, connection:
             connection.execute(
                 """
@@ -323,6 +499,32 @@ class CallHistoryStore:
                 """,
                 (normalized_status, _now(), call_sid),
             )
+            if call_status:
+                connection.execute(
+                    """
+                    INSERT INTO calls (
+                        id, direction, provider, status, customer_phone, started_at, ended_at
+                    )
+                    VALUES (?, 'outbound', 'telnyx', ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        status=excluded.status,
+                        customer_phone=CASE
+                            WHEN excluded.customer_phone <> '' THEN excluded.customer_phone
+                            ELSE calls.customer_phone
+                        END,
+                        ended_at=CASE
+                            WHEN excluded.ended_at IS NOT NULL THEN excluded.ended_at
+                            ELSE calls.ended_at
+                        END
+                    """,
+                    (
+                        call_sid,
+                        call_status,
+                        customer_phone.strip(),
+                        started_at.strip() or _now(),
+                        ended_at.strip() or None,
+                    ),
+                )
 
     def list_outbound_requests(self, limit: int = 50) -> list[dict[str, Any]]:
         with self._lock, closing(self._connect()) as connection:
@@ -368,6 +570,16 @@ class CallHistoryStore:
                 f"UPDATE outbound_call_requests SET {', '.join(assignments)} WHERE id = ?",
                 params,
             )
+
+    @staticmethod
+    def _call_status_from_outbound_status(status: str) -> str | None:
+        if status in {"started", "queued"}:
+            return "active"
+        if status == "completed":
+            return "completed"
+        if status in {"no_answer", "busy", "canceled", "failed"}:
+            return "failed"
+        return None
 
     def start_call(
         self,
@@ -746,3 +958,6 @@ class CallHistoryStore:
                 "started_at": row["call_started_at"],
             }
         return result
+
+
+from app.sql_call_history import SqlAlchemyCallHistoryStore as CallHistoryStore
