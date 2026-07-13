@@ -12,6 +12,7 @@ from app.config import config, gemini_system_instruction, require_env
 from app.logging_utils import log
 
 SendAudio = Callable[[bytes], Awaitable[None]]
+TranscriptHandler = Callable[[str, str], Awaitable[None] | None]
 
 
 def _automatic_activity_detection(explicit_vad: bool) -> types.AutomaticActivityDetection:
@@ -38,11 +39,7 @@ def _speech_config() -> types.SpeechConfig:
 
 
 def _audio_transcription_config() -> types.AudioTranscriptionConfig:
-    return types.AudioTranscriptionConfig(
-        language_hints=types.LanguageHints(
-            language_codes=[config.gemini.language_code],
-        ),
-    )
+    return types.AudioTranscriptionConfig()
 
 
 class GeminiCallBridge:
@@ -57,6 +54,7 @@ class GeminiCallBridge:
         clear_audio: Callable[[], Awaitable[None]] | None = None,
         system_instruction: str | None = None,
         initial_greeting: str | None = None,
+        on_transcript: TranscriptHandler | None = None,
     ):
         self.call_id = call_id
         self.call_sample_rate = call_sample_rate
@@ -67,6 +65,7 @@ class GeminiCallBridge:
         self.send_initial_greeting = send_initial_greeting
         self.system_instruction = system_instruction
         self.initial_greeting = initial_greeting
+        self.on_transcript = on_transcript
         self.realtime_input = realtime_input
         self.input_activity_active = False
         self.client = genai.Client(api_key=require_env("GEMINI_API_KEY"))
@@ -303,8 +302,16 @@ class GeminiCallBridge:
                     if content:
                         if content.input_transcription and content.input_transcription.text:
                             log(f"[{self.call_id}] User: {content.input_transcription.text}")
+                            await self._record_transcript(
+                                "customer",
+                                content.input_transcription.text,
+                            )
                         if content.output_transcription and content.output_transcription.text:
                             log(f"[{self.call_id}] Gemini: {content.output_transcription.text}")
+                            await self._record_transcript(
+                                "agent",
+                                content.output_transcription.text,
+                            )
 
                         model_turn = content.model_turn
                         if model_turn and model_turn.parts:
@@ -332,6 +339,13 @@ class GeminiCallBridge:
             raise
         except Exception as exc:
             log(f"[{self.call_id}] Gemini receive loop error: {type(exc).__name__}: {exc}")
+
+    async def _record_transcript(self, speaker: str, text: str) -> None:
+        if not self.on_transcript:
+            return
+        result = self.on_transcript(speaker, text)
+        if asyncio.iscoroutine(result):
+            await result
 
 
 def _inline_bytes(data: bytes | str) -> bytes:

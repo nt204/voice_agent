@@ -12,6 +12,7 @@ from urllib.parse import urljoin, urlparse, urlunparse
 
 from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.audio import (
     extract_sample_rate,
@@ -20,11 +21,15 @@ from app.audio import (
     signalwire_payload_to_pcm16,
     telnyx_payload_to_pcm16,
 )
+from app.call_history import CallHistoryStore
 from app.config import config, gemini_system_instruction
 from app.gemini_bridge import GeminiCallBridge
 from app.logging_utils import log
 
 app = FastAPI(title="Viber Gemini Live Bridge")
+BASE_DIR = Path(__file__).resolve().parent.parent
+call_history = CallHistoryStore(BASE_DIR / "data" / "call_history.db")
+app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
 
 
 class RealtimeInputGate:
@@ -200,6 +205,83 @@ async def health() -> dict[str, bool]:
     return {"ok": True}
 
 
+@app.get("/")
+async def dashboard() -> FileResponse:
+    return FileResponse(BASE_DIR / "app" / "static" / "index.html")
+
+
+@app.get("/admin")
+async def admin_dashboard() -> FileResponse:
+    return FileResponse(BASE_DIR / "app" / "static" / "index.html")
+
+
+def _call_counts() -> dict[str, int]:
+    calls = call_history.list_calls(limit=500)
+    return {
+        "all": len(calls),
+        "inbound": sum(1 for call in calls if call["direction"] == "inbound"),
+        "outbound": sum(1 for call in calls if call["direction"] == "outbound"),
+    }
+
+
+def _interest_counts() -> dict[str, int]:
+    stats = call_history.sales_statistics()
+    return stats["interest_counts"]
+
+
+def _store_transcript(call_id: str):
+    async def record(speaker: str, text: str) -> None:
+        call_history.add_transcript(call_id, speaker, text)
+
+    return record
+
+
+@app.get("/api/calls")
+async def api_calls(
+    direction: str | None = None,
+    q: str = "",
+    interest_status: str | None = None,
+    limit: int = 100,
+) -> dict[str, object]:
+    return {
+        "calls": call_history.list_calls(
+            direction=direction,
+            query=q,
+            interest_status=interest_status,
+            limit=limit,
+        ),
+        "counts": _call_counts(),
+        "interest_counts": _interest_counts(),
+    }
+
+
+@app.get("/api/calls/{call_id}")
+async def api_call_detail(call_id: str) -> dict[str, object]:
+    call = call_history.get_call(call_id)
+    if not call:
+        raise HTTPException(status_code=404, detail="Call not found")
+    return call
+
+
+@app.get("/api/admin/summary")
+async def api_admin_summary() -> dict[str, object]:
+    recent_leads = call_history.list_calls(
+        interest_status="needs_consultation",
+        limit=12,
+    )
+    recent_calls = call_history.list_calls(limit=12)
+    return {
+        "stats": call_history.sales_statistics(),
+        "recent_leads": recent_leads,
+        "recent_calls": recent_calls,
+    }
+
+
+@app.get("/api/outbound/requests")
+async def api_outbound_requests(limit: int = 50) -> dict[str, object]:
+    return {"requests": call_history.list_outbound_requests(limit=limit)}
+
+
 async def _request_payload(request: Request) -> dict:
     payload = dict(request.query_params)
     if request.method == "POST":
@@ -218,6 +300,16 @@ def _telnyx_error_detail(response: httpx.Response) -> str:
     except ValueError:
         return f"Telnyx API error {response.status_code}: {response.text}"
     return f"Telnyx API error {response.status_code}: {data}"
+
+
+def _normalize_phone_number(number: str) -> str:
+    cleaned = "".join(char for char in number.strip() if char.isdigit() or char == "+")
+    if cleaned.startswith("+"):
+        return f"+{''.join(char for char in cleaned[1:] if char.isdigit())}"
+    digits = "".join(char for char in cleaned if char.isdigit())
+    if digits.startswith("0") and len(digits) >= 9:
+        return f"+84{digits[1:]}"
+    return digits
 
 
 @app.post("/infobip/events")
@@ -244,6 +336,10 @@ async def telnyx_stream_status(request: Request) -> dict[str, bool]:
 async def telnyx_outbound_stream_status(request: Request) -> dict[str, bool]:
     payload = await _request_payload(request)
     log(f"Telnyx outbound stream status: {payload}")
+    call_sid = str(payload.get("CallSid") or payload.get("call_sid") or "").strip()
+    call_status = str(payload.get("CallStatus") or payload.get("call_status") or "").strip()
+    if call_sid and call_status:
+        call_history.update_outbound_request_by_call_sid(call_sid, call_status)
     return {"ok": True}
 
 
@@ -295,14 +391,24 @@ async def telnyx_outbound_answer() -> Response:
 @app.post("/telnyx/outbound/call")
 async def telnyx_outbound_call(request: Request) -> dict[str, object]:
     payload = await request.json()
-    to_number = str(payload.get("to_number") or "").strip()
-    from_number = str(
+    to_number = _normalize_phone_number(str(payload.get("to_number") or ""))
+    from_number = _normalize_phone_number(str(
         payload.get("from_number") or config.telnyx.outbound_from_number or ""
-    ).strip()
+    ))
     if not to_number:
         raise HTTPException(status_code=400, detail="Missing to_number")
     if not from_number:
+        outbound_request = call_history.create_outbound_request(to_number=to_number)
+        call_history.mark_outbound_request_failed(
+            outbound_request["id"],
+            "Missing from_number or TELNYX_OUTBOUND_FROM_NUMBER",
+        )
         raise HTTPException(status_code=400, detail="Missing from_number or TELNYX_OUTBOUND_FROM_NUMBER")
+
+    outbound_request = call_history.create_outbound_request(
+        to_number=to_number,
+        from_number=from_number,
+    )
 
     missing = [
         name
@@ -315,7 +421,9 @@ async def telnyx_outbound_call(request: Request) -> dict[str, object]:
         if not value
     ]
     if missing:
-        raise HTTPException(status_code=500, detail=f"Missing config: {', '.join(missing)}")
+        detail = f"Missing config: {', '.join(missing)}"
+        call_history.mark_outbound_request_failed(outbound_request["id"], detail)
+        raise HTTPException(status_code=500, detail=detail)
 
     url = f"https://api.telnyx.com/v2/texml/Accounts/{config.telnyx.account_sid}/Calls"
     texml_url = _public_http_url("/telnyx/outbound/answer")
@@ -341,14 +449,23 @@ async def telnyx_outbound_call(request: Request) -> dict[str, object]:
             response.raise_for_status()
     except httpx.HTTPStatusError as exc:
         detail = _telnyx_error_detail(exc.response)
+        call_history.mark_outbound_request_failed(outbound_request["id"], detail)
         raise HTTPException(status_code=502, detail=detail) from exc
     except httpx.HTTPError as exc:
-        raise HTTPException(status_code=502, detail=f"Telnyx request failed: {exc}") from exc
+        detail = f"Telnyx request failed: {exc}"
+        call_history.mark_outbound_request_failed(outbound_request["id"], detail)
+        raise HTTPException(status_code=502, detail=detail) from exc
 
     data = response.json()
     call_sid = data.get("sid") or data.get("call_sid") or (data.get("data") or {}).get("sid")
+    call_history.mark_outbound_request_started(outbound_request["id"], call_sid or "")
     log(f"Telnyx outbound call requested: to={to_number} from={from_number} sid={call_sid}")
-    return {"ok": True, "call_sid": call_sid, "telnyx": data}
+    return {
+        "ok": True,
+        "call_sid": call_sid,
+        "request": call_history.get_outbound_request(outbound_request["id"]),
+        "telnyx": data,
+    }
 
 
 @app.get("/telnyx/greeting.wav")
@@ -454,6 +571,16 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     or start.get("call_leg_id")
                     or call_id
                 )
+                call_history.start_call(
+                    call_id=call_id,
+                    direction="outbound" if mode == "outbound" else "inbound",
+                    provider="telnyx",
+                    customer_phone=(
+                        str(start.get("to") or start.get("from") or "")
+                        if mode == "outbound"
+                        else str(start.get("from") or start.get("to") or "")
+                    ),
+                )
                 sample_rate = int(media_format.get("sample_rate") or sample_rate)
                 codec = media_format.get("encoding") or codec
                 log(
@@ -493,6 +620,7 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     send_initial_greeting=bridge_options["send_initial_greeting"],
                     realtime_input=True,
                     system_instruction=bridge_options["system_instruction"],
+                    on_transcript=_store_transcript(call_id),
                 )
                 input_gate = RealtimeInputGate(
                     bridge,
@@ -554,6 +682,8 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
     finally:
         if bridge:
             await bridge.close()
+        if call_id != "unknown-call":
+            call_history.finish_call(call_id)
 
 
 @app.api_route("/signalwire/stream-status", methods=["GET", "POST"])
@@ -653,6 +783,12 @@ async def signalwire_ws(websocket: WebSocket) -> None:
                 media_format = start.get("mediaFormat") or {}
                 stream_sid = start.get("streamSid")
                 call_id = start.get("callSid") or call_id
+                call_history.start_call(
+                    call_id=call_id,
+                    direction="inbound",
+                    provider="signalwire",
+                    customer_phone=str(start.get("from") or ""),
+                )
                 sample_rate = int(media_format.get("sampleRate") or sample_rate)
                 encoding = media_format.get("encoding") or encoding
                 log(
@@ -664,6 +800,7 @@ async def signalwire_ws(websocket: WebSocket) -> None:
                     call_id=call_id,
                     call_sample_rate=sample_rate,
                     send_audio=send_audio,
+                    on_transcript=_store_transcript(call_id),
                 )
                 input_gate = RealtimeInputGate(bridge, call_id)
                 await bridge.start()
@@ -709,6 +846,8 @@ async def signalwire_ws(websocket: WebSocket) -> None:
     finally:
         if bridge:
             await bridge.close()
+        if call_id != "unknown-call":
+            call_history.finish_call(call_id)
 
 
 @app.websocket("/infobip/ws")
@@ -744,6 +883,12 @@ async def infobip_ws(websocket: WebSocket) -> None:
                         or event.get("dialogId")
                         or call_id
                     )
+                    call_history.start_call(
+                        call_id=call_id,
+                        direction="inbound",
+                        provider="infobip",
+                        customer_phone=str(event.get("from") or event.get("caller") or ""),
+                    )
                     sample_rate = extract_sample_rate(event.get("content-type"), sample_rate)
                     print(f"[{call_id}] Infobip WebSocket connected at {sample_rate}Hz", flush=True)
 
@@ -751,6 +896,7 @@ async def infobip_ws(websocket: WebSocket) -> None:
                         call_id=call_id,
                         call_sample_rate=sample_rate,
                         send_audio=send_audio,
+                        on_transcript=_store_transcript(call_id),
                     )
                     input_gate = RealtimeInputGate(bridge, call_id)
                     await bridge.start()
@@ -772,6 +918,8 @@ async def infobip_ws(websocket: WebSocket) -> None:
     finally:
         if bridge:
             await bridge.close()
+        if call_id != "unknown-call":
+            call_history.finish_call(call_id)
 
 
 def _public_ws_url(path: str) -> str:

@@ -130,6 +130,59 @@ class CallHistoryStoreTests(unittest.TestCase):
 
         self.assertEqual([call["id"] for call in result], ["no-need-1"])
 
+    def test_builds_sales_statistics_for_admin_dashboard(self) -> None:
+        self.store.start_call("lead-1", "outbound", "telnyx", "+84911111111")
+        self.store.add_transcript("lead-1", "customer", "Toi can tu van them.")
+        self.store.add_transcript("lead-1", "agent", "Da em se tu van.")
+        self.store.finish_call("lead-1")
+        self.store.start_call("cold-1", "inbound", "telnyx")
+        self.store.add_transcript("cold-1", "customer", "Toi chua co nhu cau.")
+        self.store.finish_call("cold-1")
+
+        stats = self.store.sales_statistics()
+
+        self.assertEqual(stats["total_calls"], 2)
+        self.assertEqual(stats["completed_calls"], 2)
+        self.assertEqual(stats["interest_counts"]["needs_consultation"], 1)
+        self.assertEqual(stats["interest_counts"]["no_need"], 1)
+        self.assertEqual(stats["contacts_with_phone"], 1)
+        self.assertEqual(stats["total_transcript_messages"], 3)
+        self.assertEqual(stats["lead_rate"], 0.5)
+
+    def test_persists_outbound_call_requests(self) -> None:
+        request = self.store.create_outbound_request(
+            to_number="+84911111111",
+            from_number="+84922222222",
+        )
+
+        self.store.mark_outbound_request_started(request["id"], "CA123")
+
+        requests = self.store.list_outbound_requests()
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(requests[0]["to_number"], "+84911111111")
+        self.assertEqual(requests[0]["from_number"], "+84922222222")
+        self.assertEqual(requests[0]["status"], "started")
+        self.assertEqual(requests[0]["call_sid"], "CA123")
+
+    def test_persists_failed_outbound_call_requests(self) -> None:
+        request = self.store.create_outbound_request("+84911111111")
+
+        self.store.mark_outbound_request_failed(request["id"], "Missing config")
+
+        saved = self.store.list_outbound_requests()[0]
+        self.assertEqual(saved["status"], "failed")
+        self.assertEqual(saved["error"], "Missing config")
+
+    def test_updates_outbound_request_from_telnyx_status_callback(self) -> None:
+        request = self.store.create_outbound_request("+84911111111")
+        self.store.mark_outbound_request_started(request["id"], "call-123")
+
+        self.store.update_outbound_request_by_call_sid("call-123", "no-answer")
+
+        saved = self.store.list_outbound_requests()[0]
+        self.assertEqual(saved["status"], "no_answer")
+        self.assertEqual(saved["call_sid"], "call-123")
+
 
 class CallHistoryApiTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -149,13 +202,20 @@ class CallHistoryApiTests(unittest.TestCase):
         dashboard = self.client.get("/")
         listing = self.client.get("/api/calls?direction=inbound")
         detail = self.client.get("/api/calls/api-call")
+        summary = self.client.get("/api/admin/summary")
+        outbound_requests = self.client.get("/api/outbound/requests")
 
         self.assertEqual(dashboard.status_code, 200)
-        self.assertIn("Lịch sử cuộc gọi", dashboard.text)
+        self.assertIn("AI Sales Admin", dashboard.text)
         self.assertEqual(listing.status_code, 200)
         self.assertEqual(listing.json()["calls"][0]["id"], "api-call")
         self.assertEqual(detail.json()["customer"]["name"], "Mai")
         self.assertIn("interest_counts", listing.json())
+        self.assertEqual(summary.status_code, 200)
+        self.assertEqual(summary.json()["stats"]["total_calls"], 1)
+        self.assertIn("recent_leads", summary.json())
+        self.assertEqual(outbound_requests.status_code, 200)
+        self.assertIn("requests", outbound_requests.json())
 
 
 if __name__ == "__main__":

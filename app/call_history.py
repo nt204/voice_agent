@@ -9,6 +9,15 @@ from typing import Any
 
 CUSTOMER_FIELDS = ("name", "phone", "address", "need", "notes")
 INTEREST_STATUSES = ("needs_consultation", "no_need", "unknown")
+OUTBOUND_REQUEST_STATUSES = (
+    "queued",
+    "started",
+    "completed",
+    "no_answer",
+    "busy",
+    "canceled",
+    "failed",
+)
 
 
 def _now() -> str:
@@ -27,6 +36,34 @@ def classify_customer_interest(transcript: list[dict[str, Any]]) -> str:
     )
     if not customer_text:
         return "unknown"
+
+    ascii_text = customer_text.casefold()
+    if any(
+        phrase in ascii_text
+        for phrase in (
+            "chua co nhu cau",
+            "khong can",
+            "khong muon",
+            "khong quan tam",
+            "chua can",
+            "chua muon",
+            "chua quan tam",
+        )
+    ):
+        return "no_need"
+    if any(
+        phrase in ascii_text
+        for phrase in (
+            "can tu van",
+            "muon tu van",
+            "tu van them",
+            "muon mua",
+            "can mua",
+            "quan tam",
+            "hoi them",
+        )
+    ):
+        return "needs_consultation"
 
     no_need_patterns = (
         r"\bchưa (?:có )?nhu cầu\b",
@@ -150,8 +187,20 @@ class CallHistoryStore:
                     text TEXT NOT NULL,
                     created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS outbound_call_requests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    to_number TEXT NOT NULL,
+                    from_number TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'queued',
+                    call_sid TEXT NOT NULL DEFAULT '',
+                    error TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
                 CREATE INDEX IF NOT EXISTS idx_calls_started_at ON calls(started_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_transcripts_call_id ON transcripts(call_id, id);
+                CREATE INDEX IF NOT EXISTS idx_outbound_requests_created_at
+                    ON outbound_call_requests(created_at DESC);
                 """
             )
             columns = {
@@ -161,6 +210,129 @@ class CallHistoryStore:
                 connection.execute(
                     "ALTER TABLE calls ADD COLUMN interest_status TEXT NOT NULL DEFAULT 'unknown'"
                 )
+            outbound_schema = connection.execute(
+                """
+                SELECT sql FROM sqlite_master
+                WHERE type = 'table' AND name = 'outbound_call_requests'
+                """
+            ).fetchone()
+            if outbound_schema and "CHECK(status IN ('queued', 'started', 'failed'))" in (
+                outbound_schema["sql"] or ""
+            ):
+                connection.executescript(
+                    """
+                    ALTER TABLE outbound_call_requests RENAME TO outbound_call_requests_old;
+                    CREATE TABLE outbound_call_requests (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        to_number TEXT NOT NULL,
+                        from_number TEXT NOT NULL DEFAULT '',
+                        status TEXT NOT NULL DEFAULT 'queued',
+                        call_sid TEXT NOT NULL DEFAULT '',
+                        error TEXT NOT NULL DEFAULT '',
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    );
+                    INSERT INTO outbound_call_requests
+                        (id, to_number, from_number, status, call_sid, error, created_at, updated_at)
+                    SELECT id, to_number, from_number, status, call_sid, error, created_at, updated_at
+                    FROM outbound_call_requests_old;
+                    DROP TABLE outbound_call_requests_old;
+                    CREATE INDEX IF NOT EXISTS idx_outbound_requests_created_at
+                        ON outbound_call_requests(created_at DESC);
+                    """
+                )
+
+    def create_outbound_request(
+        self,
+        to_number: str,
+        from_number: str = "",
+    ) -> dict[str, Any]:
+        now = _now()
+        with self._lock, closing(self._connect()) as connection, connection:
+            cursor = connection.execute(
+                """
+                INSERT INTO outbound_call_requests
+                    (to_number, from_number, status, created_at, updated_at)
+                VALUES (?, ?, 'queued', ?, ?)
+                """,
+                (to_number.strip(), from_number.strip(), now, now),
+            )
+            request_id = int(cursor.lastrowid)
+        return self.get_outbound_request(request_id) or {}
+
+    def mark_outbound_request_started(self, request_id: int, call_sid: str = "") -> None:
+        self._update_outbound_request(
+            request_id,
+            status="started",
+            call_sid=call_sid,
+            error="",
+        )
+
+    def mark_outbound_request_failed(self, request_id: int, error: str) -> None:
+        self._update_outbound_request(
+            request_id,
+            status="failed",
+            error=error,
+        )
+
+    def update_outbound_request_by_call_sid(self, call_sid: str, status: str) -> None:
+        normalized_status = status.replace("-", "_")
+        if normalized_status not in OUTBOUND_REQUEST_STATUSES:
+            return
+        with self._lock, closing(self._connect()) as connection, connection:
+            connection.execute(
+                """
+                UPDATE outbound_call_requests
+                SET status = ?, updated_at = ?
+                WHERE call_sid = ?
+                """,
+                (normalized_status, _now(), call_sid),
+            )
+
+    def list_outbound_requests(self, limit: int = 50) -> list[dict[str, Any]]:
+        with self._lock, closing(self._connect()) as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM outbound_call_requests
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (max(1, min(limit, 200)),),
+            ).fetchall()
+        return [self._outbound_request_summary(row) for row in rows]
+
+    def get_outbound_request(self, request_id: int) -> dict[str, Any] | None:
+        with self._lock, closing(self._connect()) as connection:
+            row = connection.execute(
+                "SELECT * FROM outbound_call_requests WHERE id = ?",
+                (request_id,),
+            ).fetchone()
+        return self._outbound_request_summary(row) if row else None
+
+    def _update_outbound_request(
+        self,
+        request_id: int,
+        *,
+        status: str,
+        call_sid: str | None = None,
+        error: str | None = None,
+    ) -> None:
+        if status not in OUTBOUND_REQUEST_STATUSES:
+            return
+        assignments = ["status = ?", "updated_at = ?"]
+        params: list[Any] = [status, _now()]
+        if call_sid is not None:
+            assignments.append("call_sid = ?")
+            params.append(call_sid)
+        if error is not None:
+            assignments.append("error = ?")
+            params.append(error)
+        params.append(request_id)
+        with self._lock, closing(self._connect()) as connection, connection:
+            connection.execute(
+                f"UPDATE outbound_call_requests SET {', '.join(assignments)} WHERE id = ?",
+                params,
+            )
 
     def start_call(
         self,
@@ -268,6 +440,72 @@ class CallHistoryStore:
         result["transcript"] = [dict(item) for item in transcript_rows]
         return result
 
+    def sales_statistics(self) -> dict[str, Any]:
+        with self._lock, closing(self._connect()) as connection:
+            rows = connection.execute("SELECT * FROM calls").fetchall()
+            transcript_rows = connection.execute(
+                """
+                SELECT call_id, COUNT(*) AS message_count
+                FROM transcripts
+                GROUP BY call_id
+                """
+            ).fetchall()
+
+        calls = [self._call_summary(row) for row in rows]
+        transcript_counts = {
+            row["call_id"]: int(row["message_count"]) for row in transcript_rows
+        }
+        total_calls = len(calls)
+        completed_calls = sum(1 for call in calls if call["status"] == "completed")
+        active_calls = sum(1 for call in calls if call["status"] == "active")
+        direction_counts = {"inbound": 0, "outbound": 0}
+        interest_counts = {status: 0 for status in INTEREST_STATUSES}
+        provider_counts: dict[str, int] = {}
+        contacts_with_phone = 0
+        contacts_with_need = 0
+        total_duration = 0
+        completed_with_duration = 0
+
+        for call in calls:
+            if call["direction"] in direction_counts:
+                direction_counts[call["direction"]] += 1
+            if call["interest_status"] in interest_counts:
+                interest_counts[call["interest_status"]] += 1
+            provider_counts[call["provider"]] = provider_counts.get(call["provider"], 0) + 1
+            if call["customer"]["phone"]:
+                contacts_with_phone += 1
+            if call["customer"]["need"]:
+                contacts_with_need += 1
+            if call["status"] == "completed":
+                total_duration += call["duration_seconds"]
+                completed_with_duration += 1
+
+        total_transcript_messages = sum(transcript_counts.values())
+        leads = interest_counts["needs_consultation"]
+        return {
+            "total_calls": total_calls,
+            "active_calls": active_calls,
+            "completed_calls": completed_calls,
+            "direction_counts": direction_counts,
+            "interest_counts": interest_counts,
+            "provider_counts": provider_counts,
+            "contacts_with_phone": contacts_with_phone,
+            "contacts_with_need": contacts_with_need,
+            "total_transcript_messages": total_transcript_messages,
+            "avg_duration_seconds": (
+                round(total_duration / completed_with_duration)
+                if completed_with_duration
+                else 0
+            ),
+            "avg_messages_per_call": (
+                round(total_transcript_messages / total_calls, 1) if total_calls else 0
+            ),
+            "lead_rate": round(leads / total_calls, 4) if total_calls else 0,
+            "contact_capture_rate": (
+                round(contacts_with_phone / total_calls, 4) if total_calls else 0
+            ),
+        }
+
     @staticmethod
     def _call_summary(row: sqlite3.Row) -> dict[str, Any]:
         ended_at = row["ended_at"]
@@ -292,4 +530,17 @@ class CallHistoryStore:
                 "need": row["customer_need"],
                 "notes": row["customer_notes"],
             },
+        }
+
+    @staticmethod
+    def _outbound_request_summary(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "id": row["id"],
+            "to_number": row["to_number"],
+            "from_number": row["from_number"],
+            "status": row["status"],
+            "call_sid": row["call_sid"],
+            "error": row["error"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
         }

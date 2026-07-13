@@ -2,7 +2,9 @@ import audioop
 import asyncio
 import base64
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 from types import SimpleNamespace
 
@@ -10,6 +12,7 @@ from fastapi.testclient import TestClient
 
 import app.main as main
 import app.config as app_config
+from app.call_history import CallHistoryStore
 from app.logging_utils import _safe_stdout
 from app.main import RealtimeInputGate, RealtimePassthroughInput
 from app.audio import pcm16_to_telnyx_payload, telnyx_payload_to_pcm16
@@ -84,6 +87,9 @@ class FakeGeminiSession:
 
 class TelnyxAdapterTests(unittest.TestCase):
     def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.original_store = main.call_history
+        main.call_history = CallHistoryStore(Path(self.temp_dir.name) / "calls.db")
         main.config = SimpleNamespace(
             public_base_url="https://example.ngrok-free.dev",
             telnyx=SimpleNamespace(
@@ -103,6 +109,10 @@ class TelnyxAdapterTests(unittest.TestCase):
             ),
         )
         self.client = TestClient(main.app)
+
+    def tearDown(self) -> None:
+        main.call_history = self.original_store
+        self.temp_dir.cleanup()
 
     def test_telnyx_answer_returns_bidirectional_stream_texml(self) -> None:
         response = self.client.post("/telnyx/answer")
@@ -192,7 +202,7 @@ class TelnyxAdapterTests(unittest.TestCase):
         with patch("app.main.httpx.AsyncClient", FakeAsyncClient):
             response = self.client.post(
                 "/telnyx/outbound/call",
-                json={"to_number": "+84961234567"},
+                json={"to_number": "0961234567"},
             )
 
         self.assertEqual(response.status_code, 200)
@@ -439,10 +449,9 @@ class TelnyxAdapterTests(unittest.TestCase):
 
         self.assertEqual(speech.language_code, "my-MM")
 
-    def test_audio_transcription_keeps_configured_language(self) -> None:
+    def test_audio_transcription_omits_developer_api_unsupported_language_codes(self) -> None:
         transcription = _audio_transcription_config()
 
-        self.assertEqual(transcription.language_hints.language_codes, ["my-MM"])
         self.assertIsNone(transcription.language_codes)
 
     def test_system_instruction_requires_short_realtime_sales_replies(self) -> None:

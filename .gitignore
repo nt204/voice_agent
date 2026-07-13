@@ -9,3 +9,12 @@ venv/
 node_modules/
 npm-debug.log*
 .DS_Store
+*.log
+*.pid
+gemini-response*.pcm
+test_out*
+q[0-9].aiff
+q[0-9].pcmu
+query*.aiff
+query*.pcmu
+test-call.aiff
