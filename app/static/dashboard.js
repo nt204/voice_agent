@@ -5,17 +5,23 @@ const state = {
   selectedId: null,
   calls: [],
   orders: [],
+  callPage: 1,
+  callPageSize: 10,
+  orderPage: 1,
+  orderPageSize: 8,
 };
 
 const callList = document.querySelector("#callList");
 const detailPanel = document.querySelector("#detailPanel");
 const syncStatus = document.querySelector("#syncStatus");
-const outboundRequestList = document.querySelector("#outboundRequestList");
 const orderList = document.querySelector("#orderList");
 const outboundCallForm = document.querySelector("#outboundCallForm");
 const outboundCallStatus = document.querySelector("#outboundCallStatus");
 const startCallButton = document.querySelector("#startCallButton");
 const visibleRange = document.querySelector("#visibleRange");
+const callPager = document.querySelector("#callPager");
+const orderPager = document.querySelector("#orderPager");
+const orderRange = document.querySelector("#orderRange");
 
 const escapeHtml = (value = "") => String(value).replace(
   /[&<>"']/g,
@@ -37,8 +43,6 @@ const formatDay = value => value
 const formatMoney = value => value
   ? `${Number(value).toLocaleString("vi-VN")} đ`
   : "Chưa có";
-
-const formatPercent = value => `${Math.round((value || 0) * 100)}%`;
 
 function interestLabel(status) {
   return {
@@ -69,38 +73,12 @@ function orderStatusLabel(status) {
   }[status] || "Đơn nháp";
 }
 
-function requestStatusLabel(status) {
-  return {
-    queued: "Đang chờ",
-    started: "Đã gửi",
-    completed: "Hoàn tất",
-    no_answer: "Không nghe máy",
-    busy: "Máy bận",
-    canceled: "Đã hủy",
-    failed: "Lỗi",
-  }[status] || "Không rõ";
-}
-
-function nextAction(call) {
-  const analysis = call.analysis || {};
-  if (analysis.next_action) return analysis.next_action;
-  return {
-    needs_consultation: "Tư vấn thêm và hẹn thời điểm chốt đơn phù hợp.",
-    no_need: "Lưu lại để chăm sóc sau, không nên gọi dồn.",
-    unknown: "Rà lại transcript và xác định bước xử lý tiếp theo.",
-  }[call.interest_status || "unknown"] || "Rà lại transcript và xác định bước xử lý tiếp theo.";
-}
-
 function directionLabel(direction) {
   return direction === "outbound" ? "Gọi ra" : "Gọi vào";
 }
 
 function directionIcon(direction) {
   return direction === "outbound" ? "↗" : "↙";
-}
-
-function ratio(value, total) {
-  return total ? value / total : 0;
 }
 
 async function fetchJson(url) {
@@ -127,12 +105,11 @@ async function postJson(url, body) {
 async function loadDashboard() {
   if (syncStatus) syncStatus.textContent = "Đang tải dữ liệu";
   callList.innerHTML = document.querySelector("#loadingTemplate").innerHTML;
-  if (outboundRequestList) {
-    outboundRequestList.innerHTML = '<div class="request-state">Đang tải...</div>';
-  }
   if (orderList) {
     orderList.innerHTML = '<div class="request-state">Đang tải...</div>';
   }
+  if (orderRange) orderRange.textContent = "Đang tải";
+  if (orderPager) orderPager.innerHTML = "";
 
   const params = new URLSearchParams();
   if (state.direction) params.set("direction", state.direction);
@@ -150,7 +127,7 @@ async function loadDashboard() {
 
     fetchJson("/api/orders?limit=100")
       .then(orders => {
-        state.orders = orders.orders || [];
+        state.orders = recordedOrders(orders.orders || []);
         renderOrders(state.orders);
       })
       .catch(error => {
@@ -158,14 +135,8 @@ async function loadDashboard() {
         if (orderList) {
           orderList.innerHTML = `<div class="request-state error">${escapeHtml(error.message)}</div>`;
         }
-      });
-
-    fetchJson("/api/outbound/requests?limit=100")
-      .then(outboundRequests => renderOutboundRequests(outboundRequests.requests || []))
-      .catch(error => {
-        if (outboundRequestList) {
-          outboundRequestList.innerHTML = `<div class="request-state error">${escapeHtml(error.message)}</div>`;
-        }
+        if (orderRange) orderRange.textContent = "0 đơn";
+        if (orderPager) orderPager.innerHTML = "";
       });
 
     if (syncStatus) {
@@ -174,51 +145,79 @@ async function loadDashboard() {
   } catch (error) {
     if (syncStatus) syncStatus.textContent = "Lỗi tải dữ liệu";
     callList.innerHTML = `<div class="error-state">${escapeHtml(error.message)}</div>`;
-    if (outboundRequestList) {
-      outboundRequestList.innerHTML = `<div class="request-state error">${escapeHtml(error.message)}</div>`;
-    }
     if (orderList) {
       orderList.innerHTML = `<div class="request-state error">${escapeHtml(error.message)}</div>`;
     }
+    if (orderRange) orderRange.textContent = "0 đơn";
+    if (orderPager) orderPager.innerHTML = "";
   }
+}
+
+function recordedOrders(orders) {
+  return orders.filter(order =>
+    String(order.customer_phone || "").trim() &&
+    String(order.shipping_address || "").trim() &&
+    String(order.product_name || "").trim()
+  );
 }
 
 function renderSummary(stats) {
   const interest = stats.interest_counts || {};
-  const directions = stats.direction_counts || {};
-  const completedDirections = stats.completed_direction_counts || {};
-  const outboundCount = directions.outbound || 0;
-  const answeredOutbound = completedDirections.outbound || 0;
-  document.querySelector("#kpiTotal").textContent = stats.total_calls || 0;
-  document.querySelector("#kpiActive").textContent = `${stats.active_calls || 0} đang diễn ra`;
-  document.querySelector("#kpiOutbound").textContent = outboundCount;
-  document.querySelector("#kpiOutboundShare").textContent = `${formatPercent(ratio(outboundCount, stats.total_calls))} trên tổng cuộc gọi`;
-  document.querySelector("#kpiAnsweredOutbound").textContent = `${answeredOutbound}/${outboundCount}`;
-  document.querySelector("#kpiAnsweredRate").textContent = `${formatPercent(ratio(answeredOutbound, outboundCount))} tỉ lệ bắt máy`;
-  document.querySelector("#kpiLeads").textContent = interest.needs_consultation || 0;
-  document.querySelector("#kpiLeadRate").textContent = `${formatPercent(stats.lead_rate)} trên tổng cuộc gọi`;
-
   document.querySelector("#funnelAll").textContent = stats.total_calls || 0;
   document.querySelector("#funnelHot").textContent = interest.needs_consultation || 0;
   document.querySelector("#funnelCold").textContent = interest.no_need || 0;
   document.querySelector("#funnelUnknown").textContent = interest.unknown || 0;
-  document.querySelector("#resultCount").textContent =
-    `${directions.inbound || 0} gọi vào, ${directions.outbound || 0} gọi ra`;
+}
+
+function pageSlice(items, page, pageSize) {
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(Math.max(page, 1), totalPages);
+  const start = (currentPage - 1) * pageSize;
+  const end = Math.min(start + pageSize, items.length);
+  return {
+    items: items.slice(start, end),
+    start,
+    end,
+    page: currentPage,
+    totalPages,
+  };
+}
+
+function renderPager(container, page, totalPages, onPageChange) {
+  if (!container) return;
+  if (totalPages <= 1) {
+    container.innerHTML = "";
+    return;
+  }
+  container.innerHTML = `
+    <button type="button" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""} aria-label="Trang trước">&lt;</button>
+    <span>Trang ${page}/${totalPages}</span>
+    <button type="button" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""} aria-label="Trang sau">&gt;</button>
+  `;
+  container.querySelectorAll("button").forEach(button => {
+    button.addEventListener("click", () => {
+      const nextPage = Number(button.dataset.page);
+      if (Number.isFinite(nextPage)) onPageChange(nextPage);
+    });
+  });
 }
 
 function renderCalls(calls) {
   document.querySelector("#resultCount").textContent = `${calls.length} kết quả`;
-  if (visibleRange) {
-    visibleRange.textContent = calls.length
-      ? `Hiển thị 1 đến ${calls.length} của ${calls.length} kết quả`
-      : "Hiển thị 0 kết quả";
-  }
   if (!calls.length) {
     callList.innerHTML = document.querySelector("#emptyTemplate").innerHTML;
+    if (visibleRange) visibleRange.textContent = "Hiển thị 0 kết quả";
+    renderPager(callPager, 1, 1, () => {});
     return;
   }
 
-  callList.innerHTML = calls.map(call => {
+  const page = pageSlice(calls, state.callPage, state.callPageSize);
+  state.callPage = page.page;
+  if (visibleRange) {
+    visibleRange.textContent = `Hiển thị ${page.start + 1} đến ${page.end} của ${calls.length} kết quả`;
+  }
+
+  callList.innerHTML = page.items.map(call => {
     const customer = call.customer || {};
     const title = customer.name || customer.phone || "Khách hàng chưa xác định";
     const need = customer.need || "Chưa ghi nhận nhu cầu";
@@ -245,20 +244,34 @@ function renderCalls(calls) {
   document.querySelectorAll(".lead-row").forEach(button => {
     button.addEventListener("click", () => loadDetail(button.dataset.id));
   });
+  renderPager(callPager, page.page, page.totalPages, nextPage => {
+    state.callPage = nextPage;
+    renderCalls(state.calls);
+  });
 }
 
 function renderOrders(orders) {
   if (!orderList) return;
   if (!orders.length) {
-    orderList.innerHTML = '<div class="request-state">Chưa có đơn hàng</div>';
+    orderList.innerHTML = '<div class="request-state">Chưa có đơn đủ thông tin</div>';
+    if (orderRange) orderRange.textContent = "0 đơn";
+    renderPager(orderPager, 1, 1, () => {});
     return;
   }
 
-  orderList.innerHTML = orders.map(order => `
+  const page = pageSlice(orders, state.orderPage, state.orderPageSize);
+  state.orderPage = page.page;
+  if (orderRange) {
+    orderRange.textContent = `${page.start + 1}-${page.end}/${orders.length} đơn`;
+  }
+
+  orderList.innerHTML = page.items.map(order => `
     <button class="order-item ${state.selectedId === order.call_id ? "selected" : ""}" data-call-id="${escapeHtml(order.call_id)}" type="button">
       <span>
         <strong>${escapeHtml(order.customer_phone || order.call_id)}</strong>
-        <small>${escapeHtml(order.product_name || "Chưa có sản phẩm")} · ${order.quantity || 0} hộp</small>
+        <small>${escapeHtml(order.product_name)} · ${order.quantity || 0} hộp</small>
+        <small>Tạo ${formatDate(order.created_at)}</small>
+        <small>${escapeHtml(order.shipping_address)}</small>
       </span>
       <span class="order-meta">
         <b>${formatMoney(order.total_price)}</b>
@@ -270,25 +283,29 @@ function renderOrders(orders) {
   document.querySelectorAll(".order-item").forEach(button => {
     button.addEventListener("click", () => loadDetail(button.dataset.callId));
   });
+  renderPager(orderPager, page.page, page.totalPages, nextPage => {
+    state.orderPage = nextPage;
+    renderOrders(state.orders);
+  });
 }
 
-function renderOutboundRequests(requests) {
-  if (!outboundRequestList) return;
-  if (!requests.length) {
-    outboundRequestList.innerHTML = '<div class="request-state">Chưa có dữ liệu</div>';
-    return;
-  }
-
-  outboundRequestList.innerHTML = requests.map(request => `
-    <div class="request-item">
-      <div>
-        <strong>${escapeHtml(request.to_number)}</strong>
-        <span>${formatDate(request.created_at)}</span>
-        ${request.error ? `<small>${escapeHtml(request.error)}</small>` : ""}
+function renderComboCard(call) {
+  const order = call.order;
+  const status = order ? order.status : "missing_info";
+  const missing = order?.missing_fields?.length ? order.missing_fields.join(", ") : "Không";
+  return `
+    <div class="combo-card">
+      <div class="combo-head">
+        <h3>Combo AI</h3>
+        <span class="order-status ${escapeHtml(status)}">${order ? orderStatusLabel(status) : "Chưa tạo"}</span>
       </div>
-      <b class="request-status ${escapeHtml(request.status)}">${requestStatusLabel(request.status)}</b>
-    </div>
-  `).join("");
+      <div class="combo-grid">
+        <div><span>Sản phẩm</span><strong>${escapeHtml(order?.product_name || "Chưa có")}</strong></div>
+        <div><span>Số lượng</span><strong>${order?.quantity || "Chưa có"}</strong></div>
+        <div><span>Tổng tiền</span><strong>${formatMoney(order?.total_price)}</strong></div>
+        <div><span>Thiếu</span><strong>${escapeHtml(missing)}</strong></div>
+      </div>
+    </div>`;
 }
 
 async function loadDetail(callId) {
@@ -310,7 +327,6 @@ async function loadDetail(callId) {
 function renderDetail(call) {
   const customer = call.customer || {};
   const field = value => escapeHtml(value || "Chưa cung cấp");
-  const order = call.order;
   const transcript = call.transcript && call.transcript.length
     ? call.transcript.map(item => `
         <div class="message ${escapeHtml(item.speaker)}">
@@ -335,33 +351,7 @@ function renderDetail(call) {
       <div class="wide"><span>Địa chỉ</span><strong>${field(customer.address)}</strong></div>
     </div>
 
-    <div class="sales-notes">
-      <h3>Gợi ý xử lý</h3>
-      <p>${escapeHtml(nextAction(call))}</p>
-    </div>
-
-    ${order ? `
-      <div class="order-card">
-        <div class="order-head">
-          <h3>Đơn hàng AI</h3>
-          <span class="order-status ${escapeHtml(order.status)}">${orderStatusLabel(order.status)}</span>
-        </div>
-        <div class="analysis-grid">
-          <div><span>Sản phẩm</span><strong>${field(order.product_name)}</strong></div>
-          <div><span>Số lượng</span><strong>${order.quantity || "Chưa có"}</strong></div>
-          <div><span>Tổng tiền</span><strong>${formatMoney(order.total_price)}</strong></div>
-          <div><span>Thiếu</span><strong>${order.missing_fields && order.missing_fields.length ? order.missing_fields.join(", ") : "Không"}</strong></div>
-        </div>
-      </div>
-    ` : `
-      <div class="order-card">
-        <div class="order-head">
-          <h3>Đơn hàng AI</h3>
-          <span class="order-status missing_info">Chưa tạo</span>
-        </div>
-        <p>Cuộc gọi này chưa đủ tín hiệu mua hàng để tự động tạo đơn.</p>
-      </div>
-    `}
+    ${renderComboCard(call)}
 
     <h3 class="section-title">Transcript</h3>
     <div class="transcript">${transcript}</div>`;
@@ -376,6 +366,7 @@ document.querySelectorAll(".funnel-item").forEach(button => {
     document.querySelectorAll(".funnel-item").forEach(item => item.classList.remove("active"));
     button.classList.add("active");
     state.interest = button.dataset.interest;
+    state.callPage = 1;
     loadDashboard();
   });
 });
@@ -385,6 +376,7 @@ document.querySelectorAll(".segment").forEach(button => {
     document.querySelectorAll(".segment").forEach(item => item.classList.remove("active"));
     button.classList.add("active");
     state.direction = button.dataset.direction;
+    state.callPage = 1;
     loadDashboard();
   });
 });
@@ -394,6 +386,7 @@ document.querySelector("#searchInput").addEventListener("input", event => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
     state.query = event.target.value.trim();
+    state.callPage = 1;
     loadDashboard();
   }, 250);
 });

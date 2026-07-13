@@ -16,43 +16,8 @@
       <button id="refreshButton" class="icon-button" type="button" aria-label="Làm mới">↻</button>
     </header>
 
-    <section class="kpi-grid" aria-label="Chỉ số chính">
-      <article class="kpi-card">
-        <div class="kpi-icon phone-icon" aria-hidden="true">☎</div>
-        <div>
-          <span>Tổng cuộc gọi</span>
-          <strong id="kpiTotal">0</strong>
-          <small id="kpiActive">0 đang diễn ra</small>
-        </div>
-      </article>
-      <article class="kpi-card">
-        <div class="kpi-icon file-icon" aria-hidden="true">↗</div>
-        <div>
-          <span>Cuộc gọi đi</span>
-          <strong id="kpiOutbound">0</strong>
-          <small id="kpiOutboundShare">0% trên tổng cuộc gọi</small>
-        </div>
-      </article>
-      <article class="kpi-card">
-        <div class="kpi-icon time-icon" aria-hidden="true">✓</div>
-        <div>
-          <span>Bắt máy / gọi ra</span>
-          <strong id="kpiAnsweredOutbound">0/0</strong>
-          <small id="kpiAnsweredRate">0% tỉ lệ bắt máy</small>
-        </div>
-      </article>
-      <article class="kpi-card accent">
-        <div class="kpi-icon lead-icon" aria-hidden="true">♟</div>
-        <div>
-          <span>Lead cần tư vấn</span>
-          <strong id="kpiLeads">0</strong>
-          <small id="kpiLeadRate">0% trên tổng cuộc gọi</small>
-        </div>
-      </article>
-    </section>
-
-    <section class="admin-grid">
-      <aside class="side-panel">
+    <section class="top-controls" aria-label="Bộ lọc và gọi khách hàng">
+      <section class="control-card funnel-card">
         <div class="panel-heading">
           <h2>Phễu sales</h2>
         </div>
@@ -70,8 +35,10 @@
             <span>Chưa xác định</span><strong id="funnelUnknown">0</strong>
           </button>
         </div>
+      </section>
 
-        <div class="panel-heading compact">
+      <section class="control-card channel-card">
+        <div class="panel-heading">
           <h2>Kênh gọi</h2>
         </div>
         <div class="segment-control" aria-label="Lọc hướng cuộc gọi">
@@ -79,8 +46,10 @@
           <button class="segment" data-direction="inbound" type="button">Gọi vào</button>
           <button class="segment" data-direction="outbound" type="button">Gọi ra</button>
         </div>
+      </section>
 
-        <div class="panel-heading compact">
+      <section class="control-card call-card">
+        <div class="panel-heading">
           <h2>Gọi khách hàng</h2>
         </div>
         <form id="outboundCallForm" class="call-form">
@@ -88,19 +57,22 @@
             <span>Số khách hàng</span>
             <input id="toNumberInput" name="to_number" type="tel" placeholder="+84901234567" autocomplete="tel" required>
           </label>
-          <button id="startCallButton" class="call-button" type="submit">☎ Bắt đầu gọi</button>
+          <button id="startCallButton" class="call-button" type="submit">Bắt đầu gọi</button>
           <p id="outboundCallStatus" class="form-status" role="status"></p>
         </form>
+      </section>
+    </section>
 
-        <div class="panel-heading compact">
-          <h2>Đơn hàng AI</h2>
+    <section class="admin-grid">
+      <aside class="order-panel">
+        <div class="panel-heading">
+          <h2>Đơn hàng đã tạo</h2>
         </div>
         <div id="orderList" class="order-list" aria-live="polite"></div>
-
-        <div class="panel-heading compact">
-          <h2>Lịch sử gọi ra</h2>
+        <div class="panel-footer order-footer">
+          <span id="orderRange">0 đơn</span>
+          <div id="orderPager" class="pager" aria-label="Phân trang đơn hàng"></div>
         </div>
-        <div id="outboundRequestList" class="request-list" aria-live="polite"></div>
       </aside>
 
       <section class="work-panel">
@@ -127,6 +99,7 @@
 
         <div class="table-footer">
           <span id="visibleRange">Hiển thị 0 kết quả</span>
+          <div id="callPager" class="pager" aria-label="Phân trang cuộc gọi"></div>
         </div>
       </section>
 
