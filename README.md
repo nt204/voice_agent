@@ -19,7 +19,7 @@ docker compose up --build
 Mở dashboard:
 
 ```text
-http://localhost:3001
+http://localhost:3000/admin
 ```
 
 ## Endpoint chính
@@ -35,6 +35,6 @@ http://localhost:3001
 ## Ghi chú triển khai
 
 - App chạy trong container ở cổng `3000`.
-- Máy host mặc định mở ở `3001` để tránh đụng port local cũ.
+- Máy host mở cố định ở cổng `3000`.
 - Dữ liệu SQLite được lưu trong Docker volume `voice_app_data`.
 - Không commit API key thật trong `.env`.

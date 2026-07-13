@@ -7,7 +7,7 @@ services:
       DATABASE_URL: sqlite:////app/data/recordings.db
       CALL_RECORDINGS_DIR: /app/recordings
     ports:
-      - "${APP_PORT:-3001}:3000"
+      - "3000:3000"
     volumes:
       - app_data:/app/data
       - app_recordings:/app/recordings
