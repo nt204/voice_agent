@@ -32,12 +32,6 @@ const formatDay = value => value
   ? new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(new Date(value))
   : "";
 
-const formatDuration = seconds => {
-  const safe = Number.isFinite(seconds) ? seconds : 0;
-  const minutes = Math.floor(safe / 60);
-  return `${minutes}:${String(safe % 60).padStart(2, "0")}`;
-};
-
 const formatPercent = value => `${Math.round((value || 0) * 100)}%`;
 
 function interestLabel(status) {
@@ -92,7 +86,7 @@ async function loadDashboard() {
     const [summary, listing, outboundRequests] = await Promise.all([
       fetchJson("/api/admin/summary"),
       fetchJson(`/api/calls?${params}`),
-      fetchJson("/api/outbound/requests?limit=8"),
+      fetchJson("/api/outbound/requests?limit=100"),
     ]);
     renderSummary(summary.stats);
     state.calls = listing.calls;
@@ -113,14 +107,17 @@ async function loadDashboard() {
 function renderSummary(stats) {
   const interest = stats.interest_counts || {};
   const directions = stats.direction_counts || {};
+  const completedDirections = stats.completed_direction_counts || {};
+  const outboundCount = directions.outbound || 0;
+  const answeredOutbound = completedDirections.outbound || 0;
   document.querySelector("#kpiTotal").textContent = stats.total_calls || 0;
   document.querySelector("#kpiActive").textContent = `${stats.active_calls || 0} đang diễn ra`;
+  document.querySelector("#kpiOutbound").textContent = outboundCount;
+  document.querySelector("#kpiOutboundShare").textContent = `${formatPercent(ratio(outboundCount, stats.total_calls))} trên tổng cuộc gọi`;
+  document.querySelector("#kpiAnsweredOutbound").textContent = `${answeredOutbound}/${outboundCount}`;
+  document.querySelector("#kpiAnsweredRate").textContent = `${formatPercent(ratio(answeredOutbound, outboundCount))} tỉ lệ bắt máy`;
   document.querySelector("#kpiLeads").textContent = interest.needs_consultation || 0;
   document.querySelector("#kpiLeadRate").textContent = `${formatPercent(stats.lead_rate)} trên tổng cuộc gọi`;
-  document.querySelector("#kpiPhones").textContent = stats.contacts_with_phone || 0;
-  document.querySelector("#kpiContactRate").textContent = `${formatPercent(stats.contact_capture_rate)} tỉ lệ thu thập`;
-  document.querySelector("#kpiDuration").textContent = formatDuration(stats.avg_duration_seconds || 0);
-  document.querySelector("#kpiMessages").textContent = `${stats.avg_messages_per_call || 0} tin nhắn mỗi cuộc gọi`;
 
   document.querySelector("#funnelAll").textContent = stats.total_calls || 0;
   document.querySelector("#funnelHot").textContent = interest.needs_consultation || 0;
@@ -128,6 +125,10 @@ function renderSummary(stats) {
   document.querySelector("#funnelUnknown").textContent = interest.unknown || 0;
   document.querySelector("#resultCount").textContent =
     `${directions.inbound || 0} gọi vào, ${directions.outbound || 0} gọi ra`;
+}
+
+function ratio(value, total) {
+  return total ? value / total : 0;
 }
 
 function renderCalls(calls) {
@@ -186,7 +187,7 @@ function requestStatusLabel(status) {
 function renderOutboundRequests(requests) {
   if (!outboundRequestList) return;
   if (!requests.length) {
-    outboundRequestList.innerHTML = '<div class="request-state">Chưa có yêu cầu gọi ra.</div>';
+    outboundRequestList.innerHTML = '<div class="request-state">Chưa có dữ liệu</div>';
     return;
   }
 
@@ -222,7 +223,7 @@ function renderDetail(call) {
     ? call.transcript.map(item => `
         <div class="message ${escapeHtml(item.speaker)}">
           <span>${item.speaker === "customer" ? "Khách hàng" : "AI tư vấn"}</span>
-          <p>${escapeHtml(item.text)}</p>
+          <p dir="auto">${escapeHtml(item.text)}</p>
         </div>`).join("")
     : '<div class="list-state">Chưa có transcript.</div>';
 
@@ -242,31 +243,12 @@ function renderDetail(call) {
       <div class="wide"><span>Địa chỉ</span><strong>${field(customer.address)}</strong></div>
     </div>
 
-    <div class="sales-notes">
-      <h3>Gợi ý xử lý</h3>
-      <p>${nextAction(call)}</p>
-    </div>
-
     <h3 class="section-title">Transcript</h3>
-    <div class="transcript">${transcript}</div>
-    <form class="reply-box">
-      <textarea aria-label="Nhập nội dung" placeholder="Nhập nội dung..." disabled></textarea>
-      <button type="button" disabled>Gửi</button>
-    </form>`;
-}
-
-function nextAction(call) {
-  const customer = call.customer || {};
-  if (call.interest_status === "needs_consultation" && customer.phone) {
-    return "Lead nóng đã có số điện thoại. Nên gọi lại hoặc chuyển cho nhân viên chốt đơn trong ngày.";
-  }
-  if (call.interest_status === "needs_consultation") {
-    return "Lead có nhu cầu nhưng thiếu số điện thoại. Cần ưu tiên kịch bản thu thập thông tin liên hệ.";
-  }
-  if (call.interest_status === "no_need") {
-    return "Khách chưa có nhu cầu. Đưa vào nhóm chăm sóc lại, tránh gọi dồn quá sớm.";
-  }
-  return "Chưa rõ intent. Nên rà transcript để cải thiện prompt hoặc kịch bản hỏi nhu cầu.";
+    <div class="transcript">${transcript}</div>`;
+  requestAnimationFrame(() => {
+    const transcriptEl = detailPanel.querySelector(".transcript");
+    if (transcriptEl) transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  });
 }
 
 document.querySelectorAll(".funnel-item").forEach(button => {

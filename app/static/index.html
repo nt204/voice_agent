@@ -8,6 +8,14 @@
 </head>
 <body>
   <main class="dashboard-shell">
+    <header class="app-header">
+      <div>
+        <h1>Voice AI Sales</h1>
+        <span id="syncStatus">Đang tải</span>
+      </div>
+      <button id="refreshButton" class="icon-button" type="button" aria-label="Làm mới">↻</button>
+    </header>
+
     <section class="kpi-grid" aria-label="Chỉ số chính">
       <article class="kpi-card">
         <div class="kpi-icon phone-icon" aria-hidden="true">☎</div>
@@ -15,6 +23,22 @@
           <span>Tổng cuộc gọi</span>
           <strong id="kpiTotal">0</strong>
           <small id="kpiActive">0 đang diễn ra</small>
+        </div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-icon file-icon" aria-hidden="true">↗</div>
+        <div>
+          <span>Cuộc gọi đi</span>
+          <strong id="kpiOutbound">0</strong>
+          <small id="kpiOutboundShare">0% trên tổng cuộc gọi</small>
+        </div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-icon time-icon" aria-hidden="true">✓</div>
+        <div>
+          <span>Bắt máy / gọi ra</span>
+          <strong id="kpiAnsweredOutbound">0/0</strong>
+          <small id="kpiAnsweredRate">0% tỉ lệ bắt máy</small>
         </div>
       </article>
       <article class="kpi-card accent">
@@ -25,29 +49,12 @@
           <small id="kpiLeadRate">0% trên tổng cuộc gọi</small>
         </div>
       </article>
-      <article class="kpi-card">
-        <div class="kpi-icon file-icon" aria-hidden="true">▣</div>
-        <div>
-          <span>Số điện thoại thu thập</span>
-          <strong id="kpiPhones">0</strong>
-          <small id="kpiContactRate">0% tỉ lệ thu thập</small>
-        </div>
-      </article>
-      <article class="kpi-card">
-        <div class="kpi-icon time-icon" aria-hidden="true">◷</div>
-        <div>
-          <span>Thời lượng TB</span>
-          <strong id="kpiDuration">0:00</strong>
-          <small id="kpiMessages">0 tin nhắn mỗi cuộc gọi</small>
-        </div>
-      </article>
     </section>
 
     <section class="admin-grid">
       <aside class="side-panel">
         <div class="panel-heading">
           <h2>Phễu sales</h2>
-          <p>Nhìn nhanh chất lượng lead và hướng xử lý tiếp theo.</p>
         </div>
         <div class="funnel-list">
           <button class="funnel-item active" data-interest="" type="button">
@@ -75,14 +82,12 @@
 
         <div class="panel-heading compact">
           <h2>Gọi khách hàng</h2>
-          <p>Nhập số khách hàng, hệ thống tự dùng số gọi đi đã cấu hình.</p>
         </div>
         <form id="outboundCallForm" class="call-form">
           <label class="phone-field">
             <span>Số khách hàng</span>
             <input id="toNumberInput" name="to_number" type="tel" placeholder="+84901234567" autocomplete="tel" required>
           </label>
-          <small class="form-hint">Số gọi đi đã được cấu hình sẵn trên server.</small>
           <button id="startCallButton" class="call-button" type="submit">Bắt đầu gọi</button>
           <p id="outboundCallStatus" class="form-status" role="status"></p>
         </form>
@@ -101,7 +106,6 @@
           </label>
           <div class="toolbar-meta">
             <span id="resultCount">0 kết quả</span>
-            <span class="filter-mark" aria-hidden="true">≡</span>
           </div>
         </div>
 
@@ -118,11 +122,6 @@
 
         <div class="table-footer">
           <span id="visibleRange">Hiển thị 0 kết quả</span>
-          <div class="pager" aria-hidden="true">
-            <button type="button">‹</button>
-            <strong>1</strong>
-            <button type="button">›</button>
-          </div>
         </div>
       </section>
 
@@ -130,7 +129,6 @@
         <div class="empty-state">
           <div class="empty-mark" aria-hidden="true"></div>
           <h2>Chọn một lead</h2>
-          <p>Thông tin khách hàng, transcript và tín hiệu chốt sales sẽ hiển thị tại đây.</p>
         </div>
       </aside>
     </section>
@@ -141,8 +139,7 @@
   </template>
   <template id="emptyTemplate">
     <div class="list-state">
-      <strong>Chưa có cuộc gọi phù hợp</strong>
-      <span>Thử đổi bộ lọc hoặc chờ cuộc gọi mới từ hệ thống AI.</span>
+      <strong>Chưa có cuộc gọi</strong>
     </div>
   </template>
   <script src="/static/dashboard.js" defer></script>

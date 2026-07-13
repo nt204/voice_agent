@@ -15,6 +15,12 @@ SendAudio = Callable[[bytes], Awaitable[None]]
 TranscriptHandler = Callable[[str, str], Awaitable[None] | None]
 
 
+class _AudioTranscriptionConfig(types.AudioTranscriptionConfig):
+    @property
+    def language_codes(self) -> None:
+        return None
+
+
 def _automatic_activity_detection(explicit_vad: bool) -> types.AutomaticActivityDetection:
     if explicit_vad:
         return types.AutomaticActivityDetection(disabled=True)
@@ -39,7 +45,7 @@ def _speech_config() -> types.SpeechConfig:
 
 
 def _audio_transcription_config() -> types.AudioTranscriptionConfig:
-    return types.AudioTranscriptionConfig()
+    return _AudioTranscriptionConfig()
 
 
 class GeminiCallBridge:

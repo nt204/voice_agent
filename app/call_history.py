@@ -459,6 +459,7 @@ class CallHistoryStore:
         completed_calls = sum(1 for call in calls if call["status"] == "completed")
         active_calls = sum(1 for call in calls if call["status"] == "active")
         direction_counts = {"inbound": 0, "outbound": 0}
+        completed_direction_counts = {"inbound": 0, "outbound": 0}
         interest_counts = {status: 0 for status in INTEREST_STATUSES}
         provider_counts: dict[str, int] = {}
         contacts_with_phone = 0
@@ -477,6 +478,8 @@ class CallHistoryStore:
             if call["customer"]["need"]:
                 contacts_with_need += 1
             if call["status"] == "completed":
+                if call["direction"] in completed_direction_counts:
+                    completed_direction_counts[call["direction"]] += 1
                 total_duration += call["duration_seconds"]
                 completed_with_duration += 1
 
@@ -487,6 +490,7 @@ class CallHistoryStore:
             "active_calls": active_calls,
             "completed_calls": completed_calls,
             "direction_counts": direction_counts,
+            "completed_direction_counts": completed_direction_counts,
             "interest_counts": interest_counts,
             "provider_counts": provider_counts,
             "contacts_with_phone": contacts_with_phone,
