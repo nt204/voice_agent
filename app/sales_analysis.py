@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from typing import Any
 
 
@@ -16,11 +17,63 @@ PRODUCT_CATALOG = {
     }
 }
 
+COMBO_CATALOG = {
+    1: {
+        "name": "Venus BigOne Combo 1",
+        "quantity": 1,
+        "unit_price": 120000,
+        "total_price": 120000,
+    },
+    2: {
+        "name": "Venus BigOne Combo 2",
+        "quantity": 2,
+        "unit_price": 105000,
+        "total_price": 210000,
+    },
+    3: {
+        "name": "Venus BigOne Combo 3",
+        "quantity": 3,
+        "unit_price": 130000,
+        "total_price": 390000,
+    },
+    5: {
+        "name": "Venus BigOne Combo 5",
+        "quantity": 5,
+        "unit_price": 126000,
+        "total_price": 630000,
+    },
+}
+
 MISSING_ORDER_FIELDS = ("product_name", "quantity", "customer_phone", "shipping_address")
 EXTRA_DIGITS = str.maketrans(
     "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩၀၁၂۳۴۵۶۷۸۹",
     "012345678901234567890123456789",
 )
+EXTRA_DIGITS = str.maketrans(
+    {
+        **{ord(char): str(index) for index, char in enumerate("\u06f0\u06f1\u06f2\u06f3\u06f4\u06f5\u06f6\u06f7\u06f8\u06f9")},
+        **{ord(char): str(index) for index, char in enumerate("\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669")},
+        **{ord(char): str(index) for index, char in enumerate("\u1040\u1041\u1042\u1043\u1044\u1045\u1046\u1047\u1048\u1049")},
+    }
+)
+NUMBER_WORDS = {
+    "mot": 1,
+    "one": 1,
+    "hai": 2,
+    "two": 2,
+    "ba": 3,
+    "three": 3,
+    "bon": 4,
+    "tu": 4,
+    "four": 4,
+    "nam": 5,
+    "five": 5,
+    "တစ်": 1,
+    "နှစ်": 2,
+    "သုံး": 3,
+    "လေး": 4,
+    "ငါး": 5,
+}
 
 
 def _customer_text(transcript: list[dict[str, Any]]) -> str:
@@ -40,8 +93,24 @@ def _normalize_digits(value: str) -> str:
     return value.translate(EXTRA_DIGITS)
 
 
+def _fold_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFD", _normalize_digits(value))
+    without_marks = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
+    return without_marks.replace("đ", "d").replace("Đ", "D").casefold()
+
+
 def _contains_any(text: str, tokens: tuple[str, ...]) -> bool:
     return any(token in text for token in tokens)
+
+
+def _number_value(value: str | None) -> int | None:
+    if not value:
+        return None
+    normalized = _fold_text(value).strip()
+    if normalized.isdigit():
+        parsed = int(normalized)
+        return parsed if parsed > 0 else None
+    return NUMBER_WORDS.get(normalized)
 
 
 def _extract_phone(text: str) -> str:
@@ -59,7 +128,7 @@ def _extract_phone(text: str) -> str:
 
 def _extract_address(text: str) -> str:
     patterns = (
-        r"လိပ်စာ\s*(?:က|မှာ|သည်|:)?\s*(.+?)(?=[။;]|\s*(?:ဖုန်း|ဝယ်ချင်|လိုချင်|မှာမယ်)|$)",
+        r"(?:လိပ်စာ|ပို့ရမယ့်လိပ်စာ|ပို့ရန်လိပ်စာ|နေရပ်လိပ်စာ|ပို့ပေးရမယ့်နေရာ|နေရာ)\s*(?:က|မှာ|သည်|:)?\s*(.+?)(?=[။;]|\s*(?:ဖုန်း|ဝယ်ချင်|လိုချင်|မှာမယ်|မှာယူမယ်)|$)",
         r"(?:address|dia chi)\s*(?:la|is|:)?\s*(.+?)(?=[.;]|\s+(?:phone|so dien thoai|toi muon|toi can)\b|$)",
     )
     for pattern in patterns:
@@ -73,27 +142,70 @@ def _extract_quantity(text: str) -> int | None:
     match = re.search(r"([\d۰-۹٠-٩۰-۹]+)\s*(?:ဘူး|ဗူး|hop|bo|box)", text, flags=re.IGNORECASE)
     if match:
         return int(_normalize_digits(match.group(1)))
-    for word, value in {
-        "mot": 1,
-        "hai": 2,
-        "ba": 3,
-        "bon": 4,
-        "nam": 5,
-        "တစ်": 1,
-        "နှစ်": 2,
-        "သုံး": 3,
-        "လေး": 4,
-        "ငါး": 5,
-    }.items():
+    for word, value in NUMBER_WORDS.items():
         if re.search(rf"{word}\s*(?:ဘူး|ဗူး|hop|bo|box)", text, flags=re.IGNORECASE):
             return value
+    folded = _fold_text(text)
+    number_pattern = r"(\d+|mot|hai|ba|bon|tu|nam|one|two|three|four|five)"
+    patterns = (
+        rf"\b{number_pattern}\s*(?:hop|bo|box|combo)\b",
+        rf"\b(?:toi\s+)?(?:mua|dat|lay|chot|order|buy|purchase)\s+{number_pattern}\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, folded, flags=re.IGNORECASE)
+        if match:
+            value = _number_value(match.group(1))
+            if value:
+                return value
+    combo = _extract_combo(text)
+    if combo and _has_buy_intent(text):
+        return int(combo["quantity"])
     return None
 
 
 def _has_buy_intent(text: str) -> bool:
-    if _contains_any(text, ("ဝယ်ချင်", "ဝယ်မယ်", "ယူမယ်", "မှာမယ်", "အော်ဒါ")):
+    if _contains_any(
+        text,
+        (
+            "ဝယ်ချင်",
+            "ဝယ်မယ်",
+            "ဝယ်ယူမယ်",
+            "ယူမယ်",
+            "ယူချင်",
+            "မှာမယ်",
+            "မှာယူမယ်",
+            "မှာချင်",
+            "အော်ဒါ",
+        ),
+    ):
         return True
-    return bool(re.search(r"\b(?:mua|dat|lay|chot|order|buy|purchase)\b", text, flags=re.IGNORECASE))
+    folded = _fold_text(text)
+    return bool(re.search(r"\b(?:mua|dat|lay|chot|order|buy|purchase)\b", folded, flags=re.IGNORECASE))
+
+
+def _extract_combo(text: str) -> dict[str, Any] | None:
+    normalized = _normalize_digits(text)
+    myanmar_match = re.search(
+        r"(?:ကွန်ဘို|combo)\s*(?:နံပါတ်|အမှတ်|#|no\.?)?\s*([0-9]+|တစ်|နှစ်|သုံး|လေး|ငါး)",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    if myanmar_match:
+        combo_number = _number_value(myanmar_match.group(1))
+        if combo_number:
+            return COMBO_CATALOG.get(combo_number)
+
+    folded = _fold_text(text)
+    number_pattern = r"(\d+|mot|hai|ba|bon|tu|nam|one|two|three|four|five)"
+    match = re.search(rf"\bcombo\s*(?:so|number|#)?\s*{number_pattern}\b", folded)
+    if not match:
+        match = re.search(r"Combo\s*([0-9]+)", _normalize_digits(text), flags=re.IGNORECASE)
+    if not match:
+        return None
+    combo_number = _number_value(match.group(1))
+    if not combo_number:
+        return None
+    return COMBO_CATALOG.get(combo_number)
 
 
 def _extract_product(text: str) -> dict[str, Any] | None:
@@ -145,6 +257,10 @@ def _extract_objection(text: str) -> str:
             "စျေးနည်းနည်းများ",
             "ဈေးများ",
             "စျေးများ",
+            "ဈေးကြီး",
+            "စျေးကြီး",
+            "စျေးမြင့်",
+            "ဈေးမြင့်",
         ),
     ):
         return "price"
@@ -158,7 +274,20 @@ def _extract_objection(text: str) -> str:
 
 
 def _intent_status(text: str, *, quantity: int | None, phone: str, address: str) -> str:
-    if _contains_any(text, ("မလိုချင်", "မဝယ်ချင်", "မလိုအပ်", "စိတ်မဝင်စား")):
+    if _contains_any(
+        text,
+        (
+            "မလိုချင်",
+            "မဝယ်ချင်",
+            "မလိုအပ်",
+            "မလိုဘူး",
+            "မလိုပါ",
+            "မယူတော့",
+            "မမှာတော့",
+            "စိတ်မဝင်စား",
+            "စိတ်မပါ",
+        ),
+    ):
         return "no_need"
     if re.search(
         r"\b(?:khong can|khong muon|khong quan tam|chua co nhu cau|not interested|no need)\b",
@@ -166,9 +295,9 @@ def _intent_status(text: str, *, quantity: int | None, phone: str, address: str)
         flags=re.IGNORECASE,
     ):
         return "no_need"
-    if _has_buy_intent(text) and (quantity or phone or address):
+    if _has_buy_intent(text):
         return "ready_to_order"
-    if _contains_any(text, ("စဉ်းစား", "မသေချာ", "တိုင်ပင်", "ဆုံးဖြတ်")):
+    if _contains_any(text, ("စဉ်းစား", "စဥ်းစား", "မသေချာ", "တိုင်ပင်", "ဆုံးဖြတ်")):
         return "considering"
     if re.search(
         r"\b(?:phan van|suy nghi|can nhac|hoi nguoi nha|chua chac|thinking|considering|not sure)\b",
@@ -191,11 +320,12 @@ def _intent_status(text: str, *, quantity: int | None, phone: str, address: str)
     return "unknown"
 
 
-def analyze_call(transcript: list[dict[str, Any]]) -> dict[str, Any]:
+def analyze_call(transcript: list[dict[str, Any]], fallback_phone: str = "") -> dict[str, Any]:
     text = _customer_text(transcript)
-    phone = _extract_phone(text)
+    phone = _extract_phone(text) or fallback_phone
     address = _extract_address(text)
     quantity = _extract_quantity(text)
+    combo = _extract_combo(text)
     product = _extract_product(text)
     age_range, age_confidence = _extract_age_range(text)
     gender, gender_confidence = _extract_gender(text)
@@ -215,8 +345,10 @@ def analyze_call(transcript: list[dict[str, Any]]) -> dict[str, Any]:
 
     order = None
     if intent_status == "ready_to_order":
-        product_name = product["name"] if product else ""
-        unit_price = int(product["unit_price"]) if product else 0
+        product_name = combo["name"] if combo else product["name"] if product else ""
+        quantity = int(combo["quantity"]) if combo and not quantity else quantity
+        unit_price = int(combo["unit_price"]) if combo else int(product["unit_price"]) if product else 0
+        total_price = int(combo["total_price"]) if combo else unit_price * (quantity or 0)
         missing_fields = []
         if not product_name:
             missing_fields.append("product_name")
@@ -234,7 +366,7 @@ def analyze_call(transcript: list[dict[str, Any]]) -> dict[str, Any]:
             "product_name": product_name,
             "quantity": quantity or 0,
             "unit_price": unit_price,
-            "total_price": unit_price * (quantity or 0),
+            "total_price": total_price,
             "status": status,
             "missing_fields": missing_fields,
             "confidence": 0.9 if status == "ready_to_confirm" else 0.65,

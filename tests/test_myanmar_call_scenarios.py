@@ -81,12 +81,16 @@ SCENARIOS = [
 
 
 def _run_scenario(store: CallHistoryStore, scenario: dict) -> dict:
+    return _run_scenario_with_direction(store, scenario, "outbound")
+
+
+def _run_scenario_with_direction(store: CallHistoryStore, scenario: dict, direction: str) -> dict:
     call_id = scenario["id"]
     store.start_call(
         call_id=call_id,
-        direction="outbound",
+        direction=direction,
         provider="scenario-test",
-        customer_phone="",
+        customer_phone=scenario.get("customer_phone", ""),
     )
     for speaker, text in scenario["turns"]:
         store.add_transcript(call_id, speaker, text)
@@ -132,3 +136,123 @@ def test_myanmar_customer_scenarios_cover_real_sales_outcomes(tmp_path: Path):
             assert call["analysis"]["age_range"] == expected["age_range"], scenario["id"]
         if expected.get("objection"):
             assert call["analysis"]["objection"] == expected["objection"], scenario["id"]
+
+
+MYANMAR_PARSER_CASES = [
+    {
+        "id": "my-parser-combo-2-complete",
+        "customer_phone": "",
+        "turns": [
+            ("agent", "Venus BigOne ကို ဘယ်လိုကူညီပေးရမလဲရှင်။"),
+            (
+                "customer",
+                "ကွန်ဘို ၂ မှာယူမယ်။ ဖုန်း ၀၉၆၁၆၉၅၄၄၈ ပါ။ လိပ်စာ Mandalay Chan Aye Tharzan ပါ။ အသက် ၂၈ အမျိုးသမီးပါ။",
+            ),
+        ],
+        "expected": {
+            "intent_status": "ready_to_order",
+            "order_status": "ready_to_confirm",
+            "product_name": "Venus BigOne Combo 2",
+            "quantity": 2,
+            "phone": "0961695448",
+            "address": "Mandalay Chan Aye Tharzan",
+            "total_price": 210000,
+            "gender": "female",
+            "age_range": "25-34",
+        },
+    },
+    {
+        "id": "my-parser-combo-1-missing-address",
+        "customer_phone": "+959771234567",
+        "turns": [
+            ("agent", "Combo အကြောင်း မေးလို့ရပါတယ်ရှင်။"),
+            ("customer", "ကွန်ဘို နံပါတ် ၁ ယူမယ်။ စျေးဘယ်လောက်လဲ။"),
+        ],
+        "expected": {
+            "intent_status": "ready_to_order",
+            "order_status": "missing_info",
+            "product_name": "Venus BigOne Combo 1",
+            "quantity": 1,
+            "phone": "+959771234567",
+            "total_price": 120000,
+            "missing_fields": ["shipping_address"],
+        },
+    },
+    {
+        "id": "my-parser-regular-two-boxes",
+        "customer_phone": "",
+        "turns": [
+            ("agent", "နို့မှုန့်မှာယူချင်ရင် ပြောပေးပါရှင်။"),
+            (
+                "customer",
+                "Venus နို့မှုန့် နှစ်ဘူး ဝယ်ယူမယ်။ ဖုန်း ၀၉၇၇၇၇၇၇၇၇၇ ပါ။ ပို့ရန်လိပ်စာ Yangon Hlaing ပါ။",
+            ),
+        ],
+        "expected": {
+            "intent_status": "ready_to_order",
+            "order_status": "ready_to_confirm",
+            "product_name": "Venus BigOne",
+            "quantity": 2,
+            "phone": "09777777777",
+            "address": "Yangon Hlaing",
+            "total_price": 240000,
+        },
+    },
+    {
+        "id": "my-parser-price-only-no-order",
+        "customer_phone": "+959771234567",
+        "turns": [
+            ("agent", "မင်္ဂလာပါရှင်။"),
+            ("customer", "ကွန်ဘို ၂ စျေး ဘယ်လောက်လဲ။"),
+        ],
+        "expected": {
+            "intent_status": "price_checking",
+            "order_status": None,
+        },
+    },
+    {
+        "id": "my-parser-not-interested",
+        "customer_phone": "+959771234567",
+        "turns": [
+            ("agent", "Venus BigOne အကြောင်း မိတ်ဆက်ပေးပါမယ်ရှင်။"),
+            ("customer", "မလိုဘူး။ စိတ်မဝင်စားပါဘူး။"),
+        ],
+        "expected": {
+            "intent_status": "no_need",
+            "order_status": None,
+        },
+    },
+]
+
+
+def test_myanmar_parser_cases_cover_inbound_and_outbound(tmp_path: Path):
+    store = CallHistoryStore(tmp_path / "call_history.db")
+
+    for direction in ("inbound", "outbound"):
+        for base_case in MYANMAR_PARSER_CASES:
+            case = {**base_case, "id": f"{direction}-{base_case['id']}"}
+            call = _run_scenario_with_direction(store, case, direction)
+            expected = case["expected"]
+
+            assert call["direction"] == direction, case["id"]
+            assert call["analysis"]["intent_status"] == expected["intent_status"], case["id"]
+            order_status = call["order"]["status"] if call["order"] else None
+            assert order_status == expected["order_status"], case["id"]
+
+            if expected.get("product_name"):
+                assert call["order"]["product_name"] == expected["product_name"], case["id"]
+            if expected.get("quantity"):
+                assert call["order"]["quantity"] == expected["quantity"], case["id"]
+            if expected.get("phone"):
+                assert call["order"]["customer_phone"] == expected["phone"], case["id"]
+            if expected.get("address"):
+                assert call["customer"]["address"] == expected["address"], case["id"]
+                assert call["order"]["shipping_address"] == expected["address"], case["id"]
+            if expected.get("total_price"):
+                assert call["order"]["total_price"] == expected["total_price"], case["id"]
+            if expected.get("missing_fields"):
+                assert call["order"]["missing_fields"] == expected["missing_fields"], case["id"]
+            if expected.get("gender"):
+                assert call["analysis"]["gender"] == expected["gender"], case["id"]
+            if expected.get("age_range"):
+                assert call["analysis"]["age_range"] == expected["age_range"], case["id"]

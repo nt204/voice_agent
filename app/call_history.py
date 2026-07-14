@@ -22,6 +22,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.engine import Connection, Engine
 
+from app.order_extraction import analyze_call_with_gemini
 from app.sales_analysis import analyze_call
 
 
@@ -125,6 +126,10 @@ Index("idx_orders_call_id", orders_table.c.call_id)
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _parse_iso_datetime(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def _clean(value: str) -> str:
@@ -622,7 +627,13 @@ class SQLiteCallHistoryStore:
             return
         extracted = extract_customer_info(call["transcript"])
         interest_status = classify_customer_interest(call["transcript"])
-        sales_result = analyze_call(call["transcript"])
+        fallback_phone = call["customer"]["phone"]
+        sales_result = analyze_call(call["transcript"], fallback_phone=fallback_phone)
+        sales_result = analyze_call_with_gemini(
+            call["transcript"],
+            fallback_phone=fallback_phone,
+            fallback_result=sales_result,
+        )
         sales_customer = sales_result["customer"]
         phone = extracted["phone"] or call["customer"]["phone"]
         phone = sales_customer["phone"] or phone
@@ -876,8 +887,8 @@ class SQLiteCallHistoryStore:
         ended_at = row["ended_at"]
         duration_seconds = 0
         if ended_at:
-            started = datetime.fromisoformat(row["started_at"])
-            ended = datetime.fromisoformat(ended_at)
+            started = _parse_iso_datetime(row["started_at"])
+            ended = _parse_iso_datetime(ended_at)
             duration_seconds = max(0, int((ended - started).total_seconds()))
         return {
             "id": row["id"],

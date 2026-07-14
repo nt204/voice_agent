@@ -104,3 +104,22 @@ def test_store_accepts_database_url_and_migrates_sqlite_history(tmp_path):
     assert call["transcript"][0]["text"] == "မင်္ဂလာပါ"
 
     assert target.migrate_from_sqlite(source_path) == {}
+
+
+def test_vietnamese_combo_buy_intent_creates_missing_info_order(tmp_path):
+    store = CallHistoryStore(tmp_path / "call_history.db")
+    store.start_call("combo-call", "outbound", "telnyx", "+84961695448")
+    store.add_transcript("combo-call", "customer", "အင်း 응. Tôi mua một combo số một. là bao nhiêu tiền?")
+
+    store.finish_call("combo-call")
+
+    call = store.get_call("combo-call")
+    assert call is not None
+    assert call["analysis"]["intent_status"] == "ready_to_order"
+    assert call["order"] is not None
+    assert call["order"]["status"] == "missing_info"
+    assert call["order"]["customer_phone"] == "+84961695448"
+    assert call["order"]["product_name"] == "Venus BigOne Combo 1"
+    assert call["order"]["quantity"] == 1
+    assert call["order"]["total_price"] == 120000
+    assert call["order"]["missing_fields"] == ["shipping_address"]

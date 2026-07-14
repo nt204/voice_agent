@@ -19,6 +19,7 @@ from app.call_history import (
     outbound_requests_table,
     transcripts_table,
 )
+from app.order_extraction import analyze_call_with_gemini
 from app.sales_analysis import analyze_call
 
 
@@ -308,7 +309,13 @@ class SqlAlchemyCallHistoryStore:
             return
         extracted = extract_customer_info(call["transcript"])
         interest_status = classify_customer_interest(call["transcript"])
-        sales_result = analyze_call(call["transcript"])
+        fallback_phone = call["customer"]["phone"]
+        sales_result = analyze_call(call["transcript"], fallback_phone=fallback_phone)
+        sales_result = analyze_call_with_gemini(
+            call["transcript"],
+            fallback_phone=fallback_phone,
+            fallback_result=sales_result,
+        )
         sales_customer = sales_result["customer"]
         phone = sales_customer["phone"] or extracted["phone"] or call["customer"]["phone"]
         address = extracted["address"] or sales_customer["address"]
