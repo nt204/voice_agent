@@ -2,6 +2,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from app.logging_utils import log
+
 from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.engine import Connection
 
@@ -303,6 +305,40 @@ class SqlAlchemyCallHistoryStore:
                 )
             )
 
+    def update_customer_transcript_by_index(
+        self, call_id: str, customer_turn_index: int, new_text: str
+    ) -> None:
+        clean_text = new_text.strip()
+        if not clean_text:
+            return
+        with self._lock, self.engine.begin() as connection:
+            subq = (
+                select(transcripts_table.c.id)
+                .where(
+                    transcripts_table.c.call_id == call_id,
+                    transcripts_table.c.speaker == "customer",
+                )
+                .order_by(transcripts_table.c.id.asc())
+                .limit(1)
+                .offset(customer_turn_index)
+            )
+            t_id = connection.scalar(subq)
+            if t_id is not None:
+                connection.execute(
+                    transcripts_table.update()
+                    .where(transcripts_table.c.id == t_id)
+                    .values(text=clean_text)
+                )
+            else:
+                connection.execute(
+                    transcripts_table.insert().values(
+                        call_id=call_id,
+                        speaker="customer",
+                        text=clean_text,
+                        created_at=_now(),
+                    )
+                )
+
     def finish_call(self, call_id: str) -> None:
         call = self.get_call(call_id)
         if not call:
@@ -317,6 +353,13 @@ class SqlAlchemyCallHistoryStore:
             fallback_result=sales_result,
         )
         sales_customer = sales_result["customer"]
+        log(
+            f"[{call_id}] finish_call extraction: "
+            f"gemini_address='{sales_customer.get('address', '')}' "
+            f"regex_address='{extracted.get('address', '')}' "
+            f"intent={sales_result.get('analysis', {}).get('intent_status', '?')} "
+            f"order={sales_result.get('order') is not None}"
+        )
         phone = sales_customer["phone"] or extracted["phone"] or call["customer"]["phone"]
         address = extracted["address"] or sales_customer["address"]
         need = extracted["need"] or sales_customer["need"]
@@ -420,6 +463,10 @@ class SqlAlchemyCallHistoryStore:
         now = _now()
         analysis = result["analysis"]
         customer = result["customer"]
+        gender = customer.get("gender", "unknown")
+        gender_confidence = customer.get("gender_confidence", 0.0)
+        age_range = customer.get("age_range", "unknown")
+        age_confidence = customer.get("age_confidence", 0.0)
         connection.execute(
             text(
                 """
@@ -451,10 +498,10 @@ class SqlAlchemyCallHistoryStore:
             {
                 "call_id": call_id,
                 **analysis,
-                "gender": customer["gender"],
-                "gender_confidence": customer["gender_confidence"],
-                "age_range": customer["age_range"],
-                "age_confidence": customer["age_confidence"],
+                "gender": gender,
+                "gender_confidence": gender_confidence,
+                "age_range": age_range,
+                "age_confidence": age_confidence,
                 "created_at": now,
                 "updated_at": now,
             },

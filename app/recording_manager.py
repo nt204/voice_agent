@@ -9,7 +9,7 @@ from app.call_recording import _recording_root
 from app.database import CallIntentRow, CallRecordingRow, db_session
 
 
-RECORDING_DIRECTIONS = {"inbound", "outbound", "logs"}
+RECORDING_DIRECTIONS = {"inbound", "outbound", "mixed", "logs"}
 
 
 def recordings_root() -> Path:
@@ -46,7 +46,7 @@ def delete_recording(recording_id: str) -> int:
         row = session.get(CallRecordingRow, Path(recording_id).name)
         if row:
             row_found = True
-            for raw_path in (row.inbound_path, row.outbound_path, row.log_path):
+            for raw_path in (row.inbound_path, row.outbound_path, row.mixed_path, row.log_path):
                 path = Path(raw_path)
                 if path.exists():
                     path.unlink()
@@ -64,7 +64,7 @@ def cleanup_recordings(days: int) -> dict[str, int]:
             select(CallRecordingRow).where(CallRecordingRow.started_at < cutoff)
         ).all()
         for row in rows:
-            for raw_path in (row.inbound_path, row.outbound_path, row.log_path):
+            for raw_path in (row.inbound_path, row.outbound_path, row.mixed_path, row.log_path):
                 path = Path(raw_path)
                 if path.exists():
                     path.unlink()
@@ -79,8 +79,9 @@ def storage_summary() -> dict:
         count = session.scalar(select(func.count()).select_from(CallRecordingRow)) or 0
         inbound = session.scalar(select(func.coalesce(func.sum(CallRecordingRow.inbound_bytes), 0))) or 0
         outbound = session.scalar(select(func.coalesce(func.sum(CallRecordingRow.outbound_bytes), 0))) or 0
+        mixed = session.scalar(select(func.coalesce(func.sum(CallRecordingRow.mixed_bytes), 0))) or 0
         logs = session.scalar(select(func.coalesce(func.sum(CallRecordingRow.log_bytes), 0))) or 0
-    total_bytes = int(inbound + outbound + logs)
+    total_bytes = int(inbound + outbound + mixed + logs)
     return {
         "count": int(count),
         "total_bytes": total_bytes,
@@ -89,7 +90,7 @@ def storage_summary() -> dict:
 
 
 def _recording_item(row: CallRecordingRow, intent: CallIntentRow | None = None) -> dict:
-    total_bytes = int(row.inbound_bytes + row.outbound_bytes + row.log_bytes)
+    total_bytes = int(row.inbound_bytes + row.outbound_bytes + row.mixed_bytes + row.log_bytes)
     latest = row.ended_at or row.started_at
     return {
         "id": row.id,
@@ -111,11 +112,13 @@ def _recording_item(row: CallRecordingRow, intent: CallIntentRow | None = None) 
         "files": {
             "inbound": _file_info(Path(row.inbound_path), "inbound"),
             "outbound": _file_info(Path(row.outbound_path), "outbound"),
+            "mixed": _file_info(Path(row.mixed_path), "mixed") if row.mixed_path else None,
             "log": _file_info(Path(row.log_path), "logs"),
         },
         "sizes": {
             "inbound": row.inbound_bytes,
             "outbound": row.outbound_bytes,
+            "mixed": row.mixed_bytes,
             "log": row.log_bytes,
         },
         "total_bytes": total_bytes,

@@ -1,0 +1,221 @@
+{
+  "id": "call-sim-myanmar-1784021093",
+  "direction": "inbound",
+  "provider": "telnyx",
+  "status": "active",
+  "interest_status": "unknown",
+  "started_at": "2026-07-14T09:24:53+00:00",
+  "ended_at": null,
+  "duration_seconds": 0,
+  "customer": {
+    "name": "",
+    "phone": "+85961695448",
+    "address": "",
+    "need": "",
+    "notes": ""
+  },
+  "transcript": [
+    {
+      "speaker": "agent",
+      "text": "မင်္ဂလာပါ။ ဆိုင်ရဲ့",
+      "created_at": "2026-07-14T09:24:55+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အကြံပေးအကူအညီဖြစ်ပါတယ်။",
+      "created_at": "2026-07-14T09:24:55+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဘယ်လိုကူညီပေးရမလဲရှင်။",
+      "created_at": "2026-07-14T09:24:56+00:00"
+    },
+    {
+      "speaker": "customer",
+      "text": "Venice Begon က ဘာအတွက် သောက်တာ လဲ ဈေး ဘ",
+      "created_at": "2026-07-14T09:25:03+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "Venus BigOne",
+      "created_at": "2026-07-14T09:25:04+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "နို့မှုန့်က",
+      "created_at": "2026-07-14T09:25:04+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အမျိုးသမီးတွေအတွက်",
+      "created_at": "2026-07-14T09:25:04+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အလှအပနဲ့",
+      "created_at": "2026-07-14T09:25:05+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ခန္ဓာကိုယ်",
+      "created_at": "2026-07-14T09:25:05+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ထိန်းသိမ်းမှုကို",
+      "created_at": "2026-07-14T09:25:05+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အထောက်အကူပြုဖို့",
+      "created_at": "2026-07-14T09:25:05+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "သောက်တာပါရှင်။",
+      "created_at": "2026-07-14T09:25:06+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "စျေးနှုန်းကတော့",
+      "created_at": "2026-07-14T09:25:06+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "တစ်ဘူးကို",
+      "created_at": "2026-07-14T09:25:06+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "တစ်သိန်းနှစ်သောင်းကျပ်ပါရှင်။",
+      "created_at": "2026-07-14T09:25:06+00:00"
+    },
+    {
+      "speaker": "customer",
+      "text": "စိတ်ဝင်စားတဲ့ Benes Baker နှစ်ဘူးမှာမယ်",
+      "created_at": "2026-07-14T09:25:20+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဟုတ်ကဲ့ပါရှင်။ Venus",
+      "created_at": "2026-07-14T09:25:21+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "BigOne",
+      "created_at": "2026-07-14T09:25:21+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "နှစ်ဘူး",
+      "created_at": "2026-07-14T09:25:21+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "မှာယူဖို့",
+      "created_at": "2026-07-14T09:25:22+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အတွက်",
+      "created_at": "2026-07-14T09:25:22+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဖုန်းနံပါတ်လေး",
+      "created_at": "2026-07-14T09:25:22+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ပြောပေးလို့",
+      "created_at": "2026-07-14T09:25:22+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ရမလားရှင်။",
+      "created_at": "2026-07-14T09:25:22+00:00"
+    },
+    {
+      "speaker": "customer",
+      "text": "၆၉၉၆၆၉၅၄၄၈ ပါ।",
+      "created_at": "2026-07-14T09:25:34+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဟုတ်ကဲ့ပါရှင်။ ပို့ပေးရမယ့်",
+      "created_at": "2026-07-14T09:25:35+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "လိပ်စာလေးလည်း",
+      "created_at": "2026-07-14T09:25:35+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ပြောပေးပါဦးရှင်။",
+      "created_at": "2026-07-14T09:25:36+00:00"
+    },
+    {
+      "speaker": "customer",
+      "text": "Lesa Yangon Hotel, Insein Road, Ba အသက် ၂၈ အမျိုးသမီးပါ",
+      "created_at": "2026-07-14T09:25:48+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဟုတ်ကဲ့ပါရှင်။ ရန်ကုန်၊",
+      "created_at": "2026-07-14T09:25:49+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အင်းစိန်လမ်း၊",
+      "created_at": "2026-07-14T09:25:49+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "လှိုင်မြို့နယ်၊",
+      "created_at": "2026-07-14T09:25:49+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အသက်",
+      "created_at": "2026-07-14T09:25:50+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "၂၈",
+      "created_at": "2026-07-14T09:25:50+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အမျိုးသမီး",
+      "created_at": "2026-07-14T09:25:50+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "လိပ်စာကို",
+      "created_at": "2026-07-14T09:25:50+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ပို့ပေးပါ့မယ်ရှင်။",
+      "created_at": "2026-07-14T09:25:50+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အော်ဒါ",
+      "created_at": "2026-07-14T09:25:50+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အတည်ပြုလို့",
+      "created_at": "2026-07-14T09:25:51+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ရပြီလားရှင်။",
+      "created_at": "2026-07-14T09:25:51+00:00"
+    }
+  ],
+  "analysis": null,
+  "order": null
+}

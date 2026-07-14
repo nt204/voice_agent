@@ -30,9 +30,11 @@ class CallRecordingRow(Base):
     sample_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
     inbound_path: Mapped[str] = mapped_column(String(1024))
     outbound_path: Mapped[str] = mapped_column(String(1024))
+    mixed_path: Mapped[str] = mapped_column(String(1024), default="")
     log_path: Mapped[str] = mapped_column(String(1024))
     inbound_bytes: Mapped[int] = mapped_column(Integer, default=0)
     outbound_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    mixed_bytes: Mapped[int] = mapped_column(Integer, default=0)
     log_bytes: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -107,6 +109,10 @@ def _migrate_call_recordings() -> None:
         additions.append(("direction", "VARCHAR(40)", "'inbound'"))
     if "sales_status" not in columns:
         additions.append(("sales_status", "VARCHAR(40)", "'open'"))
+    if "mixed_path" not in columns:
+        additions.append(("mixed_path", "VARCHAR(1024)", "''"))
+    if "mixed_bytes" not in columns:
+        additions.append(("mixed_bytes", "INTEGER", "0"))
     if not additions:
         return
     with engine.begin() as conn:

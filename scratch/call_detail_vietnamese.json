@@ -1,0 +1,135 @@
+{
+  "id": "call-sim-vietnamese-102",
+  "direction": "inbound",
+  "provider": "telnyx",
+  "status": "completed",
+  "interest_status": "unknown",
+  "started_at": "2026-07-14T07:44:22+00:00",
+  "ended_at": "2026-07-14T07:47:49+00:00",
+  "duration_seconds": 207,
+  "customer": {
+    "name": "",
+    "phone": "+84961695448",
+    "address": "",
+    "need": "အဲဒါကို ဘယ်လိုခေါ်လဲ?",
+    "notes": ""
+  },
+  "transcript": [
+    {
+      "speaker": "agent",
+      "text": "မင်္ဂလာပါ။ ဆိုင်ရဲ့",
+      "created_at": "2026-07-14T07:44:23+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အကြံပေးအကူအညီဖြစ်ပါတယ်။",
+      "created_at": "2026-07-14T07:44:23+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဘယ်လိုကူညီပေးရမလဲရှင်။",
+      "created_at": "2026-07-14T07:44:24+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "မင်္ဂလာပါ။ ဆိုင်ရဲ့",
+      "created_at": "2026-07-14T07:44:37+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အကြံပေးအကူအညီဖြစ်ပါတယ်။",
+      "created_at": "2026-07-14T07:44:37+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဘယ်လိုကူညီပေးရမလဲရှင်။",
+      "created_at": "2026-07-14T07:44:38+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "မင်္ဂလာပါ။ ဆိုင်ရဲ့",
+      "created_at": "2026-07-14T07:47:10+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အကြံပေးအကူအညီဖြစ်ပါတယ်။",
+      "created_at": "2026-07-14T07:47:10+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဘယ်လိုကူညီပေးရမလဲရှင်။",
+      "created_at": "2026-07-14T07:47:11+00:00"
+    },
+    {
+      "speaker": "customer",
+      "text": "အဲဒါကို ဘယ်လိုခေါ်လဲ?",
+      "created_at": "2026-07-14T07:47:22+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဟုတ်ကဲ့ပါရှင်။ ၂",
+      "created_at": "2026-07-14T07:47:39+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဘူးဆိုရင်",
+      "created_at": "2026-07-14T07:47:39+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "၂",
+      "created_at": "2026-07-14T07:47:39+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "သိန်း",
+      "created_at": "2026-07-14T07:47:39+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "၁ သောင်းကျပ်",
+      "created_at": "2026-07-14T07:47:39+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ကျသင့်မှာဖြစ်ပြီး",
+      "created_at": "2026-07-14T07:47:40+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ပို့ခအခမဲ့",
+      "created_at": "2026-07-14T07:47:40+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ပါရှင်။",
+      "created_at": "2026-07-14T07:47:40+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဘယ်မြို့နယ်ကို",
+      "created_at": "2026-07-14T07:47:40+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ပို့ပေးရမလဲရှင်။",
+      "created_at": "2026-07-14T07:47:40+00:00"
+    }
+  ],
+  "analysis": {
+    "intent_status": "unknown",
+    "sentiment": "neutral",
+    "urgency": "low",
+    "objection": "unknown",
+    "summary": "အဲဒါကို ဘယ်လိုခေါ်လဲ?",
+    "next_action": "Ra lai transcript de xac dinh buoc tiep theo.",
+    "confidence": 0.3,
+    "gender": "unknown",
+    "gender_confidence": 0.0,
+    "age_range": "unknown",
+    "age_confidence": 0.0,
+    "created_at": "2026-07-14T07:44:26+00:00",
+    "updated_at": "2026-07-14T07:47:49+00:00"
+  },
+  "order": null
+}

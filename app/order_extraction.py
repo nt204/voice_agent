@@ -11,6 +11,7 @@ from google.genai import types
 from app.config import config, product_knowledge
 from app.logging_utils import log
 from app.sales_analysis import (
+    COMBO_CATALOG,
     MISSING_ORDER_FIELDS,
     analyze_call,
     _customer_text,
@@ -200,26 +201,27 @@ def analyze_call_with_gemini(
     if not prompt:
         return fallback
 
-    # At most 2 Gemini calls total for this extraction (one retry on failure).
-    # No nested retry inside a single attempt — that used to allow up to 4 calls.
+    # At most 4 Gemini calls total for this extraction.
+    # Post-call ASR may consume API rate budget, so we need longer backoff.
     payload = None
     last_error: Exception | None = None
-    backoff = 0.5
-    for attempt in range(2):
+    backoff = 2.0
+    for attempt in range(4):
         try:
             payload = _extract_json_once(prompt)
             if payload is not None:
                 break
         except Exception as exc:
             last_error = exc
-        if attempt == 0:
+            log(f"[order-extraction] Attempt {attempt + 1} failed: {type(exc).__name__}: {exc}")
+        if attempt < 3:
             time.sleep(backoff)
             backoff *= 2
     if payload is None:
         if last_error:
-            log(f"[order-extraction] Gemini extraction failed: {type(last_error).__name__}: {last_error}")
+            log(f"[order-extraction] Gemini extraction failed after 4 attempts: {type(last_error).__name__}: {last_error}")
         else:
-            log("[order-extraction] Gemini returned unparseable JSON on both attempts")
+            log("[order-extraction] Gemini returned unparseable JSON on all attempts")
         return fallback
 
     return _merge_payload(payload, transcript, fallback_phone=fallback_phone, fallback=fallback)
@@ -320,10 +322,17 @@ def _merge_payload(
     unit_price = _int_or_none(payload.get("unit_price")) or fallback_unit_price or 0
     total_price = _int_or_none(payload.get("total_price")) or fallback_total_price or 0
 
+    combo_catalog_entry = _combo_catalog_entry(product_name, combo)
+    if combo_catalog_entry:
+        product_name = combo_catalog_entry["name"]
+        quantity = int(combo_catalog_entry["quantity"])
+        unit_price = int(combo_catalog_entry["unit_price"])
+        total_price = int(combo_catalog_entry["total_price"])
+
     # Combo prices are fixed bundle prices, not unit_price * quantity (a 3-pack
     # combo is usually discounted vs. buying 3 singles). Only infer linearly for
     # non-combo single-unit purchases where that arithmetic is actually valid.
-    is_combo = bool(combo)
+    is_combo = bool(combo or combo_catalog_entry)
     if not is_combo:
         if not total_price and unit_price and quantity:
             total_price = unit_price * quantity
@@ -401,6 +410,14 @@ def _resolve_product_name(product_name: str, combo: str) -> str:
     # may have switched combos mid-call. Prefer the freshly extracted combo.
     base = re.split(r"combo", product_name, flags=re.IGNORECASE)[0].strip()
     return f"{base} {combo}".strip() if base else combo
+
+
+def _combo_catalog_entry(product_name: str, combo: str) -> dict[str, Any] | None:
+    text = _normalize_digits(f"{product_name} {combo}")
+    match = re.search(r"\bcombo\s*(?:number|no\.?|#)?\s*([0-9]+)\b", text, flags=re.IGNORECASE)
+    if not match:
+        return None
+    return COMBO_CATALOG.get(int(match.group(1)))
 
 
 def _parse_json_response(text: str, *, log_errors: bool = True) -> dict[str, Any] | None:

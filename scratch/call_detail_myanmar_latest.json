@@ -1,0 +1,242 @@
+{
+  "id": "call-sim-myanmar-1784019698",
+  "direction": "inbound",
+  "provider": "telnyx",
+  "status": "completed",
+  "interest_status": "needs_consultation",
+  "started_at": "2026-07-14T09:01:38+00:00",
+  "ended_at": "2026-07-14T09:02:57+00:00",
+  "duration_seconds": 79,
+  "customer": {
+    "name": "",
+    "phone": "+85961695448",
+    "address": "",
+    "need": "Venice Begon က ဘာအတွက် သောက်တာ လဲ ဈေး ဘယ်လောက် စိတ်ဝင်စားတဲ့ Benes Baker နှစ်ဘူးမှာမယ် ဖုန်း သုည ကိုးခြောက် တစ် မေးစမ်း Yangon Hleden Insin Road ပါ အသက် ၂၈ အမျိုးသမီး ပါ",
+    "notes": ""
+  },
+  "transcript": [
+    {
+      "speaker": "agent",
+      "text": "မင်္ဂလာပါ။ ဆိုင်ရဲ့",
+      "created_at": "2026-07-14T09:01:39+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အကြံပေးအကူအညီဖြစ်ပါတယ်။",
+      "created_at": "2026-07-14T09:01:40+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဘယ်လိုကူညီပေးရမလဲရှင်။",
+      "created_at": "2026-07-14T09:01:40+00:00"
+    },
+    {
+      "speaker": "customer",
+      "text": "Venice Begon က ဘာအတွက် သောက်တာ လဲ ဈေး ဘယ်လောက်",
+      "created_at": "2026-07-14T09:01:48+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "Venus BigOne",
+      "created_at": "2026-07-14T09:01:48+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "နို့မှုန့်က",
+      "created_at": "2026-07-14T09:01:49+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အမျိုးသမီးတွေ",
+      "created_at": "2026-07-14T09:01:49+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အလှအပနဲ့",
+      "created_at": "2026-07-14T09:01:49+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ခန္ဓာကိုယ်",
+      "created_at": "2026-07-14T09:01:49+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ထိန်းသိမ်းမှုကို",
+      "created_at": "2026-07-14T09:01:50+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အထောက်အကူပြုဖို့",
+      "created_at": "2026-07-14T09:01:50+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "သောက်တာပါရှင်။",
+      "created_at": "2026-07-14T09:01:50+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "စျေးနှုန်းကတော့",
+      "created_at": "2026-07-14T09:01:50+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "၁ ဘူးကို",
+      "created_at": "2026-07-14T09:01:50+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "၁ သိန်း",
+      "created_at": "2026-07-14T09:01:50+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "၂ သောင်းကျပ်ပါရှင်။",
+      "created_at": "2026-07-14T09:01:51+00:00"
+    },
+    {
+      "speaker": "customer",
+      "text": "စိတ်ဝင်စားတဲ့ Benes Baker နှစ်ဘူးမှာမယ်",
+      "created_at": "2026-07-14T09:02:04+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဟုတ်ကဲ့ပါရှင်။ Combo",
+      "created_at": "2026-07-14T09:02:05+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "2",
+      "created_at": "2026-07-14T09:02:06+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "မှာယူတဲ့အတွက်",
+      "created_at": "2026-07-14T09:02:06+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ကျေးဇူးတင်ပါတယ်ရှင်။",
+      "created_at": "2026-07-14T09:02:06+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဖုန်းနံပါတ်လေး",
+      "created_at": "2026-07-14T09:02:06+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ပြောပေးလို့",
+      "created_at": "2026-07-14T09:02:06+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ရမလားရှင်။",
+      "created_at": "2026-07-14T09:02:06+00:00"
+    },
+    {
+      "speaker": "customer",
+      "text": "ဖုန်း သုည ကိုးခြောက် တစ်",
+      "created_at": "2026-07-14T09:02:18+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဟုတ်ကဲ့ပါရှင်။ ပို့ပေးရမယ့်",
+      "created_at": "2026-07-14T09:02:19+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "လိပ်စာလေးလည်း",
+      "created_at": "2026-07-14T09:02:20+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ပြောပေးပါဦးရှင်။",
+      "created_at": "2026-07-14T09:02:20+00:00"
+    },
+    {
+      "speaker": "customer",
+      "text": "မေးစမ်း Yangon Hleden Insin Road ပါ အသက် ၂၈ အမျိုးသမီး ပါ",
+      "created_at": "2026-07-14T09:02:33+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ဟုတ်ကဲ့ပါရှင်။ ရန်ကုန်၊",
+      "created_at": "2026-07-14T09:02:34+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အင်းစိန်လမ်း၊",
+      "created_at": "2026-07-14T09:02:34+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အမှတ်",
+      "created_at": "2026-07-14T09:02:34+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "၂၈",
+      "created_at": "2026-07-14T09:02:35+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "လိပ်စာကို",
+      "created_at": "2026-07-14T09:02:35+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ပို့ပေးပါမယ်ရှင်။",
+      "created_at": "2026-07-14T09:02:35+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အော်ဒါ",
+      "created_at": "2026-07-14T09:02:35+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "အတည်ပြုပြီးပါပြီ။",
+      "created_at": "2026-07-14T09:02:35+00:00"
+    },
+    {
+      "speaker": "agent",
+      "text": "ကျေးဇူးတင်ပါတယ်ရှင်။",
+      "created_at": "2026-07-14T09:02:36+00:00"
+    }
+  ],
+  "analysis": {
+    "intent_status": "ready_to_order",
+    "sentiment": "neutral",
+    "urgency": "high",
+    "objection": "unknown",
+    "summary": "Venice Begon က ဘာအတွက် သောက်တာ လဲ ဈေး ဘယ်လောက် စိတ်ဝင်စားတဲ့ Benes Baker နှစ်ဘူးမှာမယ် ဖုန်း သုည ကိုးခြောက် တစ် မေးစမ်း Yangon Hleden Insin Road ပါ အသက် ၂၈ အမျိုးသမီး ပါ",
+    "next_action": "Kiem tra don nhap va xac nhan lai voi khach.",
+    "confidence": 0.88,
+    "gender": "female",
+    "gender_confidence": 0.95,
+    "age_range": "25-34",
+    "age_confidence": 0.95,
+    "created_at": "2026-07-14T09:02:57+00:00",
+    "updated_at": "2026-07-14T09:02:57+00:00"
+  },
+  "order": {
+    "id": 13,
+    "call_id": "call-sim-myanmar-1784019698",
+    "customer_phone": "+85961695448",
+    "customer_name": "",
+    "shipping_address": "",
+    "product_name": "Venus BigOne",
+    "quantity": 2,
+    "unit_price": 120000,
+    "total_price": 240000,
+    "status": "missing_info",
+    "missing_fields": [
+      "shipping_address"
+    ],
+    "confidence": 0.65,
+    "created_at": "2026-07-14T09:02:57+00:00",
+    "updated_at": "2026-07-14T09:02:57+00:00"
+  }
+}

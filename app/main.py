@@ -23,11 +23,17 @@ from app.audio import (
 )
 from app.call_history import CallHistoryStore
 from app.config import config, gemini_system_instruction
+from app.database import init_db
 from app.gemini_bridge import GeminiCallBridge
 from app.logging_utils import log
+from app.admin import router as admin_router
 
 app = FastAPI(title="Viber Gemini Live Bridge")
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Initialize the recordings database tables
+init_db()
+
 call_history = CallHistoryStore(config.database_url)
 legacy_call_history_path = BASE_DIR / "data" / "call_history.db"
 if not config.database_url.startswith("sqlite") and legacy_call_history_path.exists():
@@ -220,6 +226,9 @@ async def admin_dashboard() -> FileResponse:
     return FileResponse(BASE_DIR / "app" / "static" / "index.html")
 
 
+app.include_router(admin_router)
+
+
 def _call_counts() -> dict[str, int]:
     calls = call_history.list_calls(limit=500)
     return {
@@ -239,6 +248,34 @@ def _store_transcript(call_id: str):
         call_history.add_transcript(call_id, speaker, text)
 
     return record
+
+
+def _telnyx_audio_turn_handler(call_id: str):
+    if (
+        not config.gemini.secondary_asr_enabled
+        or not config.gemini.in_call_secondary_asr_enabled
+    ):
+        return None
+
+    from app.secondary_asr import SecondaryAsrTranscriber
+
+    transcriber = SecondaryAsrTranscriber()
+
+    async def transcribe_turn(
+        audio: bytes,
+        sample_rate: int,
+        turn_number: int,
+        live_candidate: str,
+    ) -> str:
+        corrected = await transcriber.transcribe(audio, sample_rate, live_candidate)
+        if corrected:
+            log(
+                f"[{call_id}] Secondary ASR turn {turn_number}: "
+                f"live='{live_candidate}' corrected='{corrected}'"
+            )
+        return corrected
+
+    return transcribe_turn
 
 
 @app.get("/api/calls")
@@ -543,6 +580,7 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
 
     bridge: GeminiCallBridge | None = None
     input_gate: RealtimeInputGate | RealtimePassthroughInput | None = None
+    recorder = None
     call_id = "unknown-call"
     stream_id: str | None = None
     sample_rate = config.telnyx.stream_sample_rate
@@ -558,6 +596,8 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
         next_send_at = max(next_send_at, now) + 0.02
 
         payload = pcm16_to_telnyx_payload(frame, codec)
+        if recorder:
+            recorder.write_outbound(frame)
         message = {
             "event": "media",
             "media": {"payload": base64.b64encode(payload).decode("ascii")},
@@ -596,15 +636,16 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     or start.get("call_leg_id")
                     or call_id
                 )
+                cust_phone = (
+                    str(start.get("to") or start.get("from") or "")
+                    if mode == "outbound"
+                    else str(start.get("from") or start.get("to") or "")
+                )
                 call_history.start_call(
                     call_id=call_id,
                     direction="outbound" if mode == "outbound" else "inbound",
                     provider="telnyx",
-                    customer_phone=(
-                        str(start.get("to") or start.get("from") or "")
-                        if mode == "outbound"
-                        else str(start.get("from") or start.get("to") or "")
-                    ),
+                    customer_phone=cust_phone,
                 )
                 sample_rate = int(media_format.get("sample_rate") or sample_rate)
                 codec = media_format.get("encoding") or codec
@@ -616,6 +657,24 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     f"[{call_id}] Telnyx realtime mode: explicit_vad=True "
                     f"speech_threshold={config.telnyx.speech_threshold} "
                 )
+                
+                # Initialize recorder
+                from app.call_recording import CallRecorder
+                to_phone = (
+                    str(start.get("from") or start.get("to") or "")
+                    if mode == "outbound"
+                    else str(start.get("to") or start.get("from") or "")
+                )
+                recorder = CallRecorder(
+                    call_id=call_id,
+                    sample_rate=sample_rate,
+                    phone_number=cust_phone,
+                    to_number=to_phone,
+                    stream_id=stream_id,
+                    codec=codec,
+                    direction="outbound" if mode == "outbound" else "inbound",
+                )
+
                 input_gate_options = _telnyx_input_gate_options(mode)
                 speech_start_frames = input_gate_options["speech_start_frames"]
                 speech_end_silence_frames = input_gate_options["speech_end_silence_frames"]
@@ -646,6 +705,7 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     realtime_input=True,
                     system_instruction=bridge_options["system_instruction"],
                     on_transcript=_store_transcript(call_id),
+                    on_audio_turn=_telnyx_audio_turn_handler(call_id),
                 )
                 input_gate = RealtimeInputGate(
                     bridge,
@@ -679,6 +739,9 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                         f"timestamp={timestamp_ms}ms, rms={rms})"
                     )
 
+                if recorder:
+                    recorder.write_inbound(pcm)
+
                 if input_gate:
                     await input_gate.push(pcm, rms, timestamp_ms)
 
@@ -706,7 +769,10 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
         log(f"[{call_id}] Telnyx WebSocket disconnected")
     finally:
         if bridge:
+            await bridge.run_post_call_asr(call_history)
             await bridge.close()
+        if recorder:
+            recorder.close()
         if call_id != "unknown-call":
             call_history.finish_call(call_id)
 

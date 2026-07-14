@@ -123,3 +123,40 @@ def test_vietnamese_combo_buy_intent_creates_missing_info_order(tmp_path):
     assert call["order"]["quantity"] == 1
     assert call["order"]["total_price"] == 120000
     assert call["order"]["missing_fields"] == ["shipping_address"]
+
+
+def test_finish_call_defaults_missing_demographic_fields(tmp_path, monkeypatch):
+    store = CallHistoryStore(tmp_path / "call_history.db")
+    store.start_call("missing-demographics", "outbound", "telnyx", "+84961695448")
+    store.add_transcript("missing-demographics", "customer", "တောင်မိုးမိုး 1 combo")
+
+    def fake_analyze_call(transcript, fallback_phone=""):
+        return {
+            "customer": {
+                "name": "",
+                "phone": fallback_phone,
+                "address": "",
+                "need": "တောင်မိုးမိုး 1 combo",
+            },
+            "analysis": {
+                "intent_status": "ready_to_order",
+                "sentiment": "neutral",
+                "urgency": "high",
+                "objection": "unknown",
+                "summary": "တောင်မိုးမိုး 1 combo",
+                "next_action": "Ask for missing address.",
+                "confidence": 0.7,
+            },
+            "order": None,
+        }
+
+    monkeypatch.setattr("app.call_history.analyze_call", fake_analyze_call)
+
+    store.finish_call("missing-demographics")
+
+    call = store.get_call("missing-demographics")
+    assert call is not None
+    assert call["analysis"]["gender"] == "unknown"
+    assert call["analysis"]["gender_confidence"] == 0.0
+    assert call["analysis"]["age_range"] == "unknown"
+    assert call["analysis"]["age_confidence"] == 0.0

@@ -179,6 +179,27 @@ MYANMAR_PARSER_CASES = [
         },
     },
     {
+        "id": "my-parser-split-order-complete",
+        "customer_phone": "",
+        "turns": [
+            ("agent", "Venus BigOne ကို ဘယ်လိုကူညီပေးရမလဲရှင်။"),
+            ("customer", "ကွန်ဘို ၂ မှာယူမယ်။"),
+            ("agent", "ဖုန်းနံပါတ်လေး ပြောပေးပါရှင်။"),
+            ("customer", "ဖုန်း ၀၉၆၁၆۹۵۴۴۸ ပါ။"),
+            ("agent", "ပို့ရန်လိပ်စာလေး ပြောပေးပါရှင်။"),
+            ("customer", "လိပ်စာ Mandalay Chan Aye Tharzan ပါ။"),
+        ],
+        "expected": {
+            "intent_status": "ready_to_order",
+            "order_status": "ready_to_confirm",
+            "product_name": "Venus BigOne Combo 2",
+            "quantity": 2,
+            "phone": "0961695448",
+            "address": "Mandalay Chan Aye Tharzan",
+            "total_price": 210000,
+        },
+    },
+    {
         "id": "my-parser-regular-two-boxes",
         "customer_phone": "",
         "turns": [

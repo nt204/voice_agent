@@ -621,6 +621,32 @@ class SQLiteCallHistoryStore:
                 (call_id, speaker, clean_text, _now()),
             )
 
+    def update_customer_transcript_by_index(
+        self, call_id: str, customer_turn_index: int, new_text: str
+    ) -> None:
+        clean_text = new_text.strip()
+        if not clean_text:
+            return
+        with self._lock, closing(self._connect()) as connection, connection:
+            cursor = connection.execute(
+                """
+                UPDATE transcripts
+                SET text = ?
+                WHERE id = (
+                    SELECT id FROM transcripts
+                    WHERE call_id = ? AND speaker = 'customer'
+                    ORDER BY id ASC
+                    LIMIT 1 OFFSET ?
+                )
+                """,
+                (clean_text, call_id, customer_turn_index),
+            )
+            if cursor.rowcount == 0:
+                connection.execute(
+                    "INSERT INTO transcripts (call_id, speaker, text, created_at) VALUES (?, 'customer', ?, ?)",
+                    (call_id, clean_text, _now()),
+                )
+
     def finish_call(self, call_id: str) -> None:
         call = self.get_call(call_id)
         if not call:
@@ -742,6 +768,10 @@ class SQLiteCallHistoryStore:
         now = _now()
         analysis = result["analysis"]
         customer = result["customer"]
+        gender = customer.get("gender", "unknown")
+        gender_confidence = customer.get("gender_confidence", 0.0)
+        age_range = customer.get("age_range", "unknown")
+        age_confidence = customer.get("age_confidence", 0.0)
         connection.execute(
             """
             INSERT INTO call_analysis (
@@ -773,10 +803,10 @@ class SQLiteCallHistoryStore:
                 analysis["summary"],
                 analysis["next_action"],
                 analysis["confidence"],
-                customer["gender"],
-                customer["gender_confidence"],
-                customer["age_range"],
-                customer["age_confidence"],
+                gender,
+                gender_confidence,
+                age_range,
+                age_confidence,
                 now,
                 now,
             ),
