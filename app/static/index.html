@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI Sales Admin</title>
-  <link rel="stylesheet" href="/static/dashboard.css">
+  <link rel="stylesheet" href="/static/dashboard.css?v=layout-5">
 </head>
 <body>
   <main class="dashboard-shell">
@@ -50,12 +50,12 @@
 
       <section class="control-card call-card">
         <div class="panel-heading">
-          <h2>Gọi khách hàng</h2>
+          <h2>Gọi nhanh khách hàng</h2>
         </div>
         <form id="outboundCallForm" class="call-form">
           <label class="phone-field">
             <span>Số khách hàng</span>
-            <input id="toNumberInput" name="to_number" type="tel" placeholder="+84901234567" autocomplete="tel" required>
+            <input id="toNumberInput" name="to_number" type="tel" placeholder="Nhập số điện thoại khách hàng" autocomplete="tel" required>
           </label>
           <button id="startCallButton" class="call-button" type="submit">Bắt đầu gọi</button>
           <p id="outboundCallStatus" class="form-status" role="status"></p>
@@ -120,6 +120,6 @@
       <strong>Chưa có cuộc gọi</strong>
     </div>
   </template>
-  <script src="/static/dashboard.js" defer></script>
+  <script src="/static/dashboard.js?v=layout-5" defer></script>
 </body>
 </html>

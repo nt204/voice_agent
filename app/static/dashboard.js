@@ -237,10 +237,10 @@ function renderCalls(calls) {
     return `
       <button class="lead-row ${isSelected ? "selected" : ""}" data-id="${escapeHtml(call.id)}" type="button">
         <span class="lead-person">
-          <strong>${escapeHtml(title)}</strong>
+          <strong><i class="lead-phone-icon" aria-hidden="true">&#9742;</i>${escapeHtml(title)}</strong>
           <small>${escapeHtml(customer.phone || call.id)}</small>
         </span>
-        <span class="lead-need">${escapeHtml(need)}</span>
+        <span class="lead-need" title="${escapeHtml(need)}">${escapeHtml(need)}</span>
         <span class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</span>
         <span class="lead-time">
           <b>${formatTime(call.started_at)}</b>
@@ -311,7 +311,7 @@ function renderComboCard(call) {
         <h3>Combo AI</h3>
         <span class="order-status ${escapeHtml(status)}">${order ? orderStatusLabel(status) : "Chưa tạo"}</span>
       </div>
-      <div class="combo-grid">
+      <div class="combo-list">
         <div><span>Sản phẩm</span><strong>${escapeHtml(order?.product_name || "Chưa có")}</strong></div>
         <div><span>Số lượng</span><strong>${order?.quantity || "Chưa có"}</strong></div>
         <div><span>Tổng tiền</span><strong>${formatMoney(order?.total_price)}</strong></div>
@@ -321,6 +321,11 @@ function renderComboCard(call) {
 }
 
 async function loadDetail(callId, { silent = false } = {}) {
+  const previousTranscript = detailPanel.querySelector(".transcript");
+  const previousScrollTop = previousTranscript?.scrollTop || 0;
+  const wasNearBottom = previousTranscript
+    ? previousTranscript.scrollHeight - previousTranscript.clientHeight - previousScrollTop < 24
+    : true;
   state.selectedId = callId;
   document.querySelectorAll(".lead-row").forEach(row => {
     row.classList.toggle("selected", row.dataset.id === callId);
@@ -332,7 +337,10 @@ async function loadDetail(callId, { silent = false } = {}) {
     detailPanel.innerHTML = '<div class="empty-state"><p>Đang tải chi tiết...</p></div>';
   }
   try {
-    renderDetail(await fetchJson(`/api/calls/${encodeURIComponent(callId)}`));
+    renderDetail(await fetchJson(`/api/calls/${encodeURIComponent(callId)}`), {
+      scrollTop: previousScrollTop,
+      wasNearBottom,
+    });
   } catch (error) {
     if (!silent) {
       detailPanel.innerHTML = `<div class="error-state">${escapeHtml(error.message)}</div>`;
@@ -340,40 +348,81 @@ async function loadDetail(callId, { silent = false } = {}) {
   }
 }
 
-function renderDetail(call) {
+function renderDetail(call, { scrollTop = 0, wasNearBottom = true } = {}) {
   const customer = call.customer || {};
   const field = value => escapeHtml(value || "Chưa cung cấp");
   const transcript = call.transcript && call.transcript.length
-    ? call.transcript.map(item => `
-        <div class="message ${escapeHtml(item.speaker)}">
-          <span>${item.speaker === "customer" ? "Khách hàng" : "AI tư vấn"}</span>
+    ? call.transcript.map(item => {
+        const isCustomer = item.speaker === "customer";
+        const timestamp = item.created_at || item.timestamp || item.time || "";
+        return `
+        <div class="message ${isCustomer ? "customer" : "agent"}">
+          <div class="message-head"><i aria-hidden="true">${isCustomer ? "&#128100;" : "&#10022;"}</i><span>${isCustomer ? "Khách hàng" : "AI tư vấn"}</span></div>
           <p dir="auto">${escapeHtml(item.text)}</p>
-        </div>`).join("")
+          ${timestamp ? `<time>${escapeHtml(formatTime(timestamp))}</time>` : ""}
+        </div>`;
+      }).join("")
     : '<div class="list-state">Chưa có transcript.</div>';
 
   detailPanel.innerHTML = `
     <div class="detail-top">
-      <div>
-        <span class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</span>
-        <h2>${field(customer.name || customer.phone || "Khách hàng")}</h2>
-        <p>${directionLabel(call.direction)} | ${escapeHtml(call.provider)} | ${formatTime(call.started_at)}</p>
+      <div class="detail-identity">
+        <i class="detail-call-icon" aria-hidden="true">&#9742;</i>
+        <div>
+          <span class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</span>
+          <h2>${field(customer.name || customer.phone || "Khách hàng")}</h2>
+          <p>${directionLabel(call.direction)} | ${escapeHtml(call.provider)} | ${formatTime(call.started_at)} | ${formatDay(call.started_at)}</p>
+        </div>
+      </div>
+      <div class="detail-actions">
+        <button class="detail-action redial-button" data-phone="${escapeHtml(customer.phone)}" type="button">&#9742; Gọi lại</button>
+        <button class="detail-action icon-only" type="button" aria-label="Thêm thao tác">&#8942;</button>
       </div>
     </div>
 
-    <div class="info-grid">
+    <div class="info-grid detail-stats">
       <div><span>Số điện thoại</span><strong>${field(customer.phone)}</strong></div>
-      <div><span>Thời gian</span><strong>${formatDate(call.started_at)}</strong></div>
-      <div class="wide"><span>Nhu cầu</span><strong>${field(customer.need)}</strong></div>
-      <div class="wide"><span>Địa chỉ</span><strong>${field(customer.address)}</strong></div>
+      <div><span>Thời gian</span><strong>${formatTime(call.started_at)}<small>${formatDay(call.started_at)}</small></strong></div>
+      <div><span>Loại cuộc gọi</span><strong>${directionLabel(call.direction)}</strong></div>
+      <div><span>Trạng thái</span><strong><em class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</em></strong></div>
     </div>
 
-    ${renderComboCard(call)}
+    <div class="detail-tabs" role="tablist" aria-label="Chi tiết lead">
+      <button class="detail-tab active" data-detail-tab="info" type="button" role="tab">Thông tin</button>
+      <button class="detail-tab" data-detail-tab="transcript" type="button" role="tab">Transcript</button>
+    </div>
 
-    <h3 class="section-title">Transcript</h3>
-    <div class="transcript">${transcript}</div>`;
+    <div class="detail-content">
+      <div class="detail-summary">
+        <div class="detail-note"><span>Nhu cầu</span><strong>${field(customer.need)}</strong></div>
+        <div class="detail-note"><span>Địa chỉ</span><strong>${field(customer.address)}</strong></div>
+        ${renderComboCard(call)}
+      </div>
+
+      <section class="transcript-panel">
+        <h3 class="section-title">Transcript</h3>
+        <div class="transcript">${transcript}</div>
+      </section>
+    </div>`;
   requestAnimationFrame(() => {
     const transcriptEl = detailPanel.querySelector(".transcript");
-    if (transcriptEl) transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    if (transcriptEl) {
+      transcriptEl.scrollTop = wasNearBottom ? transcriptEl.scrollHeight : scrollTop;
+    }
+    detailPanel.querySelectorAll(".detail-tab").forEach(button => {
+      button.addEventListener("click", () => {
+        detailPanel.querySelectorAll(".detail-tab").forEach(tab => tab.classList.toggle("active", tab === button));
+        detailPanel.classList.toggle("show-transcript", button.dataset.detailTab === "transcript");
+      });
+    });
+    detailPanel.querySelector(".redial-button")?.addEventListener("click", event => {
+      const phone = event.currentTarget.dataset.phone;
+      const input = document.querySelector("#toNumberInput");
+      if (phone && input) {
+        input.value = phone;
+        outboundCallForm?.requestSubmit();
+      }
+    });
   });
 }
 
