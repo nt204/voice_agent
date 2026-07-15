@@ -85,15 +85,17 @@ async def api_cleanup(days: int = 14) -> dict:
     return {"ok": True, **cleanup_recordings(days)}
 
 
-@router.get("/file/{direction}/{filename}")
-async def admin_file(direction: str, filename: str):
+@router.get("/file/{recording_id}/{file_kind}")
+async def admin_file(recording_id: str, file_kind: str):
     try:
-        path = recording_path(direction, filename)
+        path = recording_path(recording_id, file_kind)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not path.exists():
         raise HTTPException(status_code=404, detail="File not found")
-    if direction == "logs":
+    if file_kind == "log":
         return PlainTextResponse(path.read_text(encoding="utf-8", errors="replace"))
     return FileResponse(path, media_type="audio/wav", filename=path.name)
 

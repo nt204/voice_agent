@@ -31,15 +31,12 @@ class CallRecorder:
         self.base_name = f"{_safe_name(self.phone_number)}_{_timestamp()}"
         self._started_at = time.perf_counter()
         self._mixed_chunks: list[tuple[int, bytes]] = []
-        root = _recording_root()
-        self.inbound_path = root / "inbound" / f"{self.base_name}.wav"
-        self.outbound_path = root / "outbound" / f"{self.base_name}.wav"
-        self.mixed_path = root / "mixed" / f"{self.base_name}.wav"
-        self.log_path = root / "logs" / f"{self.base_name}.log"
-        self.inbound_path.parent.mkdir(parents=True, exist_ok=True)
-        self.outbound_path.parent.mkdir(parents=True, exist_ok=True)
-        self.mixed_path.parent.mkdir(parents=True, exist_ok=True)
-        self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        self.call_dir = _recording_root() / self.base_name
+        self.inbound_path = self.call_dir / "inbound.wav"
+        self.outbound_path = self.call_dir / "outbound.wav"
+        self.mixed_path = self.call_dir / "mixed.wav"
+        self.log_path = self.call_dir / "call.log"
+        self.call_dir.mkdir(parents=True, exist_ok=True)
         self._inbound = _open_pcm16_wav(self.inbound_path, sample_rate)
         self._outbound = _open_pcm16_wav(self.outbound_path, sample_rate)
         self.closed = False

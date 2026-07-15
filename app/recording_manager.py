@@ -9,7 +9,7 @@ from app.call_recording import _recording_root
 from app.database import CallIntentRow, CallRecordingRow, db_session
 
 
-RECORDING_DIRECTIONS = {"inbound", "outbound", "mixed", "logs"}
+RECORDING_FILE_KINDS = {"inbound", "outbound", "mixed", "log"}
 
 
 def recordings_root() -> Path:
@@ -28,11 +28,22 @@ def list_recordings() -> list[dict]:
         return [_recording_item(row, intents.get(row.id)) for row in rows]
 
 
-def recording_path(direction: str, filename: str) -> Path:
-    if direction not in RECORDING_DIRECTIONS:
-        raise ValueError("Invalid recording direction")
-    path = recordings_root() / direction / Path(filename).name
+def recording_path(recording_id: str, file_kind: str) -> Path:
+    if file_kind not in RECORDING_FILE_KINDS:
+        raise ValueError("Invalid recording file")
     root = recordings_root().resolve()
+    row_id = Path(recording_id).name
+    with db_session() as session:
+        row = session.get(CallRecordingRow, row_id)
+        if not row:
+            raise FileNotFoundError("Recording not found")
+        raw_path = {
+            "inbound": row.inbound_path,
+            "outbound": row.outbound_path,
+            "mixed": row.mixed_path,
+            "log": row.log_path,
+        }[file_kind]
+    path = Path(raw_path)
     resolved = path.resolve()
     if not resolved.is_relative_to(root):
         raise ValueError("Invalid recording path")
@@ -51,6 +62,7 @@ def delete_recording(recording_id: str) -> int:
                 if path.exists():
                     path.unlink()
                     deleted_files += 1
+            _remove_empty_call_dir(row)
             session.delete(row)
     return deleted_files if deleted_files else int(row_found)
 
@@ -69,6 +81,7 @@ def cleanup_recordings(days: int) -> dict[str, int]:
                 if path.exists():
                     path.unlink()
                     deleted_files += 1
+            _remove_empty_call_dir(row)
             session.delete(row)
             deleted_recordings += 1
     return {"deleted_recordings": deleted_recordings, "deleted_files": deleted_files}
@@ -110,10 +123,10 @@ def _recording_item(row: CallRecordingRow, intent: CallIntentRow | None = None) 
         "sample_rate": row.sample_rate,
         "intent": _intent_info(intent),
         "files": {
-            "inbound": _file_info(Path(row.inbound_path), "inbound"),
-            "outbound": _file_info(Path(row.outbound_path), "outbound"),
-            "mixed": _file_info(Path(row.mixed_path), "mixed") if row.mixed_path else None,
-            "log": _file_info(Path(row.log_path), "logs"),
+            "inbound": _file_info(Path(row.inbound_path), row.id, "inbound"),
+            "outbound": _file_info(Path(row.outbound_path), row.id, "outbound"),
+            "mixed": _file_info(Path(row.mixed_path), row.id, "mixed") if row.mixed_path else None,
+            "log": _file_info(Path(row.log_path), row.id, "log"),
         },
         "sizes": {
             "inbound": row.inbound_bytes,
@@ -125,14 +138,34 @@ def _recording_item(row: CallRecordingRow, intent: CallIntentRow | None = None) 
     }
 
 
-def _file_info(path: Path, direction: str) -> dict | None:
+def _file_info(path: Path, recording_id: str, file_kind: str) -> dict | None:
     if not path.exists():
         return None
     return {
         "name": path.name,
         "bytes": path.stat().st_size,
-        "url": f"/admin/file/{direction}/{path.name}",
+        "url": f"/admin/file/{recording_id}/{file_kind}",
     }
+
+
+def _remove_empty_call_dir(row: CallRecordingRow) -> None:
+    parent_dirs = {
+        Path(raw_path).parent
+        for raw_path in (row.inbound_path, row.outbound_path, row.mixed_path, row.log_path)
+        if raw_path
+    }
+    root = recordings_root().resolve()
+    for directory in parent_dirs:
+        try:
+            resolved = directory.resolve()
+        except OSError:
+            continue
+        if resolved == root or not resolved.is_relative_to(root) or not resolved.exists():
+            continue
+        try:
+            resolved.rmdir()
+        except OSError:
+            pass
 
 
 def _intent_info(intent: CallIntentRow | None) -> dict:
