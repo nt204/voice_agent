@@ -43,6 +43,14 @@ def require_env(name: str) -> str:
     return value
 
 
+DEFAULT_INBOUND_INITIAL_GREETING = (
+    "Xin chào, đây là Venus BigOne. Anh/chị cần tư vấn nội dung nào ạ?"
+)
+DEFAULT_OUTBOUND_INITIAL_GREETING = (
+    "Xin chào, em gọi từ Venus BigOne. Hiện tại anh/chị có tiện trao đổi ngắn không ạ?"
+)
+
+
 @dataclass(frozen=True)
 class InfobipConfig:
     base_url: str | None = os.getenv("INFOBIP_BASE_URL")
@@ -92,7 +100,7 @@ class TelnyxConfig:
     )
     greeting: str = os.getenv(
         "TELNYX_GREETING",
-        "မင်္ဂလာပါ။ Venus BigOne နို့မှုန့် အကြောင်း မေးလို့ရပါတယ်ရှင်။",
+        DEFAULT_INBOUND_INITIAL_GREETING,
     )
 
 
@@ -104,27 +112,35 @@ class GeminiConfig:
     order_extraction_enabled: bool = _bool_env("GEMINI_ORDER_EXTRACTION_ENABLED", False)
     order_extraction_timeout_seconds: int = _int_env("GEMINI_ORDER_EXTRACTION_TIMEOUT_SECONDS", 12)
     voice_name: str = os.getenv("GEMINI_VOICE_NAME", "Aoede")
-    language_code: str = os.getenv("GEMINI_LANGUAGE_CODE", "my-MM")
+    language_code: str = os.getenv("GEMINI_LANGUAGE_CODE", "vi-VN")
     input_sample_rate: int = _int_env("GEMINI_INPUT_SAMPLE_RATE", 16000)
     temperature: float = _float_env("GEMINI_TEMPERATURE", 0.2)
     top_p: float = _float_env("GEMINI_TOP_P", 0.7)
     max_output_tokens: int = _int_env("GEMINI_MAX_OUTPUT_TOKENS", 400)
-    product_knowledge_path: str = os.getenv("PRODUCT_KNOWLEDGE_PATH", "product.md")
+    product_knowledge_path: str = os.getenv("PRODUCT_KNOWLEDGE_PATH", "product_vi.md")
     initial_greeting: str = os.getenv(
         "GEMINI_INITIAL_GREETING",
-        "မင်္ဂလာပါ။ Venus BigOne နို့မှုန့် အကြောင်း မေးလို့ရပါတယ်ရှင်။",
+        DEFAULT_INBOUND_INITIAL_GREETING,
+    )
+    inbound_initial_greeting: str = os.getenv(
+        "GEMINI_INBOUND_INITIAL_GREETING",
+        DEFAULT_INBOUND_INITIAL_GREETING,
+    )
+    outbound_initial_greeting: str = os.getenv(
+        "GEMINI_OUTBOUND_INITIAL_GREETING",
+        DEFAULT_OUTBOUND_INITIAL_GREETING,
     )
     system_instruction: str = os.getenv(
         "GEMINI_SYSTEM_INSTRUCTION",
         (
-            "သင်သည် Venus BigOne အတွက် ဖုန်းအရောင်းအကြံပေးဖြစ်သည်။ "
-            "ဖောက်သည် မည်သည့်ဘာသာဖြင့်ပြောပြော မြန်မာလို သဘာဝကျကျ တိုတိုပြန်ဖြေပါ။"
+            "Bạn là tư vấn bán hàng qua điện thoại cho Venus BigOne. "
+            "Dù khách nói ngôn ngữ nào, hãy trả lời tự nhiên, ngắn gọn bằng tiếng Việt."
         ),
     )
     secondary_asr_enabled: bool = _bool_env("GEMINI_SECONDARY_ASR_ENABLED", False)
     in_call_secondary_asr_enabled: bool = _bool_env("GEMINI_IN_CALL_SECONDARY_ASR_ENABLED", False)
     secondary_asr_model: str = os.getenv("GEMINI_SECONDARY_ASR_MODEL", "gemini-2.5-flash")
-    secondary_asr_language_priority: str = os.getenv("GEMINI_SECONDARY_ASR_LANGUAGE_PRIORITY", "Myanmar")
+    secondary_asr_language_priority: str = os.getenv("GEMINI_SECONDARY_ASR_LANGUAGE_PRIORITY", "Vietnamese")
 
 
 @dataclass(frozen=True)
@@ -153,6 +169,16 @@ def product_knowledge() -> str:
     return path.read_text(encoding="utf-8").strip()
 
 
+ORDER_CONFIRMATION_TEMPLATE_RULES = """Template xác nhận thông tin đơn hàng:
+- Chỉ dùng template này khi đã đủ và rõ các thông tin chính: sản phẩm/combo, số lượng, số điện thoại, địa chỉ giao hàng. Tên người nhận nên có nếu khách cung cấp.
+- Nếu có tên người nhận thì đọc cả tên. Nếu chưa có tên thì không tự đoán và không chặn xác nhận đơn.
+- Thứ tự đọc lại: sản phẩm/combo -> số lượng -> tên người nhận (nếu có) -> số điện thoại -> địa chỉ giao hàng -> tổng tiền (nếu chắc chắn).
+- Mẫu câu: "Em xác nhận lại thông tin đơn hàng: sản phẩm {product_name}, số lượng {quantity} hộp, [người nhận {customer_name},] số điện thoại {customer_phone}, địa chỉ giao hàng {shipping_address}. Thông tin này đã đúng chưa ạ?"
+- Chỉ nói "em xác nhận đơn hàng" sau khi khách nói rõ là đúng hoặc đồng ý rõ ràng.
+- Nếu khách sửa thông tin, cập nhật theo thông tin mới nhất rồi đọc lại toàn bộ template.
+- Nếu còn thiếu thông tin, không đọc template; chỉ hỏi ngắn gọn 1 thông tin còn thiếu."""
+
+
 def _mode_rules(mode: str) -> str:
     if mode == "inbound":
         return ""
@@ -161,17 +187,29 @@ def _mode_rules(mode: str) -> str:
         raise ValueError(f"Unsupported call mode: {mode!r}")
 
     return (
-        "\n\nအပြင်ထွက်ဖုန်းခေါ်ဆိုမှု စည်းကမ်းများ:\n"
-        "- ဤဖုန်းခေါ်ဆိုမှုကို သင်က စတင်ခေါ်ဆိုထားခြင်းဖြစ်သည်။\n"
-        "- ဖုန်းစတင်ချိန်တွင်သာ တစ်ကြိမ် နှုတ်ဆက်ပါ။ နောက်ပိုင်းတွင် ထပ်မံနှုတ်ဆက်ခြင်း သို့မဟုတ် မိတ်ဆက်ခြင်း မလုပ်ပါနှင့်။\n"
-        "- ပထမဆုံးနှုတ်ဆက်ရာတွင် Venus BigOne မှ ဆက်သွယ်ခြင်းဖြစ်ကြောင်း တိုတိုပြောပါ။\n"
-        "- အစပိုင်းတွင် ကုန်ပစ္စည်းအကြောင်း ရှည်လျားစွာ မကြော်ငြာပါနှင့်။\n"
-        "- ပထမဆုံးနှုတ်ဆက်ပြီးနောက် ဖောက်သည်၏ နောက်ဆုံးပြောဆိုသည့် အဓိပ္ပါယ်ကို တိုက်ရိုက်တုံ့ပြန်ပါ။\n"
-        "- ဖောက်သည်မေးခွန်းတိုင်းအပြီး အော်ဒါတင်ရန် အတင်းမတိုက်တွန်းပါနှင့်။\n"
-        "- ဖောက်သည် အလုပ်များနေသည်ဟု ပြောလျှင် နောက်မှ ပြန်ခေါ်နိုင်ကြောင်း ယဉ်ကျေးစွာပြောပြီး အရောင်းဆက်မလုပ်ပါနှင့်။\n"
-        "- ဖောက်သည် မစိတ်ဝင်စားကြောင်း ပြတ်သားစွာပြောလျှင် တိုတိုယဉ်ကျေးစွာ တုံ့ပြန်ပြီး အရောင်းဆက်မလုပ်ပါနှင့်။\n"
-        "- ထပ်မခေါ်ရန် တောင်းဆိုလျှင် တစ်ကြိမ်သာ အသိအမှတ်ပြုပြီး ချက်ချင်းရပ်ပါ။\n"
-        "- လူမှားခြင်း သို့မဟုတ် ဖုန်းနံပါတ်မှားခြင်းဖြစ်လျှင် တိုတိုတောင်းပန်ပြီး စကားဆက်မပြောပါနှင့်။\n"
+        "\n\nQuy tắc gọi ra:\n"
+        "- Đây là cuộc gọi do bạn chủ động gọi cho khách.\n"
+        "- Chỉ chào một lần ở đầu cuộc gọi. Sau đó không chào lại hoặc giới thiệu lại.\n"
+        "- Lời chào đầu tiên phải nói ngắn gọn rằng Venus BigOne đang liên hệ.\n"
+        "- Nếu sau câu hỏi có tiện nghe không, khách chỉ nói \"dạ\", \"vâng\", \"ừ\", \"ok\" hoặc lời xác nhận ngắn tương tự, hiểu là khách đồng ý nghe tiếp; không được tự hiểu là khách bận.\n"
+        "- Không quảng cáo dài ở đầu cuộc gọi.\n"
+        "- Sau lời chào đầu tiên, phản hồi trực tiếp theo ý cuối cùng khách vừa nói.\n"
+        "- Không thúc ép đặt hàng sau mọi câu hỏi của khách.\n"
+        "- Nếu khách nói đang bận, lịch sự nói có thể gọi lại sau và không tiếp tục bán hàng.\n"
+        "- Nếu khách nói rõ là không quan tâm, trả lời ngắn gọn lịch sự và không tiếp tục bán hàng.\n"
+        "- Nếu khách yêu cầu không gọi lại, chỉ ghi nhận một lần rồi dừng ngay.\n"
+        "- Nếu gọi nhầm người hoặc nhầm số, xin lỗi ngắn gọn và không tiếp tục cuộc trò chuyện.\n"
+    )
+
+
+def gemini_initial_greeting(mode: str = "inbound") -> str:
+    if mode == "inbound":
+        return config.gemini.inbound_initial_greeting.strip()
+    if mode == "outbound":
+        return config.gemini.outbound_initial_greeting.strip()
+    raise ValueError(
+        f"Unsupported call mode: {mode!r}. "
+        "Expected 'inbound' or 'outbound'."
     )
 
 
@@ -184,22 +222,31 @@ def gemini_system_instruction(mode: str = "inbound") -> str:
 
     sections = [
         config.gemini.system_instruction.strip(),
-        """အသံခေါ်ဆိုမှု စည်းကမ်းများ:
-- ဖောက်သည် မည်သည့်ဘာသာဖြင့်ပြောပြော မြန်မာဘာသာဖြင့်သာ သဘာဝကျကျ ပြန်ဖြေပါ။
-- တစ်လှည့်တွင် ၁ စာကြောင်းမှ ၂ စာကြောင်းသာ ပြောပြီး နောက်ဆက်တွဲမေးခွန်း ၁ ခုထက်မပိုပါနှင့်။
-- ဖောက်သည်မေးသည့်အချက်ကိုသာ တိုတိုဖြေပါ။ မရှင်းလင်းသောအသံကို အဓိပ္ပါယ်၊ ပစ္စည်း သို့မဟုတ် အရေအတွက်အဖြစ် မခန့်မှန်းဘဲ ပြန်ပြောခိုင်းပါ။
-- ကုန်ပစ္စည်းအချက်အလက်တွင် မပါသော ဈေးနှုန်း၊ အကျိုးကျေးဇူး၊ မူဝါဒ သို့မဟုတ် ကတိပေးချက်ကို မထွင်ပါနှင့်။
-- ဖောက်သည်ကို ဖိအားပေးမရောင်းပါနှင့်။ ကျန်းမာရေးရလဒ်ကို အာမခံမပြောပါနှင့်။""",
+        """Quy tắc cuộc gọi thoại:
+- Dù khách nói ngôn ngữ nào, chỉ trả lời tự nhiên bằng tiếng Việt.
+- Mỗi lượt chỉ nói 1 đến 2 câu và không hỏi quá 1 câu hỏi tiếp theo.
+- Chỉ trả lời ngắn gọn đúng điều khách hỏi. Nếu âm thanh không rõ, không đoán ý, sản phẩm hoặc số lượng; hãy yêu cầu khách nói lại.
+- Những câu ngắn như "dạ", "vâng", "ừ", "ok" thường là xác nhận hoặc cho phép tiếp tục, không phải từ chối hoặc báo bận nếu khách không nói rõ là bận.
+- Không tự bịa giá, lợi ích, chính sách hoặc cam kết ngoài thông tin sản phẩm.
+- Không bán hàng gây áp lực. Không cam kết chắc chắn về kết quả sức khỏe.""",
         _mode_rules(mode).strip(),
-        """အော်ဒါလုပ်ငန်းစဉ်:
-- စိတ်ဝင်စားခြင်း၊ ဈေးမေးခြင်း၊ combo နှိုင်းယှဉ်ခြင်းသည် အော်ဒါအတည်ပြုခြင်း မဟုတ်ပါ။
-- ဖောက်သည်က ပစ္စည်း သို့မဟုတ် combo နှင့် အရေအတွက်ကို ပြတ်သားစွာ ရွေးချယ်ပြီးမှသာ အော်ဒါအချက်အလက် စတင်မေးပါ။
-- ဖုန်းနံပါတ်ကို အရင်မေးပြီး လိပ်စာကို နောက်တစ်လှည့်တွင် မေးပါ။ မပြည့်စုံသည့်အချက်ကို ပြန်မေးပါ။
-- လိပ်စာအဖြစ် ပို့ဆောင်မည့်နေရာကိုသာ ယူပါ။ မသက်ဆိုင်သော ကိုယ်ရေးအချက်အလက်များကို မရောပါနှင့်။
-- ပစ္စည်း၊ အရေအတွက်၊ ဖုန်းနှင့် လိပ်စာကို ပြန်ဖတ်ပြီး ဖောက်သည်က မှန်ကြောင်း ပြောပြီးမှသာ အော်ဒါအတည်ပြုပြီးကြောင်း ပြောပါ။""",
+        """Quy tắc tư vấn giá và combo:
+- Nếu khách hỏi chung "giá bao nhiêu" khi chưa nói combo nào, trả lời giá 1 hộp và thời gian dùng; không hỏi chốt đơn ngay. Có thể hỏi nhẹ: "Anh/chị muốn em gửi thêm giá combo không ạ?"
+- Nếu khách hỏi "có combo gì" hoặc "không có combo gì", liệt kê ngắn combo 2, combo 3, combo 5 và miễn phí vận chuyển từ 2 hộp; không nói "lên đơn" khi khách chỉ đang hỏi.
+- Nếu khách đã nhắc hoặc chọn một combo rồi hỏi giá, chỉ trả lời giá của combo đó; không liệt kê lại toàn bộ combo trừ khi khách hỏi so sánh.
+- Nếu khách hỏi "nên mua combo nào", tư vấn theo nhu cầu: dùng thử thì combo 2, muốn quà/tiết kiệm hơn thì combo 3, mua nhiều thì combo 5. Chỉ hỏi khách chọn combo nào, không nói "lên đơn" khi khách chưa chọn.
+- Nếu khách chỉ nói một từ chưa rõ như "nên", hãy hỏi lại ngắn gọn ý khách muốn tư vấn nên chọn combo nào hay muốn hỏi thông tin khác.""",
+        """Quy trình đặt hàng:
+- Quan tâm, hỏi giá hoặc so sánh combo không phải là xác nhận đặt hàng.
+- Chỉ bắt đầu hỏi thông tin đơn hàng sau khi khách chọn rõ sản phẩm hoặc combo và số lượng.
+- Sau khi khách chọn mua, hỏi tên người nhận trước nếu chưa biết. Nếu khách không muốn cung cấp tên, vẫn tiếp tục lấy số điện thoại và địa chỉ.
+- Hỏi số điện thoại sau tên, hỏi địa chỉ ở lượt sau. Nếu thiếu thông tin nào thì hỏi lại thông tin đó.
+- Địa chỉ chỉ lấy nơi giao hàng; không trộn thông tin cá nhân không liên quan.
+- Phải đọc lại sản phẩm/combo, số lượng, tên người nhận nếu có, số điện thoại và địa chỉ; chỉ nói đã xác nhận đơn sau khi khách nói thông tin đúng.""",
+        ORDER_CONFIRMATION_TEMPLATE_RULES,
     ]
 
     knowledge = product_knowledge()
     if knowledge:
-        sections.append(f"ကုန်ပစ္စည်းအချက်အလက်:\n{knowledge}")
+        sections.append(f"Thông tin sản phẩm:\n{knowledge}")
     return "\n\n".join(section for section in sections if section).strip()

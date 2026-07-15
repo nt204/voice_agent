@@ -675,7 +675,8 @@ button { cursor: pointer; }
   margin: 10px 0 8px;
 }
 .info-grid div,
-.combo-card {
+.combo-card,
+.recording-card {
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -691,22 +692,84 @@ button { cursor: pointer; }
   overflow-wrap: anywhere;
 }
 .combo-card h3,
+.recording-card h3,
 .section-title {
   margin: 0 0 8px;
   font-size: 14px;
 }
-.combo-card {
+.combo-card,
+.recording-card {
   margin-bottom: 8px;
 }
-.combo-head {
+.combo-head,
+.recording-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 8px;
 }
-.combo-head h3 {
+.combo-head h3,
+.recording-head h3 {
   margin: 0;
+}
+.recording-head span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.recording-player,
+.recording-track {
+  display: grid;
+  grid-template-columns: minmax(96px, .45fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+.recording-player {
+  padding: 10px;
+  border: 1px solid #dbe7f3;
+  border-radius: 8px;
+  background: #fff;
+}
+.recording-player div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.recording-player strong,
+.recording-track span {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+.recording-player small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.recording-card audio {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+}
+.recording-tracks {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+.recording-track {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #eef4fb;
+}
+.empty-recording p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 .combo-list {
   display: grid;
@@ -935,6 +998,10 @@ input:focus-visible {
   .detail-panel.show-transcript .transcript-panel {
     display: flex;
     min-height: 0;
+  }
+  .recording-player,
+  .recording-track {
+    grid-template-columns: 1fr;
   }
 }
 

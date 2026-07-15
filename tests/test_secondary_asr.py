@@ -71,10 +71,10 @@ def test_secondary_asr_sends_audio_to_configured_model() -> None:
 def test_secondary_asr_prompt_prioritizes_expected_customer_languages() -> None:
     prompt = build_transcription_prompt(
         live_candidate="wrong-script candidate",
-        language_priority="Vietnamese, Myanmar",
+        language_priority="Vietnamese",
     )
 
-    assert "Expected customer languages, in priority order: Vietnamese, Myanmar" in prompt
+    assert "Expected customer languages, in priority order: Vietnamese" in prompt
     assert "audio remains the source of truth" in prompt
     assert "independent of any Live ASR candidate" in prompt
 

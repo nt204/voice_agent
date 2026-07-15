@@ -7,6 +7,7 @@ from collections import deque
 from html import escape
 from pathlib import Path
 from urllib.parse import parse_qsl
+from urllib.parse import quote
 from urllib.parse import urlencode
 from urllib.parse import urljoin, urlparse, urlunparse
 
@@ -22,11 +23,12 @@ from app.audio import (
     telnyx_payload_to_pcm16,
 )
 from app.call_history import CallHistoryStore
-from app.config import config, gemini_system_instruction
+from app.config import config, gemini_initial_greeting, gemini_system_instruction
 from app.database import init_db
 from app.gemini_bridge import GeminiCallBridge
 from app.logging_utils import log
 from app.admin import router as admin_router
+from app.recording_manager import latest_recording_for_call, recording_path_for_call
 
 app = FastAPI(title="Viber Gemini Live Bridge")
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -321,7 +323,47 @@ async def api_call_detail(call_id: str) -> dict[str, object]:
     call = call_history.get_call(call_id)
     if not call:
         raise HTTPException(status_code=404, detail="Call not found")
+    call["recording"] = _call_recording_summary(call_id)
     return call
+
+
+@app.get("/api/calls/{call_id}/recording/{file_kind}")
+async def api_call_recording(call_id: str, file_kind: str) -> FileResponse:
+    try:
+        path = recording_path_for_call(call_id, file_kind)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Recording file not found")
+    return FileResponse(path, media_type="audio/wav", filename=path.name)
+
+
+def _call_recording_summary(call_id: str) -> dict[str, object] | None:
+    recording = latest_recording_for_call(call_id)
+    if not recording:
+        return None
+    encoded_call_id = quote(call_id, safe="")
+    files = {}
+    for kind in ("mixed", "inbound", "outbound"):
+        file_info = (recording.get("files") or {}).get(kind)
+        if not file_info:
+            files[kind] = None
+            continue
+        files[kind] = {
+            "name": file_info.get("name", ""),
+            "bytes": file_info.get("bytes", 0),
+            "url": f"/api/calls/{encoded_call_id}/recording/{kind}",
+        }
+    return {
+        "id": recording.get("id", ""),
+        "status": recording.get("status", ""),
+        "started_at": recording.get("started_at", ""),
+        "ended_at": recording.get("ended_at", ""),
+        "sample_rate": recording.get("sample_rate"),
+        "files": files,
+    }
 
 
 @app.get("/api/admin/summary")
@@ -567,6 +609,7 @@ async def telnyx_ws(websocket: WebSocket) -> None:
 def _telnyx_bridge_options(mode: str) -> dict[str, object]:
     return {
         "send_initial_greeting": True,
+        "initial_greeting": gemini_initial_greeting(mode),
         "system_instruction": (
             gemini_system_instruction("outbound") if mode == "outbound" else None
         ),
@@ -721,6 +764,7 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     clear_audio=clear_audio,
                     explicit_vad=True,
                     send_initial_greeting=bridge_options["send_initial_greeting"],
+                    initial_greeting=bridge_options["initial_greeting"],
                     realtime_input=True,
                     system_instruction=bridge_options["system_instruction"],
                     on_transcript=_store_transcript(call_id),
@@ -906,6 +950,7 @@ async def signalwire_ws(websocket: WebSocket) -> None:
                     call_id=call_id,
                     call_sample_rate=sample_rate,
                     send_audio=send_audio,
+                    initial_greeting=gemini_initial_greeting("inbound"),
                     on_transcript=_store_transcript(call_id),
                 )
                 input_gate = RealtimeInputGate(bridge, call_id)
@@ -999,6 +1044,7 @@ async def infobip_ws(websocket: WebSocket) -> None:
                         call_id=call_id,
                         call_sample_rate=sample_rate,
                         send_audio=send_audio,
+                        initial_greeting=gemini_initial_greeting("inbound"),
                         on_transcript=_store_transcript(call_id),
                     )
                     input_gate = RealtimeInputGate(bridge, call_id)

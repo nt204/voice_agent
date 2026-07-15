@@ -101,6 +101,15 @@ def _normalize_digits(value: str) -> str:
     return value.translate(EXTRA_DIGITS)
 
 
+def _normalize_phone_candidate(value: str) -> str:
+    cleaned = _normalize_digits(value).strip()
+    prefix = "+" if cleaned.startswith("+") else ""
+    digits = re.sub(r"\D", "", cleaned)
+    if not (8 <= len(digits) <= 15):
+        return ""
+    return f"{prefix}{digits}"
+
+
 def _fold_text(value: str) -> str:
     normalized = unicodedata.normalize("NFD", _normalize_digits(value))
     without_marks = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
@@ -132,6 +141,81 @@ def _extract_phone(text: str) -> str:
     if not match:
         return ""
     return _normalize_digits(re.sub(r"[\s.-]+", "", match.group(1)))
+
+
+def _extract_phone_precise(text: str) -> str:
+    normalized = _normalize_digits(text)
+    phone_label = (
+        r"(?:phone|số điện thoại|so dien thoai|điện thoại|dien thoai|"
+        r"sdt|sđt|so dt|số đt|ဖုန်းနံပါတ်|ဖုန်း)"
+    )
+    label_match = re.search(
+        phone_label
+        + r"\s*(?:của|cua|là|la|is|က|မှာ|သည်|:)?\s*"
+        + r"(\+?\d[\d .-]{7,}\d)",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    if label_match:
+        candidate = _normalize_phone_candidate(label_match.group(1))
+        if candidate:
+            return candidate
+
+    stripped = normalized.strip()
+    if re.fullmatch(r"\+?[\d .-]+", stripped):
+        candidate = _normalize_phone_candidate(stripped)
+        if candidate:
+            return candidate
+
+    for match in re.finditer(r"\+?\d{8,15}", normalized):
+        candidate = _normalize_phone_candidate(match.group(0))
+        if candidate:
+            return candidate
+
+    return ""
+
+
+def _extract_phone_from_turns(turns: list[str]) -> str:
+    for turn in reversed(turns):
+        phone = _extract_phone_precise(turn)
+        if phone:
+            return phone
+    return _extract_phone_precise(" ".join(turns))
+
+
+def _extract_name_from_turn(turn: str) -> str:
+    patterns = (
+        r"(?:tên người nhận|ten nguoi nhan|người nhận|nguoi nhan)\s*(?:là|la|:)?\s*(.+)",
+        r"(?:tên tôi|ten toi|tôi tên|toi ten|mình tên|minh ten|tên|ten)\s*(?:là|la|:)?\s*(.+)",
+        r"(?:နာမည်|အမည်)\s*(?:က|မှာ|သည်|:)?\s*(.+)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, turn, flags=re.IGNORECASE)
+        if not match:
+            continue
+        name = _clean(match.group(1))
+        name = re.split(
+            r"\b(?:số điện thoại|so dien thoai|điện thoại|dien thoai|phone|"
+            r"địa chỉ|dia chi|address|ship|giao)\b",
+            name,
+            maxsplit=1,
+            flags=re.IGNORECASE,
+        )[0].strip(" \t\r\n,.;:-")
+        if (
+            2 <= len(name) <= 80
+            and re.search(r"[A-Za-zÀ-ỹ\u1000-\u109F]", name)
+            and not re.search(r"\b(?:combo|hop|hộp|kyat|mua|dat|đặt)\b", _fold_text(name))
+        ):
+            return name
+    return ""
+
+
+def _extract_customer_name(turns: list[str]) -> str:
+    for turn in reversed(turns):
+        name = _extract_name_from_turn(turn)
+        if name:
+            return name
+    return ""
 
 
 def _extract_address(text: str) -> str:
@@ -450,13 +534,34 @@ def _intent_status(
     return "unknown"
 
 
+def _need_summary(
+    text: str,
+    *,
+    intent_status: str,
+    order_selection: dict[str, Any] | None,
+) -> str:
+    if intent_status == "no_need":
+        return "Chưa có nhu cầu"
+    if order_selection:
+        combo = order_selection.get("combo")
+        quantity = order_selection.get("quantity")
+        product = order_selection.get("product") or PRODUCT_CATALOG["venus bigone"]
+        if combo:
+            return f"Mua Combo {combo['quantity']}"
+        if quantity:
+            return f"Mua lẻ {quantity} hộp {product['name']}"
+        return f"Mua {product['name']}"
+    return text[:240]
+
+
 def extract_customer_facts(
     transcript: list[dict[str, Any]],
     fallback_phone: str = "",
 ) -> dict[str, Any]:
     text = _customer_text(transcript)
     turns = _customer_turns(transcript)
-    stated_phone = _extract_phone(text)
+    name = _extract_customer_name(turns)
+    stated_phone = _extract_phone_from_turns(turns)
     phone = stated_phone or ("" if _customer_attempted_phone(text) else fallback_phone)
     address = next(
         (candidate for turn in reversed(turns) if (candidate := _extract_address(turn))),
@@ -465,7 +570,7 @@ def extract_customer_facts(
     age_range, age_confidence = _extract_age_range(text)
     gender, gender_confidence = _extract_gender(text)
     return {
-        "name": "",
+        "name": name,
         "phone": phone,
         "address": address,
         "need": text[:240],
@@ -489,6 +594,11 @@ def analyze_call(transcript: list[dict[str, Any]], fallback_phone: str = "") -> 
         customer_turns=customer_turns,
         order_selection=order_selection,
     )
+    customer["need"] = _need_summary(
+        text,
+        intent_status=intent_status,
+        order_selection=order_selection,
+    )
 
     order = None
     if intent_status == "ready_to_order" and order_selection:
@@ -496,6 +606,8 @@ def analyze_call(transcript: list[dict[str, Any]], fallback_phone: str = "") -> 
         product = order_selection["product"] or PRODUCT_CATALOG["venus bigone"]
         quantity = int(combo["quantity"]) if combo else order_selection["quantity"]
         product_name = combo["name"] if combo else product["name"]
+        purchase_type = "combo" if combo else "retail"
+        combo_name = combo["name"] if combo else ""
         unit_price = int(combo["unit_price"]) if combo else int(product["unit_price"])
         total_price = int(combo["total_price"]) if combo else unit_price * (quantity or 0)
         missing_fields = []
@@ -510,9 +622,11 @@ def analyze_call(transcript: list[dict[str, Any]], fallback_phone: str = "") -> 
         status = "ready_to_confirm" if not missing_fields else "missing_info"
         order = {
             "customer_phone": phone,
-            "customer_name": "",
+            "customer_name": customer["name"],
             "shipping_address": address,
             "product_name": product_name,
+            "purchase_type": purchase_type,
+            "combo": combo_name,
             "quantity": quantity or 0,
             "unit_price": unit_price,
             "total_price": total_price,

@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY assets ./assets
 COPY product.md ./product.md
+COPY product_vi.md ./product_vi.md
 
 RUN mkdir -p /app/data /app/recordings
 

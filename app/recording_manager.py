@@ -10,6 +10,7 @@ from app.database import CallIntentRow, CallRecordingRow, db_session
 
 
 RECORDING_FILE_KINDS = {"inbound", "outbound", "mixed", "log"}
+AUDIO_FILE_KINDS = {"inbound", "outbound", "mixed"}
 
 
 def recordings_root() -> Path:
@@ -26,6 +27,17 @@ def list_recordings() -> list[dict]:
             for intent in session.scalars(select(CallIntentRow)).all()
         }
         return [_recording_item(row, intents.get(row.id)) for row in rows]
+
+
+def latest_recording_for_call(call_id: str) -> dict | None:
+    with db_session() as session:
+        row = session.scalars(
+            select(CallRecordingRow)
+            .where(CallRecordingRow.call_id == call_id)
+            .order_by(desc(CallRecordingRow.started_at))
+            .limit(1)
+        ).first()
+        return _recording_item(row) if row else None
 
 
 def recording_path(recording_id: str, file_kind: str) -> Path:
@@ -48,6 +60,22 @@ def recording_path(recording_id: str, file_kind: str) -> Path:
     if not resolved.is_relative_to(root):
         raise ValueError("Invalid recording path")
     return resolved
+
+
+def recording_path_for_call(call_id: str, file_kind: str) -> Path:
+    if file_kind not in AUDIO_FILE_KINDS:
+        raise ValueError("Invalid recording audio file")
+    with db_session() as session:
+        row = session.scalars(
+            select(CallRecordingRow)
+            .where(CallRecordingRow.call_id == call_id)
+            .order_by(desc(CallRecordingRow.started_at))
+            .limit(1)
+        ).first()
+        if not row:
+            raise FileNotFoundError("Recording not found")
+        recording_id = row.id
+    return recording_path(recording_id, file_kind)
 
 
 def delete_recording(recording_id: str) -> int:

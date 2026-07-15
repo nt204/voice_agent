@@ -3,6 +3,7 @@ const state = {
   interest: "",
   query: "",
   selectedId: null,
+  selectedDetailStatus: "",
   calls: [],
   orders: [],
   callPage: 1,
@@ -45,6 +46,13 @@ const formatMoney = value => value
   ? `${Number(value).toLocaleString("vi-VN")} đ`
   : "Chưa có";
 
+const formatBytes = value => {
+  const bytes = Number(value || 0);
+  if (!bytes) return "";
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+};
+
 function interestLabel(status) {
   return {
     needs_consultation: "Cần tư vấn",
@@ -72,6 +80,14 @@ function orderStatusLabel(status) {
     confirmed: "Đã xác nhận",
     cancelled: "Đã hủy",
   }[status] || "Đơn nháp";
+}
+
+function recordingStatusLabel(status) {
+  return {
+    active: "Đang ghi",
+    completed: "Đã lưu",
+    failed: "Lỗi",
+  }[status] || "Chưa có";
 }
 
 function directionLabel(direction) {
@@ -129,7 +145,7 @@ async function loadDashboard({ silent = false } = {}) {
     renderSummary(summary.stats);
     state.calls = listing.calls;
     renderCalls(listing.calls);
-    if (state.selectedId) {
+    if (shouldRefreshSelectedDetail(listing.calls, { silent })) {
       await loadDetail(state.selectedId, { silent: true });
     }
 
@@ -163,6 +179,39 @@ async function loadDashboard({ silent = false } = {}) {
   } finally {
     state.refreshing = false;
   }
+}
+
+function selectedCallFrom(calls) {
+  return calls.find(call => call.id === state.selectedId) || null;
+}
+
+function isActiveCall(call) {
+  return call?.status === "active";
+}
+
+function isDetailAudioPlaying() {
+  return Array.from(detailPanel.querySelectorAll("audio"))
+    .some(audio => !audio.paused && !audio.ended);
+}
+
+function isTranscriptScrolledAwayFromBottom() {
+  const transcript = detailPanel.querySelector(".transcript");
+  if (!transcript) return false;
+  return transcript.scrollHeight - transcript.clientHeight - transcript.scrollTop > 24;
+}
+
+function shouldRefreshSelectedDetail(calls, { silent } = {}) {
+  if (!state.selectedId) return false;
+  if (!silent) return true;
+  if (isDetailAudioPlaying() || isTranscriptScrolledAwayFromBottom()) return false;
+
+  const selectedCall = selectedCallFrom(calls);
+  if (!selectedCall) return false;
+  if (isActiveCall(selectedCall)) return true;
+
+  // Refresh once when the active call has just finished, then keep completed
+  // details stable so playback and transcript reading are not interrupted.
+  return state.selectedDetailStatus === "active";
 }
 
 function recordedOrders(orders) {
@@ -320,6 +369,66 @@ function renderComboCard(call) {
     </div>`;
 }
 
+function renderRecordingCard(call) {
+  const recording = call.recording || null;
+  if (call.status !== "completed") {
+    return `
+      <div class="recording-card empty-recording">
+        <div class="recording-head">
+          <h3>Nghe lại cuộc gọi</h3>
+          <span>${escapeHtml(recordingStatusLabel("active"))}</span>
+        </div>
+        <p>Bản ghi sẽ hiển thị sau khi cuộc gọi kết thúc.</p>
+      </div>`;
+  }
+
+  const files = recording?.files || {};
+  const tracks = [
+    { key: "mixed", label: "Toàn bộ cuộc gọi", file: files.mixed },
+    { key: "inbound", label: "Khách hàng", file: files.inbound },
+    { key: "outbound", label: "AI tư vấn", file: files.outbound },
+  ].filter(track => track.file && track.file.url);
+  const status = recording?.status || "completed";
+
+  if (!tracks.length) {
+    return `
+      <div class="recording-card empty-recording">
+        <div class="recording-head">
+          <h3>Nghe lại cuộc gọi</h3>
+          <span>${escapeHtml(recordingStatusLabel(status))}</span>
+        </div>
+        <p>Chưa có file ghi âm cho cuộc gọi này.</p>
+      </div>`;
+  }
+
+  const primary = tracks.find(track => track.key === "mixed") || tracks[0];
+  const secondary = tracks.filter(track => track !== primary);
+  return `
+    <div class="recording-card">
+      <div class="recording-head">
+        <h3>Nghe lại cuộc gọi</h3>
+        <span>${escapeHtml(recordingStatusLabel(status))}</span>
+      </div>
+      <div class="recording-player">
+        <div>
+          <strong>${escapeHtml(primary.label)}</strong>
+          ${primary.file.bytes ? `<small>${escapeHtml(formatBytes(primary.file.bytes))}</small>` : ""}
+        </div>
+        <audio controls preload="metadata" src="${escapeHtml(primary.file.url)}"></audio>
+      </div>
+      ${secondary.length ? `
+        <div class="recording-tracks">
+          ${secondary.map(track => `
+            <div class="recording-track">
+              <span>${escapeHtml(track.label)}</span>
+              <audio controls preload="metadata" src="${escapeHtml(track.file.url)}"></audio>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+    </div>`;
+}
+
 async function loadDetail(callId, { silent = false } = {}) {
   const previousTranscript = detailPanel.querySelector(".transcript");
   const previousScrollTop = previousTranscript?.scrollTop || 0;
@@ -350,6 +459,7 @@ async function loadDetail(callId, { silent = false } = {}) {
 
 function renderDetail(call, { scrollTop = 0, wasNearBottom = true } = {}) {
   const customer = call.customer || {};
+  state.selectedDetailStatus = call.status || "";
   const field = value => escapeHtml(value || "Chưa cung cấp");
   const transcript = call.transcript && call.transcript.length
     ? call.transcript.map(item => {
@@ -396,6 +506,7 @@ function renderDetail(call, { scrollTop = 0, wasNearBottom = true } = {}) {
       <div class="detail-summary">
         <div class="detail-note"><span>Nhu cầu</span><strong>${field(customer.need)}</strong></div>
         <div class="detail-note"><span>Địa chỉ</span><strong>${field(customer.address)}</strong></div>
+        ${renderRecordingCard(call)}
         ${renderComboCard(call)}
       </div>
 

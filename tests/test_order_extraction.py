@@ -77,6 +77,67 @@ def test_garbled_phone_attempt_does_not_fall_back_to_metadata_phone() -> None:
     assert order["blocking_reasons"] == ["customer_phone"]
 
 
+def test_transcript_phone_overrides_payload_that_merged_combo_number() -> None:
+    payload = {
+        "intent_status": "ready_to_order",
+        "customer_name": None,
+        "customer_phone": "20961984204",
+        "shipping_address": "Hà Nội",
+        "product_name": "Venus BigOne Combo 2",
+        "quantity": 2,
+        "unit_price": 105000,
+        "total_price": 210000,
+        "combo": "Combo 2",
+        "confidence": 0.9,
+    }
+    transcript = [
+        {"speaker": "customer", "text": "Tôi mua combo 2 0961984204"},
+        {"speaker": "customer", "text": "Địa chỉ là Hà Nội"},
+    ]
+
+    result = _merge_payload(
+        payload,
+        transcript,
+        fallback_phone="",
+        fallback={},
+    )
+
+    assert result["customer"]["phone"] == "0961984204"
+    assert result["order"]["customer_phone"] == "0961984204"
+    assert result["order"]["product_name"] == "Venus BigOne Combo 2"
+
+
+def test_merge_payload_uses_name_from_transcript_when_payload_omits_it() -> None:
+    payload = {
+        "intent_status": "ready_to_order",
+        "customer_name": None,
+        "customer_phone": "0961984204",
+        "shipping_address": "Hà Nội",
+        "product_name": "Venus BigOne Combo 2",
+        "quantity": 2,
+        "unit_price": 105000,
+        "total_price": 210000,
+        "combo": "Combo 2",
+        "confidence": 0.9,
+    }
+    transcript = [
+        {"speaker": "customer", "text": "Tôi mua combo 2"},
+        {"speaker": "customer", "text": "Tên người nhận là Nguyễn Văn A"},
+        {"speaker": "customer", "text": "Số điện thoại là 0961984204"},
+        {"speaker": "customer", "text": "Địa chỉ là Hà Nội"},
+    ]
+
+    result = _merge_payload(
+        payload,
+        transcript,
+        fallback_phone="",
+        fallback={},
+    )
+
+    assert result["customer"]["name"] == "Nguyễn Văn A"
+    assert result["order"]["customer_name"] == "Nguyễn Văn A"
+
+
 def test_model_ready_intent_is_rejected_without_concrete_customer_selection() -> None:
     payload = {
         "intent_status": "ready_to_order",

@@ -13,7 +13,7 @@ from app.config import config, require_env
 TRANSCRIPTION_PROMPT = """Transcribe this customer phone-call audio verbatim.
 
 Rules:
-- The speaker may use Myanmar, Vietnamese, English, Korean, or switch languages.
+- The speaker is expected to use Vietnamese, but may use English or switch languages.
 - Preserve the original language and writing system. Do not translate.
 - Write exactly what is spoken; do not repair grammar, infer intent, or add product context.
 - Preserve numbers, product names, quantities, and place names as heard.
