@@ -41,7 +41,7 @@ SCENARIOS = [
         ],
         "expected": {
             "interest_status": "needs_consultation",
-            "intent_status": "needs_consultation",
+            "intent_status": "considering",
             "order_status": None,
             "gender": "female",
             "age_range": "25-34",

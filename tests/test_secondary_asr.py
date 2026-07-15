@@ -75,8 +75,8 @@ def test_secondary_asr_prompt_prioritizes_expected_customer_languages() -> None:
     )
 
     assert "Expected customer languages, in priority order: Vietnamese, Myanmar" in prompt
-    assert "Vietnamese phone speech is often misheard as Myanmar or Korean" in prompt
-    assert "Do not output Myanmar or Korean text unless the audio clearly supports it" in prompt
+    assert "audio remains the source of truth" in prompt
+    assert "independent of any Live ASR candidate" in prompt
 
 
 class _FakeLiveSession:
@@ -146,7 +146,7 @@ def test_bridge_records_and_replays_secondary_asr_transcript(monkeypatch) -> Non
 
     assert cleared == [True]
     assert live_candidates == ["지금 몇 시예요?"]
-    assert recorded == [("customer_recovered", "Tôi muốn mua một combo.")]
+    assert recorded == []
     assert len(session.client_content) == 1
     content = session.client_content[0]["turns"]
     assert content.role == "user"
@@ -263,3 +263,106 @@ def test_telnyx_audio_turn_handler_disabled_for_immediate_replies() -> None:
             "in_call_secondary_asr_enabled",
             original_in_call_enabled,
         )
+
+
+class _BatchModels:
+    def __init__(self) -> None:
+        self.calls = []
+
+    async def generate_content(self, **kwargs):
+        self.calls.append(kwargs)
+        return type(
+            "Response",
+            (),
+            {
+                "text": (
+                    '{"turns":['
+                    '{"index":0,"text":"Tôi muốn mua một combo"},'
+                    '{"index":1,"text":"Combo 2 thì thế nào?"}'
+                    "]}"
+                )
+            },
+        )()
+
+
+class _BatchClient:
+    def __init__(self) -> None:
+        self.models = _BatchModels()
+        self.aio = type("Aio", (), {"models": self.models})()
+
+
+def test_secondary_asr_batches_all_completed_turns_in_one_request() -> None:
+    client = _BatchClient()
+    transcriber = SecondaryAsrTranscriber(client=client, model="batch-asr-model")
+    audio = b"\x01\x00" * 3200
+
+    result = asyncio.run(
+        transcriber.transcribe_many(
+            [
+                (0, audio, 16000, "wrong live text"),
+                (1, audio, 16000, "wrong live text"),
+            ]
+        )
+    )
+
+    assert result == {
+        0: "Tôi muốn mua một combo",
+        1: "Combo 2 thì thế nào?",
+    }
+    assert len(client.models.calls) == 1
+    assert client.models.calls[0]["model"] == "batch-asr-model"
+
+
+def test_post_call_asr_reuses_in_call_results(monkeypatch) -> None:
+    original_enabled = main.config.gemini.secondary_asr_enabled
+    object.__setattr__(main.config.gemini, "secondary_asr_enabled", True)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeGenaiClient)
+
+    class ShouldNotRun:
+        def __init__(self):
+            raise AssertionError("cached ASR result should be reused")
+
+    class Store:
+        def __init__(self) -> None:
+            self.updates = []
+
+        def update_customer_transcript_by_index(self, call_id, index, text) -> None:
+            self.updates.append((call_id, index, text))
+
+    monkeypatch.setattr("app.secondary_asr.SecondaryAsrTranscriber", ShouldNotRun)
+    try:
+        bridge = GeminiCallBridge(
+            call_id="cached-asr",
+            call_sample_rate=16000,
+            send_audio=lambda _: None,
+            send_initial_greeting=False,
+        )
+        bridge.completed_turns_audio = [(0, b"\x01\x00" * 3200, "wrong")]
+        bridge.secondary_asr_results = {0: "correct"}
+        store = Store()
+
+        asyncio.run(bridge.run_post_call_asr(store))
+
+        assert store.updates == [("cached-asr", 0, "correct")]
+    finally:
+        object.__setattr__(main.config.gemini, "secondary_asr_enabled", original_enabled)
+
+
+def test_call_finalization_waits_for_asr_before_sales_extraction() -> None:
+    events = []
+
+    class Bridge:
+        async def finalize_transcript(self, store) -> None:
+            events.append("asr")
+
+        async def close(self) -> None:
+            events.append("close")
+
+    class Store:
+        def finish_call(self, call_id) -> None:
+            events.append(f"extract:{call_id}")
+
+    asyncio.run(main._finalize_call(Bridge(), "ordered-finalization", Store()))
+
+    assert events == ["asr", "close", "extract:ordered-finalization"]

@@ -72,6 +72,8 @@ class GeminiCallBridge:
         self.completed_turns_audio = []
         self.realtime_live_transcript_parts = []
         self.asr_tasks = []
+        self.secondary_asr_results: dict[int, str] = {}
+        self.transcript_finalized = False
         self.realtime_input = realtime_input
         self.input_activity_active = False
         self.client = genai.Client(api_key=require_env("GEMINI_API_KEY"))
@@ -161,14 +163,17 @@ class GeminiCallBridge:
         self.turn_complete.clear()
         
         live_candidate = " ".join(self.realtime_live_transcript_parts).strip()
+        turn_no = len(self.completed_turns_audio)
         self.completed_turns_audio.append((
-            len(self.completed_turns_audio),
+            turn_no,
             audio,
             live_candidate
         ))
         
         if self.on_audio_turn and audio:
-            task = asyncio.create_task(self._process_audio_turn_correction(audio, live_candidate))
+            task = asyncio.create_task(
+                self._process_audio_turn_correction(turn_no, audio, live_candidate)
+            )
             self.asr_tasks.append(task)
             
         self.current_turn_audio.clear()
@@ -234,14 +239,17 @@ class GeminiCallBridge:
         audio_bytes = bytes(self.current_turn_audio)
         live_candidate = " ".join(self.realtime_live_transcript_parts).strip()
         if audio_bytes:
+            turn_no = len(self.completed_turns_audio)
             self.completed_turns_audio.append((
-                len(self.completed_turns_audio),
+                turn_no,
                 audio_bytes,
                 live_candidate
             ))
             
             if self.on_audio_turn:
-                task = asyncio.create_task(self._process_audio_turn_correction(audio_bytes, live_candidate))
+                task = asyncio.create_task(
+                    self._process_audio_turn_correction(turn_no, audio_bytes, live_candidate)
+                )
                 self.asr_tasks.append(task)
                 
         self.current_turn_audio.clear()
@@ -390,20 +398,24 @@ class GeminiCallBridge:
         if asyncio.iscoroutine(result):
             await result
 
-    async def _process_audio_turn_correction(self, audio_bytes: bytes, live_candidate: str) -> None:
+    async def _process_audio_turn_correction(
+        self,
+        turn_no: int,
+        audio_bytes: bytes,
+        live_candidate: str,
+    ) -> None:
         try:
-            turn_no = len(self.completed_turns_audio) - 1
             corrected_text = await self.on_audio_turn(
                 audio_bytes,
                 self.gemini_input_sample_rate,
                 turn_no,
                 live_candidate
             )
+            self.secondary_asr_results[turn_no] = corrected_text
             if corrected_text and corrected_text != live_candidate:
                 log(f"[{self.call_id}] In-call corrected turn {turn_no}: '{live_candidate}' -> '{corrected_text}'")
                 if self.clear_audio:
                     await self.clear_audio()
-                await self._record_transcript("customer_recovered", corrected_text)
                 if self.session:
                     await self.session.send_client_content(
                         turns=types.Content(
@@ -425,37 +437,54 @@ class GeminiCallBridge:
             return
         if not self.completed_turns_audio:
             return
-            
+
+        await self.wait_for_audio_turns()
         log(f"[{self.call_id}] Running post-call secondary ASR on {len(self.completed_turns_audio)} turns...")
         from app.secondary_asr import SecondaryAsrTranscriber
-        transcriber = SecondaryAsrTranscriber()
-        
-        import wave
-        for turn_index, audio_bytes, live_candidate in self.completed_turns_audio:
+
+        missing_turns = [
+            (turn_index, audio_bytes, self.gemini_input_sample_rate, live_candidate)
+            for turn_index, audio_bytes, live_candidate in self.completed_turns_audio
+            if turn_index not in self.secondary_asr_results
+        ]
+        if missing_turns:
             try:
-                # Save turn WAV file for debugging
-                debug_path = f"/app/recordings/turn_{turn_index}.wav"
-                with wave.open(debug_path, "wb") as f_debug:
-                    f_debug.setnchannels(1)
-                    f_debug.setsampwidth(2)
-                    f_debug.setframerate(self.gemini_input_sample_rate)
-                    f_debug.writeframes(audio_bytes)
-                dur = len(audio_bytes) / 32000
-                log(f"[{self.call_id}] Saved turn {turn_index} WAV (duration={dur:.2f}s) to {debug_path}")
-                corrected_text = await transcriber.transcribe(
-                    audio_bytes, 
-                    self.gemini_input_sample_rate, 
-                    live_candidate
+                transcriber = SecondaryAsrTranscriber()
+                self.secondary_asr_results.update(
+                    await transcriber.transcribe_many(missing_turns)
                 )
-                if corrected_text and corrected_text != live_candidate:
-                    log(f"[{self.call_id}] Post-call ASR Corrected Turn {turn_index}: '{live_candidate}' -> '{corrected_text}'")
-                    store.update_customer_transcript_by_index(
-                        self.call_id,
-                        turn_index,
-                        corrected_text
-                    )
-            except Exception as e:
-                log(f"[{self.call_id}] Post-call ASR error on turn {turn_index}: {e}")
+            except Exception as exc:
+                log(f"[{self.call_id}] Post-call ASR batch failed: {type(exc).__name__}: {exc}")
+
+        for turn_index, _, live_candidate in self.completed_turns_audio:
+            if turn_index not in self.secondary_asr_results:
+                continue
+            corrected_text = self.secondary_asr_results[turn_index]
+            if corrected_text != live_candidate:
+                shown = corrected_text or "[unclear]"
+                log(
+                    f"[{self.call_id}] Post-call ASR finalized turn {turn_index}: "
+                    f"'{live_candidate}' -> '{shown}'"
+                )
+            store.update_customer_transcript_by_index(
+                self.call_id,
+                turn_index,
+                corrected_text,
+            )
+
+        log(
+            f"[{self.call_id}] Final ASR transcript ready: "
+            f"{len(self.secondary_asr_results)}/{len(self.completed_turns_audio)} turns"
+        )
+
+    async def finalize_transcript(self, store) -> None:
+        if self.transcript_finalized:
+            return
+        await self.wait_for_audio_turns()
+        # Freeze Live transcription before replacing customer turns with final ASR.
+        await self._stop_receiver()
+        await self.run_post_call_asr(store)
+        self.transcript_finalized = True
 
 
 def _inline_bytes(data: bytes | str) -> bytes:

@@ -150,7 +150,10 @@ def test_finish_call_defaults_missing_demographic_fields(tmp_path, monkeypatch):
             "order": None,
         }
 
-    monkeypatch.setattr("app.call_history.analyze_call", fake_analyze_call)
+    monkeypatch.setattr(
+        "app.sql_call_history.analyze_call_with_gemini",
+        fake_analyze_call,
+    )
 
     store.finish_call("missing-demographics")
 
@@ -160,3 +163,15 @@ def test_finish_call_defaults_missing_demographic_fields(tmp_path, monkeypatch):
     assert call["analysis"]["gender_confidence"] == 0.0
     assert call["analysis"]["age_range"] == "unknown"
     assert call["analysis"]["age_confidence"] == 0.0
+
+
+def test_final_asr_can_clear_an_unreliable_live_transcript(tmp_path):
+    store = CallHistoryStore(tmp_path / "call_history.db")
+    store.start_call("unclear-turn", "inbound", "telnyx")
+    store.add_transcript("unclear-turn", "customer", "Tôi muốn mua Combo 5")
+
+    store.update_customer_transcript_by_index("unclear-turn", 0, "")
+
+    call = store.get_call("unclear-turn")
+    assert call is not None
+    assert call["transcript"][0]["text"] == ""

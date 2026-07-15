@@ -84,6 +84,14 @@ def _customer_text(transcript: list[dict[str, Any]]) -> str:
     )
 
 
+def _customer_turns(transcript: list[dict[str, Any]]) -> list[str]:
+    return [
+        item.get("text", "").strip()
+        for item in transcript
+        if item.get("speaker") == "customer" and item.get("text", "").strip()
+    ]
+
+
 def _clean(value: str) -> str:
     cleaned = value.strip(" \t\r\n,.;:-။၊")
     return re.sub(r"\s*(?:ပါရှင်|ပါတယ်|ပါ)$", "", cleaned).rstrip()
@@ -129,13 +137,30 @@ def _extract_phone(text: str) -> str:
 def _extract_address(text: str) -> str:
     patterns = (
         r"(?:လိပ်စာ|ပို့ရမယ့်လိပ်စာ|ပို့ရန်လိပ်စာ|နေရပ်လိပ်စာ|ပို့ပေးရမယ့်နေရာ|နေရာ)\s*(?:က|မှာ|သည်|:)?\s*(.+?)(?=[။;]|\s*(?:ဖုန်း|ဝယ်ချင်|လိုချင်|မှာမယ်|မှာယူမယ်)|$)",
-        r"(?:address|dia chi)\s*(?:la|is|:)?\s*(.+?)(?=[.;]|\s+(?:phone|so dien thoai|toi muon|toi can)\b|$)",
+        r"(?:address|địa chỉ|dia chi)\s*(?:là|la|is|:)?\s*(.+?)(?=[.;]|\s+(?:phone|số điện thoại|so dien thoai|tôi muốn|toi muon|tôi cần|toi can)\b|$)",
+        r"(?:ship|giao)\s*(?:đến|den|về|ve|tới|toi)\s+(.+?)(?=[.;]|$)",
     )
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.IGNORECASE)
         if match:
-            return _clean(match.group(1))
+            address = _clean(match.group(1))
+            return re.split(
+                r"(?:\b(?:age|tuoi|years?\s+old|female|male|woman|man)\b|အသက်|အမျိုးသမီး|အမျိုးသား)",
+                address,
+                maxsplit=1,
+                flags=re.IGNORECASE,
+            )[0].strip(" \t\r\n,.;:-။၊")
     return ""
+
+
+def _customer_attempted_phone(text: str) -> bool:
+    return bool(
+        re.search(
+            r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|số điện thoại|so dien thoai|điện thoại|dien thoai)",
+            text,
+            flags=re.IGNORECASE,
+        )
+    )
 
 
 def _extract_quantity(text: str) -> int | None:
@@ -148,8 +173,8 @@ def _extract_quantity(text: str) -> int | None:
     folded = _fold_text(text)
     number_pattern = r"(\d+|mot|hai|ba|bon|tu|nam|one|two|three|four|five)"
     patterns = (
-        rf"\b{number_pattern}\s*(?:hop|bo|box|combo)\b",
-        rf"\b(?:toi\s+)?(?:mua|dat|lay|chot|order|buy|purchase)\s+{number_pattern}\b",
+        rf"\b{number_pattern}\s*(?:hop|bo|box)\b",
+        rf"\b(?:toi\s+)?(?:mua|dat|lay|chot|order|buy|purchase)\s+{number_pattern}(?!\s*combo\b)",
     )
     for pattern in patterns:
         match = re.search(pattern, folded, flags=re.IGNORECASE)
@@ -163,7 +188,22 @@ def _extract_quantity(text: str) -> int | None:
     return None
 
 
+def _has_negated_buy_intent(text: str) -> bool:
+    if any(token in text for token in ("မဝယ်", "မယူ", "မမှာ")):
+        return True
+    folded = _fold_text(text)
+    return bool(
+        re.search(
+            r"\b(?:khong|chua)\s+(?:(?:muon|can)\s+)?(?:mua|dat|lay|chot|order)\b|"
+            r"\b(?:do\s+not|don't|not|not\s+yet)\s+(?:buy|order|purchase)\b",
+            folded,
+        )
+    )
+
+
 def _has_buy_intent(text: str) -> bool:
+    if _has_negated_buy_intent(text):
+        return False
     if _contains_any(
         text,
         (
@@ -181,6 +221,109 @@ def _has_buy_intent(text: str) -> bool:
         return True
     folded = _fold_text(text)
     return bool(re.search(r"\b(?:mua|dat|lay|chot|order|buy|purchase)\b", folded, flags=re.IGNORECASE))
+
+
+def _is_question(text: str) -> bool:
+    if "?" in text or _contains_any(text, ("ဘယ်လောက်", "သလဲ", "လား", "လဲ")):
+        return True
+    folded = _fold_text(text)
+    return bool(
+        re.search(
+            r"\b(?:thi\s+the\s+nao|bao\s+nhieu|gia|price|how\s+much|what\s+about)\b",
+            folded,
+        )
+    )
+
+
+def _is_delivery_order_request(text: str) -> bool:
+    return bool(re.search(r"\b(?:ship|giao)\s+(?:cho\s+)?(?:toi\s+)?", _fold_text(text)))
+
+
+def _is_no_need(text: str) -> bool:
+    if _contains_any(
+        text,
+        (
+            "မလိုချင်",
+            "မဝယ်ချင်",
+            "မလိုအပ်",
+            "မလိုဘူး",
+            "မလိုပါ",
+            "မယူတော့",
+            "မမှာတော့",
+            "စိတ်မဝင်စား",
+            "စိတ်မပါ",
+        ),
+    ):
+        return True
+    folded = _fold_text(text)
+    return bool(
+        re.search(
+            r"\b(?:khong\s+can|khong\s+muon|khong\s+quan\s+tam|"
+            r"khong\s+mua\s+nua|not\s+interested|no\s+need)\b",
+            folded,
+        )
+    )
+
+
+def _is_deferred(text: str) -> bool:
+    if _contains_any(text, ("မမှာသေး", "မဝယ်သေး", "စဉ်းစား", "စဥ်းစား", "တိုင်ပင်", "ဆုံးဖြတ်")):
+        return True
+    folded = _fold_text(text)
+    return bool(
+        re.search(
+            r"\b(?:chua\s+(?:mua|dat|chot)|suy\s+nghi|can\s+nhac|"
+            r"hoi\s+nguoi\s+nha|not\s+yet|thinking|considering)\b",
+            folded,
+        )
+    )
+
+
+def extract_order_selection(transcript: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Return the latest concrete customer commitment, never a product question."""
+    pending_generic_intent = False
+    selection: dict[str, Any] | None = None
+
+    for turn in _customer_turns(transcript):
+        if _is_no_need(turn) or _is_deferred(turn):
+            pending_generic_intent = False
+            selection = None
+            continue
+
+        combo = _extract_combo(turn)
+        quantity = _extract_quantity(turn)
+        product = _extract_product(turn)
+        concrete_item = bool(combo or quantity)
+        delivery_selection = (
+            concrete_item
+            and _is_delivery_order_request(turn)
+            and not _is_question(turn)
+        )
+
+        if _has_buy_intent(turn) or delivery_selection:
+            if concrete_item:
+                selection = {
+                    "text": turn,
+                    "combo": combo,
+                    "quantity": int(combo["quantity"]) if combo else quantity,
+                    "product": product or PRODUCT_CATALOG["venus bigone"],
+                }
+                pending_generic_intent = False
+            else:
+                # A general wish to buy still needs a concrete product/variant and count.
+                selection = None
+                pending_generic_intent = True
+            continue
+
+        if pending_generic_intent and concrete_item and not _is_question(turn):
+            selection = {
+                "text": turn,
+                "combo": combo,
+                "quantity": int(combo["quantity"]) if combo else quantity,
+                "product": product or PRODUCT_CATALOG["venus bigone"],
+            }
+            pending_generic_intent = False
+
+    return selection
 
 
 def _extract_combo(text: str) -> dict[str, Any] | None:
@@ -273,38 +416,21 @@ def _extract_objection(text: str) -> str:
     return "unknown"
 
 
-def _intent_status(text: str, *, quantity: int | None, phone: str, address: str) -> str:
-    if _contains_any(
-        text,
-        (
-            "မလိုချင်",
-            "မဝယ်ချင်",
-            "မလိုအပ်",
-            "မလိုဘူး",
-            "မလိုပါ",
-            "မယူတော့",
-            "မမှာတော့",
-            "စိတ်မဝင်စား",
-            "စိတ်မပါ",
-        ),
-    ):
-        return "no_need"
-    if re.search(
-        r"\b(?:khong can|khong muon|khong quan tam|chua co nhu cau|not interested|no need)\b",
-        text,
-        flags=re.IGNORECASE,
-    ):
-        return "no_need"
-    if _has_buy_intent(text):
+def _intent_status(
+    text: str,
+    *,
+    customer_turns: list[str],
+    order_selection: dict[str, Any] | None,
+) -> str:
+    if order_selection:
         return "ready_to_order"
-    if _contains_any(text, ("စဉ်းစား", "စဥ်းစား", "မသေချာ", "တိုင်ပင်", "ဆုံးဖြတ်")):
-        return "considering"
-    if re.search(
-        r"\b(?:phan van|suy nghi|can nhac|hoi nguoi nha|chua chac|thinking|considering|not sure)\b",
-        text,
-        flags=re.IGNORECASE,
-    ):
-        return "considering"
+    for turn in reversed(customer_turns):
+        if _is_no_need(turn):
+            return "no_need"
+        if _is_deferred(turn):
+            return "considering"
+        if _has_buy_intent(turn):
+            return "needs_consultation"
     if _contains_any(text, ("သောက်နည်း", "ဘေးထွက်", "သိချင်", "မေးချင်", "အကြံ", "စိတ်ဝင်စား")):
         return "needs_consultation"
     if re.search(
@@ -315,24 +441,30 @@ def _intent_status(text: str, *, quantity: int | None, phone: str, address: str)
         return "needs_consultation"
     if _contains_any(text, ("ဈေး", "စျေး", "ဘယ်လောက်", "combo", "Combo")):
         return "price_checking"
-    if re.search(r"\b(?:gia|bao nhieu|phi ship|price|how much|combo)\b", text, flags=re.IGNORECASE):
+    if re.search(
+        r"\b(?:gia|bao nhieu|phi ship|price|how much|combo)\b",
+        _fold_text(text),
+        flags=re.IGNORECASE,
+    ):
         return "price_checking"
     return "unknown"
 
 
-def analyze_call(transcript: list[dict[str, Any]], fallback_phone: str = "") -> dict[str, Any]:
+def extract_customer_facts(
+    transcript: list[dict[str, Any]],
+    fallback_phone: str = "",
+) -> dict[str, Any]:
     text = _customer_text(transcript)
-    phone = _extract_phone(text) or fallback_phone
-    address = _extract_address(text)
-    quantity = _extract_quantity(text)
-    combo = _extract_combo(text)
-    product = _extract_product(text)
+    turns = _customer_turns(transcript)
+    stated_phone = _extract_phone(text)
+    phone = stated_phone or ("" if _customer_attempted_phone(text) else fallback_phone)
+    address = next(
+        (candidate for turn in reversed(turns) if (candidate := _extract_address(turn))),
+        "",
+    )
     age_range, age_confidence = _extract_age_range(text)
     gender, gender_confidence = _extract_gender(text)
-    objection = _extract_objection(text)
-    intent_status = _intent_status(text, quantity=quantity, phone=phone, address=address)
-
-    customer = {
+    return {
         "name": "",
         "phone": phone,
         "address": address,
@@ -343,11 +475,28 @@ def analyze_call(transcript: list[dict[str, Any]], fallback_phone: str = "") -> 
         "age_confidence": age_confidence,
     }
 
+
+def analyze_call(transcript: list[dict[str, Any]], fallback_phone: str = "") -> dict[str, Any]:
+    text = _customer_text(transcript)
+    customer_turns = _customer_turns(transcript)
+    customer = extract_customer_facts(transcript, fallback_phone=fallback_phone)
+    phone = customer["phone"]
+    address = customer["address"]
+    order_selection = extract_order_selection(transcript)
+    objection = _extract_objection(text)
+    intent_status = _intent_status(
+        text,
+        customer_turns=customer_turns,
+        order_selection=order_selection,
+    )
+
     order = None
-    if intent_status == "ready_to_order":
-        product_name = combo["name"] if combo else product["name"] if product else ""
-        quantity = int(combo["quantity"]) if combo and not quantity else quantity
-        unit_price = int(combo["unit_price"]) if combo else int(product["unit_price"]) if product else 0
+    if intent_status == "ready_to_order" and order_selection:
+        combo = order_selection["combo"]
+        product = order_selection["product"] or PRODUCT_CATALOG["venus bigone"]
+        quantity = int(combo["quantity"]) if combo else order_selection["quantity"]
+        product_name = combo["name"] if combo else product["name"]
+        unit_price = int(combo["unit_price"]) if combo else int(product["unit_price"])
         total_price = int(combo["total_price"]) if combo else unit_price * (quantity or 0)
         missing_fields = []
         if not product_name:
@@ -379,7 +528,7 @@ def analyze_call(transcript: list[dict[str, Any]], fallback_phone: str = "") -> 
         if intent_status in {"considering", "needs_consultation"}
         else "low"
     )
-    confidence = 0.88 if intent_status in {"ready_to_order", "no_need"} else 0.72 if intent_status != "unknown" else 0.3
+    confidence = 0.86 if intent_status in {"ready_to_order", "no_need"} else 0.72 if intent_status != "unknown" else 0.3
     next_action = {
         "ready_to_order": "Kiem tra don nhap va xac nhan lai voi khach.",
         "needs_consultation": "Tu van them ve cach dung, an toan va loi ich chinh.",

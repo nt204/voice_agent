@@ -32,3 +32,77 @@ def test_combo_payload_uses_catalog_prices_when_gemini_mixes_unit_price() -> Non
     assert order["unit_price"] == 105000
     assert order["total_price"] == 210000
     assert order["status"] == "ready_to_confirm"
+
+
+def test_garbled_phone_attempt_does_not_fall_back_to_metadata_phone() -> None:
+    payload = {
+        "intent_status": "ready_to_order",
+        "customer_name": "null",
+        "customer_phone": "+85961695448",
+        "shipping_address": "Yangon, Hleden, Insin Road, No. 28",
+        "product_name": "Venus BigOne",
+        "quantity": 2,
+        "unit_price": 120000,
+        "total_price": 210000,
+        "combo": "Combo 2",
+        "confidence": 0.9,
+    }
+    fallback = {
+        "customer": {"phone": "+85961695448", "address": "", "need": ""},
+        "analysis": {"intent_status": "ready_to_order", "confidence": 0.7},
+        "order": {},
+    }
+    transcript = [
+        {"speaker": "customer", "text": "စိတ်ဝင်စားတဲ့ Benes Baker နှစ်ဘူးမှာမယ်"},
+        {"speaker": "customer", "text": "ဖုန်း သုည ကိုးခြောက် တစ်"},
+        {"speaker": "customer", "text": "မေးစမ်း Yangon Hleden Insin Road ပါ အသက် ၂၈ အမျိုးသမီး ပါ"},
+    ]
+
+    result = _merge_payload(
+        payload,
+        transcript,
+        fallback_phone="+85961695448",
+        fallback=fallback,
+    )
+
+    assert result["customer"]["name"] == ""
+    assert result["customer"]["phone"] == ""
+    assert result["customer"]["address"] == "Yangon, Hleden, Insin Road"
+
+    order = result["order"]
+    assert order["customer_phone"] == ""
+    assert order["shipping_address"] == "Yangon, Hleden, Insin Road"
+    assert order["status"] == "missing_info"
+    assert order["missing_fields"] == ["customer_phone"]
+    assert order["blocking_reasons"] == ["customer_phone"]
+
+
+def test_model_ready_intent_is_rejected_without_concrete_customer_selection() -> None:
+    payload = {
+        "intent_status": "ready_to_order",
+        "customer_phone": "+84961984204",
+        "shipping_address": "Mỹ Đình",
+        "product_name": "Venus BigOne Combo 2",
+        "combo": "Combo 2",
+        "quantity": 2,
+        "unit_price": 105000,
+        "total_price": 210000,
+        "confidence": 0.9,
+    }
+    transcript = [
+        {"speaker": "customer", "text": "Tôi muốn mua một combo"},
+        {"speaker": "customer", "text": "Combo 2 thì thế nào?"},
+        {"speaker": "customer", "text": "ship đến Mỹ Đình"},
+    ]
+
+    result = _merge_payload(
+        payload,
+        transcript,
+        fallback_phone="+84961984204",
+        fallback={},
+    )
+
+    assert result["analysis"]["intent_status"] == "needs_consultation"
+    assert result["analysis"]["confidence"] == 0.6
+    assert result["customer"]["address"] == "Mỹ Đình"
+    assert result["order"] is None

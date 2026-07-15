@@ -23,7 +23,6 @@ from sqlalchemy import (
 from sqlalchemy.engine import Connection, Engine
 
 from app.order_extraction import analyze_call_with_gemini
-from app.sales_analysis import analyze_call
 
 
 CUSTOMER_FIELDS = ("name", "phone", "address", "need", "notes")
@@ -137,96 +136,12 @@ def _clean(value: str) -> str:
     return re.sub(r"\s*(?:ပါရှင်|ပါတယ်|ပါ)$", "", cleaned).rstrip()
 
 
-def classify_customer_interest(transcript: list[dict[str, Any]]) -> str:
-    customer_text = " ".join(
-        item.get("text", "").strip()
-        for item in transcript
-        if item.get("speaker") == "customer" and item.get("text", "").strip()
-    )
-    if not customer_text:
+def interest_status_from_intent(intent_status: str) -> str:
+    if intent_status == "no_need":
+        return "no_need"
+    if intent_status == "unknown":
         return "unknown"
-
-    ascii_text = customer_text.casefold()
-    if any(
-        phrase in ascii_text
-        for phrase in (
-            "chua co nhu cau",
-            "khong can",
-            "khong muon",
-            "khong quan tam",
-            "chua can",
-            "chua muon",
-            "chua quan tam",
-        )
-    ):
-        return "no_need"
-    if any(
-        phrase in ascii_text
-        for phrase in (
-            "can tu van",
-            "muon tu van",
-            "tu van them",
-            "muon mua",
-            "can mua",
-            "quan tam",
-            "hoi them",
-        )
-    ):
-        return "needs_consultation"
-
-    if any(
-        phrase in customer_text
-        for phrase in (
-            "မလိုချင်",
-            "မဝယ်ချင်",
-            "မလိုအပ်",
-            "စိတ်မဝင်စား",
-        )
-    ):
-        return "no_need"
-    if any(
-        phrase in customer_text
-        for phrase in (
-            "စိတ်ဝင်စား",
-            "သိချင်",
-            "မေးချင်",
-            "အကြံ",
-            "ဝယ်ချင်",
-            "ဝယ်မယ်",
-            "ယူမယ်",
-            "မှာမယ်",
-            "အော်ဒါ",
-        )
-    ):
-        return "needs_consultation"
-
-    no_need_patterns = (
-        r"\bchưa (?:có )?nhu cầu\b",
-        r"\bkhông (?:cần|muốn|quan tâm)\b",
-        r"\bchưa (?:cần|muốn|quan tâm)\b",
-        r"မလိုချင်",
-        r"မလိုအပ်",
-        r"မဝယ်ချင်",
-    )
-    if any(re.search(pattern, customer_text, flags=re.IGNORECASE) for pattern in no_need_patterns):
-        return "no_need"
-
-    consultation_patterns = (
-        r"\b(?:cần|muốn) (?:được )?tư vấn\b",
-        r"\btư vấn thêm\b",
-        r"\b(?:muốn|cần) mua\b",
-        r"\bquan tâm\b",
-        r"\bhỏi thêm\b",
-        r"ဝယ်ချင်",
-        r"လိုချင်",
-        r"အကြံဉာဏ်",
-    )
-    if any(
-        re.search(pattern, customer_text, flags=re.IGNORECASE)
-        for pattern in consultation_patterns
-    ):
-        return "needs_consultation"
-    return "unknown"
+    return "needs_consultation"
 
 
 def extract_customer_info(transcript: list[dict[str, Any]]) -> dict[str, str]:
@@ -625,8 +540,6 @@ class SQLiteCallHistoryStore:
         self, call_id: str, customer_turn_index: int, new_text: str
     ) -> None:
         clean_text = new_text.strip()
-        if not clean_text:
-            return
         with self._lock, closing(self._connect()) as connection, connection:
             cursor = connection.execute(
                 """
@@ -641,7 +554,7 @@ class SQLiteCallHistoryStore:
                 """,
                 (clean_text, call_id, customer_turn_index),
             )
-            if cursor.rowcount == 0:
+            if cursor.rowcount == 0 and clean_text:
                 connection.execute(
                     "INSERT INTO transcripts (call_id, speaker, text, created_at) VALUES (?, 'customer', ?, ?)",
                     (call_id, clean_text, _now()),
@@ -652,18 +565,17 @@ class SQLiteCallHistoryStore:
         if not call:
             return
         extracted = extract_customer_info(call["transcript"])
-        interest_status = classify_customer_interest(call["transcript"])
         fallback_phone = call["customer"]["phone"]
-        sales_result = analyze_call(call["transcript"], fallback_phone=fallback_phone)
         sales_result = analyze_call_with_gemini(
             call["transcript"],
             fallback_phone=fallback_phone,
-            fallback_result=sales_result,
+        )
+        interest_status = interest_status_from_intent(
+            sales_result["analysis"]["intent_status"]
         )
         sales_customer = sales_result["customer"]
-        phone = extracted["phone"] or call["customer"]["phone"]
-        phone = sales_customer["phone"] or phone
-        address = extracted["address"] or sales_customer["address"]
+        phone = sales_customer["phone"] or extracted["phone"] or call["customer"]["phone"]
+        address = sales_customer["address"] or extracted["address"]
         need = extracted["need"] or sales_customer["need"]
         with self._lock, closing(self._connect()) as connection, connection:
             connection.execute(

@@ -1,4 +1,6 @@
+import asyncio
 import io
+import json
 import re
 import wave
 
@@ -26,15 +28,46 @@ def build_transcription_prompt(*, live_candidate: str = "", language_priority: s
         prompt += (
             "\nLanguage priority:\n"
             f"- Expected customer languages, in priority order: {language_priority.strip()}.\n"
+            "- Use this order only as a language prior; the audio remains the source of truth.\n"
+            "- Choose the writing system supported by the audio, independent of any Live ASR candidate.\n"
         )
-        if "Vietnamese" in language_priority:
-            prompt += (
-                "- Vietnamese phone speech is often misheard as Myanmar or Korean when the audio is noisy.\n"
-                "- Do not output Myanmar or Korean text unless the audio clearly supports it.\n"
-                "- If the sound can reasonably be Vietnamese, keep Vietnamese in Latin script with accents when clear.\n"
-                "- Do not switch writing systems just because the fast Live ASR candidate used that script.\n"
-            )
     return prompt
+
+
+def build_batch_transcription_prompt(*, language_priority: str = "") -> str:
+    prompt = """Transcribe each numbered customer phone-call audio clip verbatim.
+
+Rules:
+- Preserve the spoken language and writing system; do not translate or infer intent.
+- Keep product names, quantities, phone numbers, and place names exactly as supported by audio.
+- Return one result for every clip. Use an empty string when a clip is unintelligible.
+- Return JSON matching the supplied schema only.
+"""
+    if language_priority.strip():
+        prompt += (
+            "\nExpected customer languages, in priority order: "
+            f"{language_priority.strip()}. Use this only as a prior; audio is authoritative.\n"
+        )
+    return prompt
+
+
+BATCH_TRANSCRIPTION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "turns": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "index": {"type": "integer"},
+                    "text": {"type": "string"},
+                },
+                "required": ["index", "text"],
+            },
+        }
+    },
+    "required": ["turns"],
+}
 
 
 def pcm16_to_wav(pcm: bytes, sample_rate: int) -> bytes:
@@ -112,6 +145,67 @@ class SecondaryAsrTranscriber:
                     ),
                 )
                 return clean_transcript_response(getattr(response, "text", "") or "")
+            except Exception as exc:
+                last_exc = exc
+                if attempt < 3:
+                    await asyncio.sleep(backoff)
+                    backoff *= 2
+        raise last_exc
+
+    async def transcribe_many(
+        self,
+        turns: list[tuple[int, bytes, int, str]],
+    ) -> dict[int, str]:
+        usable = [
+            (index, pcm, sample_rate, live_candidate)
+            for index, pcm, sample_rate, live_candidate in turns
+            if len(pcm) >= sample_rate // 5 * 2
+        ]
+        if not usable:
+            return {}
+
+        parts = [
+            types.Part(
+                text=build_batch_transcription_prompt(
+                    language_priority=self.language_priority,
+                )
+            )
+        ]
+        for index, pcm, sample_rate, _ in usable:
+            parts.extend(
+                [
+                    types.Part(text=f"Audio turn {index}:"),
+                    types.Part(
+                        inline_data=types.Blob(
+                            data=pcm16_to_wav(pcm, sample_rate),
+                            mime_type="audio/wav",
+                        )
+                    ),
+                ]
+            )
+
+        last_exc = None
+        backoff = 0.5
+        for attempt in range(4):
+            try:
+                response = await self.client.aio.models.generate_content(
+                    model=self.model,
+                    contents=types.Content(role="user", parts=parts),
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_json_schema=BATCH_TRANSCRIPTION_SCHEMA,
+                        temperature=0,
+                        max_output_tokens=min(2000, max(300, len(usable) * 180)),
+                    ),
+                )
+                payload = json.loads(getattr(response, "text", "") or "{}")
+                expected = {index for index, _, _, _ in usable}
+                result: dict[int, str] = {}
+                for item in payload.get("turns") or []:
+                    index = item.get("index")
+                    if index in expected:
+                        result[index] = clean_transcript_response(str(item.get("text") or ""))
+                return result
             except Exception as exc:
                 last_exc = exc
                 if attempt < 3:

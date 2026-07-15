@@ -14,15 +14,14 @@ from app.call_history import (
     _now,
     analysis_table,
     calls_table,
-    classify_customer_interest,
     extract_customer_info,
+    interest_status_from_intent,
     metadata,
     orders_table,
     outbound_requests_table,
     transcripts_table,
 )
 from app.order_extraction import analyze_call_with_gemini
-from app.sales_analysis import analyze_call
 
 
 class SqlAlchemyCallHistoryStore:
@@ -309,8 +308,6 @@ class SqlAlchemyCallHistoryStore:
         self, call_id: str, customer_turn_index: int, new_text: str
     ) -> None:
         clean_text = new_text.strip()
-        if not clean_text:
-            return
         with self._lock, self.engine.begin() as connection:
             subq = (
                 select(transcripts_table.c.id)
@@ -329,7 +326,7 @@ class SqlAlchemyCallHistoryStore:
                     .where(transcripts_table.c.id == t_id)
                     .values(text=clean_text)
                 )
-            else:
+            elif clean_text:
                 connection.execute(
                     transcripts_table.insert().values(
                         call_id=call_id,
@@ -344,13 +341,13 @@ class SqlAlchemyCallHistoryStore:
         if not call:
             return
         extracted = extract_customer_info(call["transcript"])
-        interest_status = classify_customer_interest(call["transcript"])
         fallback_phone = call["customer"]["phone"]
-        sales_result = analyze_call(call["transcript"], fallback_phone=fallback_phone)
         sales_result = analyze_call_with_gemini(
             call["transcript"],
             fallback_phone=fallback_phone,
-            fallback_result=sales_result,
+        )
+        interest_status = interest_status_from_intent(
+            sales_result["analysis"]["intent_status"]
         )
         sales_customer = sales_result["customer"]
         log(
@@ -361,7 +358,7 @@ class SqlAlchemyCallHistoryStore:
             f"order={sales_result.get('order') is not None}"
         )
         phone = sales_customer["phone"] or extracted["phone"] or call["customer"]["phone"]
-        address = extracted["address"] or sales_customer["address"]
+        address = sales_customer["address"] or extracted["address"]
         need = extracted["need"] or sales_customer["need"]
         with self._lock, self.engine.begin() as connection:
             connection.execute(

@@ -250,6 +250,25 @@ def _store_transcript(call_id: str):
     return record
 
 
+async def _finalize_call(bridge, call_id: str, store=None) -> None:
+    target_store = store or call_history
+    if bridge:
+        try:
+            await bridge.finalize_transcript(target_store)
+        except Exception as exc:
+            log(f"[{call_id}] Final ASR stage failed: {type(exc).__name__}: {exc}")
+        finally:
+            try:
+                await bridge.close()
+            except Exception as exc:
+                log(f"[{call_id}] Gemini close failed: {type(exc).__name__}: {exc}")
+
+    if call_id == "unknown-call":
+        return
+    log(f"[{call_id}] ASR stage complete; starting final sales extraction")
+    await asyncio.to_thread(target_store.finish_call, call_id)
+
+
 def _telnyx_audio_turn_handler(call_id: str):
     if (
         not config.gemini.secondary_asr_enabled
@@ -768,13 +787,9 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
     except WebSocketDisconnect:
         log(f"[{call_id}] Telnyx WebSocket disconnected")
     finally:
-        if bridge:
-            await bridge.run_post_call_asr(call_history)
-            await bridge.close()
         if recorder:
             recorder.close()
-        if call_id != "unknown-call":
-            call_history.finish_call(call_id)
+        await _finalize_call(bridge, call_id)
 
 
 @app.api_route("/signalwire/stream-status", methods=["GET", "POST"])
@@ -935,10 +950,7 @@ async def signalwire_ws(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         log(f"[{call_id}] SignalWire WebSocket disconnected")
     finally:
-        if bridge:
-            await bridge.close()
-        if call_id != "unknown-call":
-            call_history.finish_call(call_id)
+        await _finalize_call(bridge, call_id)
 
 
 @app.websocket("/infobip/ws")
@@ -1007,10 +1019,7 @@ async def infobip_ws(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         print(f"[{call_id}] Infobip WebSocket disconnected", flush=True)
     finally:
-        if bridge:
-            await bridge.close()
-        if call_id != "unknown-call":
-            call_history.finish_call(call_id)
+        await _finalize_call(bridge, call_id)
 
 
 def _public_ws_url(path: str) -> str:
