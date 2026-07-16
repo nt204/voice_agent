@@ -373,13 +373,18 @@ def _merge_payload(
         confidence = min(confidence, 0.6)
     objection = _enum(payload.get("objection"), VALID_OBJECTIONS, fallback_analysis.get("objection", "none"))
     summary = _string(payload.get("summary")) or fallback_analysis.get("summary") or customer_text[:300]
+    customer_need = _customer_need_summary(
+        customer_text,
+        intent_status=intent_status,
+        order_selection=order_selection,
+    )
 
     return {
         "customer": {
             "name": customer_name,
             "phone": phone,
             "address": address,
-            "need": fallback_customer.get("need") or customer_facts.get("need") or customer_text[:240],
+            "need": customer_need or fallback_customer.get("need") or customer_facts.get("need") or customer_text[:240],
             "gender": customer_facts.get("gender", "unknown"),
             "gender_confidence": customer_facts.get("gender_confidence", 0.0),
             "age_range": customer_facts.get("age_range", "unknown"),
@@ -396,6 +401,28 @@ def _merge_payload(
         },
         "order": order,
     }
+
+
+def _customer_need_summary(
+    customer_text: str,
+    *,
+    intent_status: str,
+    order_selection: dict[str, Any] | None,
+) -> str:
+    if intent_status == "no_need":
+        return "Chưa có nhu cầu"
+    if not order_selection:
+        return customer_text[:240]
+
+    combo = order_selection.get("combo")
+    quantity = _positive_int(order_selection.get("quantity"))
+    product = order_selection.get("product") or {}
+    product_name = str(product.get("name") or "Venus BigOne")
+    if combo:
+        return f"Mua Combo {combo['quantity']}"
+    if quantity:
+        return f"Mua lẻ {quantity} hộp {product_name}"
+    return f"Mua {product_name}"
 
 
 def _resolve_product_name(product_name: str, combo: str) -> str:

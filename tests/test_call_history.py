@@ -1,4 +1,4 @@
-from app.call_history import CallHistoryStore
+from app.call_history import CallHistoryStore, extract_customer_info
 import sqlite3
 
 
@@ -123,6 +123,70 @@ def test_vietnamese_combo_buy_intent_creates_missing_info_order(tmp_path):
     assert call["order"]["quantity"] == 1
     assert call["order"]["total_price"] == 120000
     assert call["order"]["missing_fields"] == ["shipping_address"]
+
+
+def test_legacy_customer_parser_rejects_phone_as_name() -> None:
+    extracted = extract_customer_info(
+        [
+            {"speaker": "customer", "text": "Tôi muốn mua một"},
+            {"speaker": "customer", "text": "Tên là 0961695448 Số hai"},
+            {"speaker": "customer", "text": "Địa chỉ là số 2 ngõ 49 đường Lê Đức Thọ Hà Nội"},
+        ]
+    )
+
+    assert extracted["name"] == ""
+
+
+def test_finish_call_prefers_sales_parser_name_over_legacy_regex(tmp_path, monkeypatch):
+    store = CallHistoryStore(tmp_path / "call_history.db")
+    store.start_call("name-call", "outbound", "telnyx", "+84961695448")
+    store.add_transcript("name-call", "customer", "Tôi muốn mua một")
+    store.add_transcript("name-call", "customer", "Tên là 0961695448 Số hai")
+    store.add_transcript("name-call", "customer", "Địa chỉ là số 2 ngõ 49 đường Lê Đức Thọ Hà Nội")
+
+    def fake_analyze_call(transcript, fallback_phone=""):
+        return {
+            "customer": {
+                "name": "",
+                "phone": "0961695448",
+                "address": "số 2 ngõ 49 đường Lê Đức Thọ Hà Nội",
+                "need": "Mua lẻ 1 hộp Venus BigOne",
+            },
+            "analysis": {
+                "intent_status": "ready_to_order",
+                "sentiment": "neutral",
+                "urgency": "high",
+                "objection": "unknown",
+                "summary": "Customer ordered one box.",
+                "next_action": "Confirm order.",
+                "confidence": 0.9,
+            },
+            "order": {
+                "customer_phone": "0961695448",
+                "customer_name": "Trí",
+                "shipping_address": "số 2 ngõ 49 đường Lê Đức Thọ Hà Nội",
+                "product_name": "Venus BigOne",
+                "quantity": 1,
+                "unit_price": 120000,
+                "total_price": 120000,
+                "status": "ready_to_confirm",
+                "missing_fields": [],
+                "confidence": 0.9,
+            },
+        }
+
+    monkeypatch.setattr(
+        "app.sql_call_history.analyze_call_with_gemini",
+        fake_analyze_call,
+    )
+
+    store.finish_call("name-call")
+
+    call = store.get_call("name-call")
+    assert call is not None
+    assert call["customer"]["name"] == "Trí"
+    assert call["customer"]["need"] == "Mua lẻ 1 hộp Venus BigOne"
+    assert call["order"]["customer_name"] == "Trí"
 
 
 def test_finish_call_defaults_missing_demographic_fields(tmp_path, monkeypatch):

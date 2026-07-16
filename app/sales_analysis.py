@@ -201,13 +201,39 @@ def _extract_name_from_turn(turn: str) -> str:
             maxsplit=1,
             flags=re.IGNORECASE,
         )[0].strip(" \t\r\n,.;:-")
+        folded_name = _fold_text(name)
         if (
             2 <= len(name) <= 80
             and re.search(r"[A-Za-zÀ-ỹ\u1000-\u109F]", name)
-            and not re.search(r"\b(?:combo|hop|hộp|kyat|mua|dat|đặt)\b", _fold_text(name))
+            and not re.search(r"\d", _normalize_digits(name))
+            and folded_name not in {"la", "ten", "ten la", "sdt"}
+            and not re.search(
+                r"\b(?:combo|hop|hộp|kyat|mua|dat|đặt|"
+                r"so dien thoai|dien thoai|dia chi)\b",
+                folded_name,
+            )
         ):
             return name
     return ""
+
+
+def _is_valid_customer_name(name: str) -> bool:
+    cleaned = _clean(name)
+    folded_name = _fold_text(cleaned)
+    return bool(
+        2 <= len(cleaned) <= 80
+        and re.search(r"[A-Za-zÀ-ỹ\u1000-\u109F]", cleaned)
+        and not re.search(r"\d", _normalize_digits(cleaned))
+        and folded_name not in {"la", "ten", "ten la", "sdt"}
+        and not re.search(
+            r"\b(?:combo|hop|hộp|kyat|mua|dat|đặt|"
+            r"so dien thoai|dien thoai|dia chi|address|"
+            r"da|vang|ok|dung|dung roi|len don|xac nhan|"
+            r"giup|cho toi|nhe|nha|khong|co|"
+            r"ngõ|ngo|duong|đường)\b",
+            folded_name,
+        )
+    )
 
 
 def _extract_customer_name(turns: list[str]) -> str:
@@ -218,11 +244,54 @@ def _extract_customer_name(turns: list[str]) -> str:
     return ""
 
 
+def _agent_context_before(transcript: list[dict[str, Any]], index: int, window: int = 30) -> str:
+    parts = []
+    for item in transcript[max(0, index - window):index]:
+        if item.get("speaker") == "agent" and item.get("text", "").strip():
+            parts.append(item["text"].strip())
+    return " ".join(parts)
+
+
+def _extract_customer_name_from_transcript(transcript: list[dict[str, Any]]) -> str:
+    turns = _customer_turns(transcript)
+    explicit_name = _extract_customer_name(turns)
+    if explicit_name:
+        return explicit_name
+
+    for index in range(len(transcript) - 1, -1, -1):
+        item = transcript[index]
+        if item.get("speaker") != "customer":
+            continue
+        candidate = _clean(item.get("text", ""))
+        if not _is_valid_customer_name(candidate):
+            continue
+        context = _fold_text(_agent_context_before(transcript, index))
+        if re.search(r"\b(?:ten|nguoi nhan|anh\/chi\s+ten|ten\s+gi)\b", context):
+            return candidate
+    return ""
+
+
+def _looks_like_address(value: str) -> bool:
+    cleaned = _clean(value)
+    folded = _fold_text(cleaned)
+    if len(cleaned) < 8:
+        return False
+    return bool(
+        re.search(r"\d", _normalize_digits(cleaned))
+        and re.search(
+            r"\b(?:so|ngo|ngach|duong|pho|phuong|quan|huyen|"
+            r"ha noi|tp|thanh pho|toa|can|chung cu)\b",
+            folded,
+        )
+    )
+
+
 def _extract_address(text: str) -> str:
     patterns = (
         r"(?:လိပ်စာ|ပို့ရမယ့်လိပ်စာ|ပို့ရန်လိပ်စာ|နေရပ်လိပ်စာ|ပို့ပေးရမယ့်နေရာ|နေရာ)\s*(?:က|မှာ|သည်|:)?\s*(.+?)(?=[။;]|\s*(?:ဖုန်း|ဝယ်ချင်|လိုချင်|မှာမယ်|မှာယူမယ်)|$)",
         r"(?:address|địa chỉ|dia chi)\s*(?:là|la|is|:)?\s*(.+?)(?=[.;]|\s+(?:phone|số điện thoại|so dien thoai|tôi muốn|toi muon|tôi cần|toi can)\b|$)",
         r"(?:ship|giao)\s*(?:đến|den|về|ve|tới|toi)\s+(.+?)(?=[.;]|$)",
+        r"\b((?:số|so)\s+\d+.+)$",
     )
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.IGNORECASE)
@@ -234,6 +303,28 @@ def _extract_address(text: str) -> str:
                 maxsplit=1,
                 flags=re.IGNORECASE,
             )[0].strip(" \t\r\n,.;:-။၊")
+    return ""
+
+
+def _extract_address_from_transcript(transcript: list[dict[str, Any]]) -> str:
+    turns = _customer_turns(transcript)
+    explicit_address = next(
+        (candidate for turn in reversed(turns) if (candidate := _extract_address(turn))),
+        "",
+    )
+    if explicit_address:
+        return explicit_address
+
+    for index in range(len(transcript) - 1, -1, -1):
+        item = transcript[index]
+        if item.get("speaker") != "customer":
+            continue
+        candidate = _clean(item.get("text", ""))
+        if not _looks_like_address(candidate):
+            continue
+        context = _fold_text(_agent_context_before(transcript, index))
+        if re.search(r"\b(?:dia chi|giao hang|ship|giao den|nhan hang)\b", context):
+            return candidate
     return ""
 
 
@@ -323,6 +414,16 @@ def _is_delivery_order_request(text: str) -> bool:
     return bool(re.search(r"\b(?:ship|giao)\s+(?:cho\s+)?(?:toi\s+)?", _fold_text(text)))
 
 
+def _is_retail_selection(text: str) -> bool:
+    folded = _fold_text(text)
+    return bool(
+        re.search(
+            r"\b(?:mua\s+le|ban\s+le|lay\s+le|hop\s+le|khong\s+combo)\b",
+            folded,
+        )
+    )
+
+
 def _is_no_need(text: str) -> bool:
     if _contains_any(
         text,
@@ -375,8 +476,13 @@ def extract_order_selection(transcript: list[dict[str, Any]]) -> dict[str, Any] 
 
         combo = _extract_combo(turn)
         quantity = _extract_quantity(turn)
+        selected_combo = combo or (
+            COMBO_CATALOG.get(quantity)
+            if quantity in COMBO_CATALOG and quantity != 1 and not _is_retail_selection(turn)
+            else None
+        )
         product = _extract_product(turn)
-        concrete_item = bool(combo or quantity)
+        concrete_item = bool(selected_combo or quantity)
         delivery_selection = (
             concrete_item
             and _is_delivery_order_request(turn)
@@ -387,8 +493,8 @@ def extract_order_selection(transcript: list[dict[str, Any]]) -> dict[str, Any] 
             if concrete_item:
                 selection = {
                     "text": turn,
-                    "combo": combo,
-                    "quantity": int(combo["quantity"]) if combo else quantity,
+                    "combo": selected_combo,
+                    "quantity": int(selected_combo["quantity"]) if selected_combo else quantity,
                     "product": product or PRODUCT_CATALOG["venus bigone"],
                 }
                 pending_generic_intent = False
@@ -401,8 +507,8 @@ def extract_order_selection(transcript: list[dict[str, Any]]) -> dict[str, Any] 
         if pending_generic_intent and concrete_item and not _is_question(turn):
             selection = {
                 "text": turn,
-                "combo": combo,
-                "quantity": int(combo["quantity"]) if combo else quantity,
+                "combo": selected_combo,
+                "quantity": int(selected_combo["quantity"]) if selected_combo else quantity,
                 "product": product or PRODUCT_CATALOG["venus bigone"],
             }
             pending_generic_intent = False
@@ -560,13 +666,10 @@ def extract_customer_facts(
 ) -> dict[str, Any]:
     text = _customer_text(transcript)
     turns = _customer_turns(transcript)
-    name = _extract_customer_name(turns)
+    name = _extract_customer_name_from_transcript(transcript)
     stated_phone = _extract_phone_from_turns(turns)
     phone = stated_phone or ("" if _customer_attempted_phone(text) else fallback_phone)
-    address = next(
-        (candidate for turn in reversed(turns) if (candidate := _extract_address(turn))),
-        "",
-    )
+    address = _extract_address_from_transcript(transcript)
     age_range, age_confidence = _extract_age_range(text)
     gender, gender_confidence = _extract_gender(text)
     return {

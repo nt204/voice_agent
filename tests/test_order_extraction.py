@@ -135,6 +135,7 @@ def test_merge_payload_uses_name_from_transcript_when_payload_omits_it() -> None
     )
 
     assert result["customer"]["name"] == "Nguyễn Văn A"
+    assert result["customer"]["need"] == "Mua Combo 2"
     assert result["order"]["customer_name"] == "Nguyễn Văn A"
 
 

@@ -15,6 +15,7 @@ from app.call_history import (
     analysis_table,
     calls_table,
     extract_customer_info,
+    _customer_name_from_sales_result,
     interest_status_from_intent,
     metadata,
     orders_table,
@@ -359,7 +360,8 @@ class SqlAlchemyCallHistoryStore:
         )
         phone = sales_customer["phone"] or extracted["phone"] or call["customer"]["phone"]
         address = sales_customer["address"] or extracted["address"]
-        need = extracted["need"] or sales_customer["need"]
+        name = _customer_name_from_sales_result(sales_result, extracted)
+        need = sales_customer["need"] or extracted["need"]
         with self._lock, self.engine.begin() as connection:
             connection.execute(
                 calls_table.update()
@@ -367,7 +369,7 @@ class SqlAlchemyCallHistoryStore:
                 .values(
                     status="completed",
                     ended_at=_now(),
-                    customer_name=extracted["name"],
+                    customer_name=name,
                     customer_phone=phone,
                     customer_address=address,
                     customer_need=need,

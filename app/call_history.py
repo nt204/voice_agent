@@ -136,6 +136,53 @@ def _clean(value: str) -> str:
     return re.sub(r"\s*(?:ပါရှင်|ပါတယ်|ပါ)$", "", cleaned).rstrip()
 
 
+def _fold_ascii(value: str) -> str:
+    import unicodedata
+
+    normalized = unicodedata.normalize("NFD", value)
+    without_marks = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
+    return without_marks.replace("đ", "d").replace("Đ", "D").casefold()
+
+
+def _string_value(value: Any) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _valid_customer_name(value: str) -> bool:
+    name = _clean(value)
+    folded = _fold_ascii(name)
+    if not (2 <= len(name) <= 80):
+        return False
+    if not re.search(r"[A-Za-zÀ-ỹ\u1000-\u109F]", name):
+        return False
+    if re.search(r"\d", name):
+        return False
+    if folded in {"la", "ten", "ten la", "sdt", "so dien thoai", "dia chi"}:
+        return False
+    return not re.search(
+        r"\b(?:combo|hop|hộp|kyat|mua|dat|đặt|"
+        r"so dien thoai|dien thoai|phone|dia chi|address|"
+        r"ngõ|ngo|duong|đường)\b",
+        folded,
+    )
+
+
+def _customer_name_from_sales_result(
+    sales_result: dict[str, Any],
+    extracted: dict[str, str],
+) -> str:
+    order = sales_result.get("order") or {}
+    customer = sales_result.get("customer") or {}
+    for candidate in (
+        _string_value(order.get("customer_name")),
+        _string_value(customer.get("name")),
+        _string_value(extracted.get("name")),
+    ):
+        if _valid_customer_name(candidate):
+            return _clean(candidate)
+    return ""
+
+
 def interest_status_from_intent(intent_status: str) -> str:
     if intent_status == "no_need":
         return "no_need"
@@ -175,7 +222,9 @@ def extract_customer_info(transcript: list[dict[str, Any]]) -> dict[str, str]:
     for field, pattern in patterns.items():
         match = re.search(pattern, customer_text, flags=re.IGNORECASE)
         if match:
-            result[field] = _clean(match.group(1))
+            value = _clean(match.group(1))
+            if field != "name" or _valid_customer_name(value):
+                result[field] = value
 
     myanmar_patterns = {
         "name": (
@@ -194,7 +243,9 @@ def extract_customer_info(transcript: list[dict[str, Any]]) -> dict[str, str]:
             continue
         match = re.search(pattern, customer_text)
         if match:
-            result[field] = _clean(match.group(1))
+            value = _clean(match.group(1))
+            if field != "name" or _valid_customer_name(value):
+                result[field] = value
     if not result["phone"]:
         match = re.search(r"(?:ဖုန်းနံပါတ်|ဖုန်း)?\s*(\+?[\d၀-၉][\d၀-၉ .-]{7,}[\d၀-၉])", customer_text)
         if match:
@@ -574,9 +625,10 @@ class SQLiteCallHistoryStore:
             sales_result["analysis"]["intent_status"]
         )
         sales_customer = sales_result["customer"]
+        name = _customer_name_from_sales_result(sales_result, extracted)
         phone = sales_customer["phone"] or extracted["phone"] or call["customer"]["phone"]
         address = sales_customer["address"] or extracted["address"]
-        need = extracted["need"] or sales_customer["need"]
+        need = sales_customer["need"] or extracted["need"]
         with self._lock, closing(self._connect()) as connection, connection:
             connection.execute(
                 """
@@ -587,7 +639,7 @@ class SQLiteCallHistoryStore:
                 """,
                 (
                     _now(),
-                    extracted["name"],
+                    name,
                     phone,
                     address,
                     need,
