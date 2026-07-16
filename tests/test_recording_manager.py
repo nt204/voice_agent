@@ -5,7 +5,7 @@ from app.recording_manager import _recording_item
 
 
 def test_recording_item_links_files_by_recording_id_and_file_kind(tmp_path) -> None:
-    call_dir = tmp_path / "84961695448_20260714-094436"
+    call_dir = tmp_path / "95961695448_20260714-094436"
     call_dir.mkdir()
     inbound_path = call_dir / "inbound.wav"
     outbound_path = call_dir / "outbound.wav"
@@ -15,10 +15,10 @@ def test_recording_item_links_files_by_recording_id_and_file_kind(tmp_path) -> N
         path.write_bytes(b"data")
 
     row = SimpleNamespace(
-        id="84961695448_20260714-094436",
+        id="95961695448_20260714-094436",
         call_id="call-1",
         stream_id="stream-1",
-        from_number="84961695448",
+        from_number="95961695448",
         to_number=None,
         direction="inbound",
         started_at=datetime(2026, 7, 14, 9, 44, 36),
@@ -39,7 +39,7 @@ def test_recording_item_links_files_by_recording_id_and_file_kind(tmp_path) -> N
 
     item = _recording_item(row)
 
-    assert item["files"]["inbound"]["url"] == "/admin/file/84961695448_20260714-094436/inbound"
-    assert item["files"]["outbound"]["url"] == "/admin/file/84961695448_20260714-094436/outbound"
-    assert item["files"]["mixed"]["url"] == "/admin/file/84961695448_20260714-094436/mixed"
-    assert item["files"]["log"]["url"] == "/admin/file/84961695448_20260714-094436/log"
+    assert item["files"]["inbound"]["url"] == "/admin/file/95961695448_20260714-094436/inbound"
+    assert item["files"]["outbound"]["url"] == "/admin/file/95961695448_20260714-094436/outbound"
+    assert item["files"]["mixed"]["url"] == "/admin/file/95961695448_20260714-094436/mixed"
+    assert item["files"]["log"]["url"] == "/admin/file/95961695448_20260714-094436/log"

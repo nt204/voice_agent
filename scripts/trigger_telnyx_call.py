@@ -4,7 +4,7 @@ import httpx
 
 def main():
     parser = argparse.ArgumentParser(description="Trigger an outbound Telnyx call using the FastAPI server.")
-    parser.add_argument("to_number", help="The destination phone number in E.164 format (e.g., +84901234567)")
+    parser.add_argument("to_number", help="Destination phone number (e.g., +95901234567, +84901234567, 84..., or 'VN 09...')")
     parser.add_argument("--from-number", help="Optional caller ID to use instead of default in config")
     parser.add_argument("--url", default="http://localhost:3000/telnyx/outbound/call", help="FastAPI Server endpoint (default: http://localhost:3000/telnyx/outbound/call)")
 

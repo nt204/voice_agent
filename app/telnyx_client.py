@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 import httpx
 
 from app.config import config, require_env
+from app.phone_numbers import normalize_phone_number
 
 
 def create_outbound_call(to_number: str, from_number: str | None = None) -> dict:
@@ -10,9 +11,12 @@ def create_outbound_call(to_number: str, from_number: str | None = None) -> dict
     account_sid = require_env("TELNYX_ACCOUNT_SID")
     texml_app_id = require_env("TELNYX_TEXML_APP_ID")
     public_base_url = require_env("PUBLIC_BASE_URL").rstrip("/")
-    caller = from_number or config.telnyx.from_number
+    caller = normalize_phone_number(from_number or config.telnyx.outbound_from_number or "")
+    callee = normalize_phone_number(to_number)
     if not caller:
         raise RuntimeError("Missing TELNYX_FROM_NUMBER or from_number")
+    if not callee:
+        raise RuntimeError("Missing to_number")
 
     answer_url = f"{public_base_url}/telnyx/answer?{urlencode({'direction': 'outbound-ai'})}"
     response = httpx.post(
@@ -23,7 +27,7 @@ def create_outbound_call(to_number: str, from_number: str | None = None) -> dict
         },
         data={
             "ApplicationSid": texml_app_id,
-            "To": to_number,
+            "To": callee,
             "From": caller,
             "Url": answer_url,
             "MachineDetection": "Disable",

@@ -30,21 +30,23 @@ const escapeHtml = (value = "") => String(value).replace(
   char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char]
 );
 
+const LOCALE = "my-MM";
+
 const formatDate = value => value
-  ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(new Date(value))
-  : "Chưa có";
+  ? new Intl.DateTimeFormat(LOCALE, { dateStyle: "short", timeStyle: "short" }).format(new Date(value))
+  : "Not available";
 
 const formatTime = value => value
-  ? new Intl.DateTimeFormat("vi-VN", { timeStyle: "short" }).format(new Date(value))
+  ? new Intl.DateTimeFormat(LOCALE, { timeStyle: "short" }).format(new Date(value))
   : "";
 
 const formatDay = value => value
-  ? new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(new Date(value))
+  ? new Intl.DateTimeFormat(LOCALE, { day: "2-digit", month: "2-digit", year: "2-digit" }).format(new Date(value))
   : "";
 
 const formatMoney = value => value
-  ? `${Number(value).toLocaleString("vi-VN")} đ`
-  : "Chưa có";
+  ? `${Number(value).toLocaleString(LOCALE)} MMK`
+  : "Not available";
 
 const formatBytes = value => {
   const bytes = Number(value || 0);
@@ -55,43 +57,43 @@ const formatBytes = value => {
 
 function interestLabel(status) {
   return {
-    needs_consultation: "Cần tư vấn",
-    no_need: "Chưa có nhu cầu",
-    unknown: "Chưa xác định",
-  }[status] || "Chưa xác định";
+    needs_consultation: "Needs consultation",
+    no_need: "No need",
+    unknown: "Unknown",
+  }[status] || "Unknown";
 }
 
 function intentLabel(status) {
   return {
-    ready_to_order: "Sẵn sàng mua",
-    needs_consultation: "Cần tư vấn",
-    considering: "Đang phân vân",
-    price_checking: "Hỏi giá",
-    no_need: "Chưa có nhu cầu",
-    unknown: "Chưa rõ",
-  }[status] || "Chưa rõ";
+    ready_to_order: "Ready to order",
+    needs_consultation: "Needs consultation",
+    considering: "Considering",
+    price_checking: "Price checking",
+    no_need: "No need",
+    unknown: "Unknown",
+  }[status] || "Unknown";
 }
 
 function orderStatusLabel(status) {
   return {
-    ready_to_confirm: "Chờ xác nhận",
-    missing_info: "Thiếu thông tin",
-    draft: "Đơn nháp",
-    confirmed: "Đã xác nhận",
-    cancelled: "Đã hủy",
-  }[status] || "Đơn nháp";
+    ready_to_confirm: "Ready to confirm",
+    missing_info: "Missing info",
+    draft: "Draft",
+    confirmed: "Confirmed",
+    cancelled: "Cancelled",
+  }[status] || "Draft";
 }
 
 function recordingStatusLabel(status) {
   return {
-    active: "Đang ghi",
-    completed: "Đã lưu",
-    failed: "Lỗi",
-  }[status] || "Chưa có";
+    active: "Recording",
+    completed: "Saved",
+    failed: "Failed",
+  }[status] || "Not available";
 }
 
 function directionLabel(direction) {
-  return direction === "outbound" ? "Gọi ra" : "Gọi vào";
+  return direction === "outbound" ? "Outbound" : "Inbound";
 }
 
 function directionIcon(direction) {
@@ -101,7 +103,7 @@ function directionIcon(direction) {
 async function fetchJson(url) {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error("Không thể tải dữ liệu");
+    throw new Error("Unable to load data");
   }
   return response.json();
 }
@@ -114,7 +116,7 @@ async function postJson(url, body) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.detail || "Không thể gửi yêu cầu");
+    throw new Error(data.detail || "Unable to send request");
   }
   return data;
 }
@@ -123,12 +125,12 @@ async function loadDashboard({ silent = false } = {}) {
   if (state.refreshing) return;
   state.refreshing = true;
   if (!silent) {
-    if (syncStatus) syncStatus.textContent = "Đang tải dữ liệu";
+    if (syncStatus) syncStatus.textContent = "Loading data";
     callList.innerHTML = document.querySelector("#loadingTemplate").innerHTML;
     if (orderList) {
-      orderList.innerHTML = '<div class="request-state">Đang tải...</div>';
+      orderList.innerHTML = '<div class="request-state">Loading...</div>';
     }
-    if (orderRange) orderRange.textContent = "Đang tải";
+    if (orderRange) orderRange.textContent = "Loading";
     if (orderPager) orderPager.innerHTML = "";
   }
 
@@ -159,21 +161,21 @@ async function loadDashboard({ silent = false } = {}) {
         if (orderList) {
           orderList.innerHTML = `<div class="request-state error">${escapeHtml(error.message)}</div>`;
         }
-        if (orderRange) orderRange.textContent = "0 đơn";
+        if (orderRange) orderRange.textContent = "0 orders";
         if (orderPager) orderPager.innerHTML = "";
       });
 
     if (syncStatus) {
-      syncStatus.textContent = `Cập nhật ${new Intl.DateTimeFormat("vi-VN", { timeStyle: "short" }).format(new Date())}`;
+      syncStatus.textContent = `Updated ${new Intl.DateTimeFormat(LOCALE, { timeStyle: "short" }).format(new Date())}`;
     }
   } catch (error) {
     if (!silent) {
-      if (syncStatus) syncStatus.textContent = "Lỗi tải dữ liệu";
+      if (syncStatus) syncStatus.textContent = "Load error";
       callList.innerHTML = `<div class="error-state">${escapeHtml(error.message)}</div>`;
       if (orderList) {
         orderList.innerHTML = `<div class="request-state error">${escapeHtml(error.message)}</div>`;
       }
-      if (orderRange) orderRange.textContent = "0 đơn";
+      if (orderRange) orderRange.textContent = "0 orders";
       if (orderPager) orderPager.innerHTML = "";
     }
   } finally {
@@ -251,9 +253,9 @@ function renderPager(container, page, totalPages, onPageChange) {
     return;
   }
   container.innerHTML = `
-    <button type="button" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""} aria-label="Trang trước">&lt;</button>
-    <span>Trang ${page}/${totalPages}</span>
-    <button type="button" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""} aria-label="Trang sau">&gt;</button>
+    <button type="button" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""} aria-label="Previous page">&lt;</button>
+    <span>Page ${page}/${totalPages}</span>
+    <button type="button" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""} aria-label="Next page">&gt;</button>
   `;
   container.querySelectorAll("button").forEach(button => {
     button.addEventListener("click", () => {
@@ -264,10 +266,10 @@ function renderPager(container, page, totalPages, onPageChange) {
 }
 
 function renderCalls(calls) {
-  document.querySelector("#resultCount").textContent = `${calls.length} kết quả`;
+  document.querySelector("#resultCount").textContent = `${calls.length} results`;
   if (!calls.length) {
     callList.innerHTML = document.querySelector("#emptyTemplate").innerHTML;
-    if (visibleRange) visibleRange.textContent = "Hiển thị 0 kết quả";
+    if (visibleRange) visibleRange.textContent = "Showing 0 results";
     renderPager(callPager, 1, 1, () => {});
     return;
   }
@@ -275,13 +277,13 @@ function renderCalls(calls) {
   const page = pageSlice(calls, state.callPage, state.callPageSize);
   state.callPage = page.page;
   if (visibleRange) {
-    visibleRange.textContent = `Hiển thị ${page.start + 1} đến ${page.end} của ${calls.length} kết quả`;
+    visibleRange.textContent = `Showing ${page.start + 1}-${page.end} of ${calls.length} results`;
   }
 
   callList.innerHTML = page.items.map(call => {
     const customer = call.customer || {};
-    const title = customer.name || customer.phone || "Khách hàng chưa xác định";
-    const need = customer.need || "Chưa ghi nhận nhu cầu";
+    const title = customer.name || customer.phone || "Unknown customer";
+    const need = customer.need || "No need recorded";
     const isSelected = state.selectedId === call.id;
     return `
       <button class="lead-row ${isSelected ? "selected" : ""}" data-id="${escapeHtml(call.id)}" type="button">
@@ -314,8 +316,8 @@ function renderCalls(calls) {
 function renderOrders(orders) {
   if (!orderList) return;
   if (!orders.length) {
-    orderList.innerHTML = '<div class="request-state">Chưa có đơn đủ thông tin</div>';
-    if (orderRange) orderRange.textContent = "0 đơn";
+    orderList.innerHTML = '<div class="request-state">No complete orders yet</div>';
+    if (orderRange) orderRange.textContent = "0 orders";
     renderPager(orderPager, 1, 1, () => {});
     return;
   }
@@ -323,15 +325,15 @@ function renderOrders(orders) {
   const page = pageSlice(orders, state.orderPage, state.orderPageSize);
   state.orderPage = page.page;
   if (orderRange) {
-    orderRange.textContent = `${page.start + 1}-${page.end}/${orders.length} đơn`;
+    orderRange.textContent = `${page.start + 1}-${page.end}/${orders.length} orders`;
   }
 
   orderList.innerHTML = page.items.map(order => `
     <button class="order-item ${state.selectedId === order.call_id ? "selected" : ""}" data-call-id="${escapeHtml(order.call_id)}" type="button">
       <span>
         <strong>${escapeHtml(order.customer_phone || order.call_id)}</strong>
-        <small>${escapeHtml(order.product_name)} · ${order.quantity || 0} hộp</small>
-        <small>Tạo ${formatDate(order.created_at)}</small>
+        <small>${escapeHtml(order.product_name)} · ${order.quantity || 0} boxes</small>
+        <small>Created ${formatDate(order.created_at)}</small>
         <small>${escapeHtml(order.shipping_address)}</small>
       </span>
       <span class="order-meta">
@@ -353,18 +355,18 @@ function renderOrders(orders) {
 function renderComboCard(call) {
   const order = call.order;
   const status = order ? order.status : "missing_info";
-  const missing = order?.missing_fields?.length ? order.missing_fields.join(", ") : "Không";
+  const missing = order?.missing_fields?.length ? order.missing_fields.join(", ") : "None";
   return `
     <div class="combo-card">
       <div class="combo-head">
         <h3>Combo AI</h3>
-        <span class="order-status ${escapeHtml(status)}">${order ? orderStatusLabel(status) : "Chưa tạo"}</span>
+        <span class="order-status ${escapeHtml(status)}">${order ? orderStatusLabel(status) : "Not created"}</span>
       </div>
       <div class="combo-list">
-        <div><span>Sản phẩm</span><strong>${escapeHtml(order?.product_name || "Chưa có")}</strong></div>
-        <div><span>Số lượng</span><strong>${order?.quantity || "Chưa có"}</strong></div>
-        <div><span>Tổng tiền</span><strong>${formatMoney(order?.total_price)}</strong></div>
-        <div><span>Thiếu</span><strong>${escapeHtml(missing)}</strong></div>
+        <div><span>Product</span><strong>${escapeHtml(order?.product_name || "Not available")}</strong></div>
+        <div><span>Quantity</span><strong>${order?.quantity || "Not available"}</strong></div>
+        <div><span>Total</span><strong>${formatMoney(order?.total_price)}</strong></div>
+        <div><span>Missing</span><strong>${escapeHtml(missing)}</strong></div>
       </div>
     </div>`;
 }
@@ -375,18 +377,18 @@ function renderRecordingCard(call) {
     return `
       <div class="recording-card empty-recording">
         <div class="recording-head">
-          <h3>Nghe lại cuộc gọi</h3>
+          <h3>Call recording</h3>
           <span>${escapeHtml(recordingStatusLabel("active"))}</span>
         </div>
-        <p>Bản ghi sẽ hiển thị sau khi cuộc gọi kết thúc.</p>
+        <p>The recording will appear after the call ends.</p>
       </div>`;
   }
 
   const files = recording?.files || {};
   const tracks = [
-    { key: "mixed", label: "Toàn bộ cuộc gọi", file: files.mixed },
-    { key: "inbound", label: "Khách hàng", file: files.inbound },
-    { key: "outbound", label: "AI tư vấn", file: files.outbound },
+    { key: "mixed", label: "Full call", file: files.mixed },
+    { key: "inbound", label: "Customer", file: files.inbound },
+    { key: "outbound", label: "AI consultant", file: files.outbound },
   ].filter(track => track.file && track.file.url);
   const status = recording?.status || "completed";
 
@@ -394,10 +396,10 @@ function renderRecordingCard(call) {
     return `
       <div class="recording-card empty-recording">
         <div class="recording-head">
-          <h3>Nghe lại cuộc gọi</h3>
+          <h3>Call recording</h3>
           <span>${escapeHtml(recordingStatusLabel(status))}</span>
         </div>
-        <p>Chưa có file ghi âm cho cuộc gọi này.</p>
+        <p>No recording file is available for this call.</p>
       </div>`;
   }
 
@@ -406,7 +408,7 @@ function renderRecordingCard(call) {
   return `
     <div class="recording-card">
       <div class="recording-head">
-        <h3>Nghe lại cuộc gọi</h3>
+        <h3>Call recording</h3>
         <span>${escapeHtml(recordingStatusLabel(status))}</span>
       </div>
       <div class="recording-player">
@@ -443,7 +445,7 @@ async function loadDetail(callId, { silent = false } = {}) {
     row.classList.toggle("selected", row.dataset.callId === callId);
   });
   if (!silent) {
-    detailPanel.innerHTML = '<div class="empty-state"><p>Đang tải chi tiết...</p></div>';
+    detailPanel.innerHTML = '<div class="empty-state"><p>Loading details...</p></div>';
   }
   try {
     renderDetail(await fetchJson(`/api/calls/${encodeURIComponent(callId)}`), {
@@ -460,19 +462,19 @@ async function loadDetail(callId, { silent = false } = {}) {
 function renderDetail(call, { scrollTop = 0, wasNearBottom = true } = {}) {
   const customer = call.customer || {};
   state.selectedDetailStatus = call.status || "";
-  const field = value => escapeHtml(value || "Chưa cung cấp");
+  const field = value => escapeHtml(value || "Not provided");
   const transcript = call.transcript && call.transcript.length
     ? call.transcript.map(item => {
         const isCustomer = item.speaker === "customer";
         const timestamp = item.created_at || item.timestamp || item.time || "";
         return `
         <div class="message ${isCustomer ? "customer" : "agent"}">
-          <div class="message-head"><i aria-hidden="true">${isCustomer ? "&#128100;" : "&#10022;"}</i><span>${isCustomer ? "Khách hàng" : "AI tư vấn"}</span></div>
+          <div class="message-head"><i aria-hidden="true">${isCustomer ? "&#128100;" : "&#10022;"}</i><span>${isCustomer ? "Customer" : "AI consultant"}</span></div>
           <p dir="auto">${escapeHtml(item.text)}</p>
           ${timestamp ? `<time>${escapeHtml(formatTime(timestamp))}</time>` : ""}
         </div>`;
       }).join("")
-    : '<div class="list-state">Chưa có transcript.</div>';
+    : '<div class="list-state">No transcript yet.</div>';
 
   detailPanel.innerHTML = `
     <div class="detail-top">
@@ -480,32 +482,32 @@ function renderDetail(call, { scrollTop = 0, wasNearBottom = true } = {}) {
         <i class="detail-call-icon" aria-hidden="true">&#9742;</i>
         <div>
           <span class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</span>
-          <h2>${field(customer.name || customer.phone || "Khách hàng")}</h2>
+          <h2>${field(customer.name || customer.phone || "Customer")}</h2>
           <p>${directionLabel(call.direction)} | ${escapeHtml(call.provider)} | ${formatTime(call.started_at)} | ${formatDay(call.started_at)}</p>
         </div>
       </div>
       <div class="detail-actions">
-        <button class="detail-action redial-button" data-phone="${escapeHtml(customer.phone)}" type="button">&#9742; Gọi lại</button>
-        <button class="detail-action icon-only" type="button" aria-label="Thêm thao tác">&#8942;</button>
+        <button class="detail-action redial-button" data-phone="${escapeHtml(customer.phone)}" type="button">&#9742; Redial</button>
+        <button class="detail-action icon-only" type="button" aria-label="More actions">&#8942;</button>
       </div>
     </div>
 
     <div class="info-grid detail-stats">
-      <div><span>Số điện thoại</span><strong>${field(customer.phone)}</strong></div>
-      <div><span>Thời gian</span><strong>${formatTime(call.started_at)}<small>${formatDay(call.started_at)}</small></strong></div>
-      <div><span>Loại cuộc gọi</span><strong>${directionLabel(call.direction)}</strong></div>
-      <div><span>Trạng thái</span><strong><em class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</em></strong></div>
+      <div><span>Phone</span><strong>${field(customer.phone)}</strong></div>
+      <div><span>Time</span><strong>${formatTime(call.started_at)}<small>${formatDay(call.started_at)}</small></strong></div>
+      <div><span>Call type</span><strong>${directionLabel(call.direction)}</strong></div>
+      <div><span>Status</span><strong><em class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</em></strong></div>
     </div>
 
-    <div class="detail-tabs" role="tablist" aria-label="Chi tiết lead">
-      <button class="detail-tab active" data-detail-tab="info" type="button" role="tab">Thông tin</button>
+    <div class="detail-tabs" role="tablist" aria-label="Lead details">
+      <button class="detail-tab active" data-detail-tab="info" type="button" role="tab">Info</button>
       <button class="detail-tab" data-detail-tab="transcript" type="button" role="tab">Transcript</button>
     </div>
 
     <div class="detail-content">
       <div class="detail-summary">
-        <div class="detail-note"><span>Nhu cầu</span><strong>${field(customer.need)}</strong></div>
-        <div class="detail-note"><span>Địa chỉ</span><strong>${field(customer.address)}</strong></div>
+        <div class="detail-note"><span>Need</span><strong>${field(customer.need)}</strong></div>
+        <div class="detail-note"><span>Address</span><strong>${field(customer.address)}</strong></div>
         ${renderRecordingCard(call)}
         ${renderComboCard(call)}
       </div>
@@ -572,17 +574,17 @@ outboundCallForm?.addEventListener("submit", async event => {
   const formData = new FormData(outboundCallForm);
   const toNumber = String(formData.get("to_number") || "").trim();
   if (!toNumber) {
-    outboundCallStatus.textContent = "Vui lòng nhập số cần gọi.";
+    outboundCallStatus.textContent = "Enter a customer phone number.";
     outboundCallStatus.className = "form-status error";
     return;
   }
 
   startCallButton.disabled = true;
-  outboundCallStatus.textContent = "Đang gửi yêu cầu gọi...";
+  outboundCallStatus.textContent = "Sending call request...";
   outboundCallStatus.className = "form-status";
   try {
     await postJson("/telnyx/outbound/call", { to_number: toNumber });
-    outboundCallStatus.textContent = "Đã gửi yêu cầu sang Telnyx.";
+    outboundCallStatus.textContent = "Call request sent to Telnyx.";
     outboundCallStatus.className = "form-status success";
     outboundCallForm.reset();
     await loadDashboard();

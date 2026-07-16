@@ -160,9 +160,9 @@ def _valid_customer_name(value: str) -> bool:
     if folded in {"la", "ten", "ten la", "sdt", "so dien thoai", "dia chi"}:
         return False
     return not re.search(
-        r"\b(?:combo|hop|hộp|kyat|mua|dat|đặt|"
-        r"so dien thoai|dien thoai|phone|dia chi|address|"
-        r"ngõ|ngo|duong|đường)\b",
+        r"\b(?:combo|box|boxes|kyat|buy|order|purchase|"
+        r"phone|mobile|address|delivery|street|road|township)\b|"
+        r"(?:ကွန်ဘို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|လမ်း|မြို့နယ်)",
         folded,
     )
 
@@ -203,20 +203,20 @@ def extract_customer_info(transcript: list[dict[str, Any]]) -> dict[str, str]:
 
     patterns = {
         "name": (
-            r"(?:tôi tên|tên tôi là|tên là|my name is)\s+"
-            r"([^,.;]+?)(?=\s+(?:số điện thoại|điện thoại|phone|địa chỉ|address|tôi muốn)\b|[,.;]|$)"
+            r"(?:my name is|name is|recipient name is)\s+"
+            r"([^,.;]+?)(?=\s+(?:phone|mobile|address|buy|order)\b|[,.;]|$)"
         ),
         "phone": (
-            r"(?:số điện thoại|điện thoại|phone)\s*(?:là|:)?\s*"
+            r"(?:phone|mobile)\s*(?:is|:)?\s*"
             r"(\+?\d[\d .-]{7,}\d)"
         ),
         "address": (
-            r"(?:địa chỉ|address)\s*(?:là|:)?\s*"
-            r"(.+?)(?=[.;]|\s+(?:tôi muốn|tôi cần|I want|I need)\b|$)"
+            r"(?:address|delivery address)\s*(?:is|:)?\s*"
+            r"(.+?)(?=[.;]|\s+(?:I want|I need|buy|order)\b|$)"
         ),
         "need": (
-            r"(?:tôi muốn|tôi cần|I want|I need)\s+"
-            r"(.+?)(?=[.;]|\s+(?:địa chỉ|số điện thoại|phone)\b|$)"
+            r"(?:I want|I need|buy|order)\s+"
+            r"(.+?)(?=[.;]|\s+(?:address|phone|mobile)\b|$)"
         ),
     }
     for field, pattern in patterns.items():

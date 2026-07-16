@@ -1,17 +1,17 @@
-# Chạy dự án
+# Run The Project
 
-Chỉ cần Docker Desktop và file `.env`.
+You only need Docker Desktop and a `.env` file.
 
 ```bash
 docker compose up --build
 ```
 
-Mở giao diện:
+Open the dashboard:
 
 ```text
 http://localhost:3000/admin
 ```
 
-Compose map cố định cổng máy host `3000` vào cổng app `3000` trong container.
+Compose maps host port `3000` to app port `3000` in the container.
 
-Database lịch sử cuộc gọi được lưu trong Docker volume `voice_app_data`.
+Call-history data is stored in the Docker volume `voice_app_data`.

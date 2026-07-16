@@ -40,13 +40,13 @@ def test_call_recorder_groups_all_files_in_a_call_directory(tmp_path, monkeypatc
         recorder = CallRecorder(
             call_id="call-1",
             sample_rate=8000,
-            phone_number="+84 961 695 448",
+            phone_number="+95 961 695 448",
         )
         recorder.write_inbound(_pcm16(100))
         recorder.write_outbound(_pcm16(200))
         recorder.close()
 
-        call_dir = tmp_path / "84_961_695_448_20260714-094436"
+        call_dir = tmp_path / "95_961_695_448_20260714-094436"
         assert recorder.inbound_path == call_dir / "inbound.wav"
         assert recorder.outbound_path == call_dir / "outbound.wav"
         assert recorder.mixed_path == call_dir / "mixed.wav"

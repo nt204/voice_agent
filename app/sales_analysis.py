@@ -57,16 +57,10 @@ EXTRA_DIGITS = str.maketrans(
     }
 )
 NUMBER_WORDS = {
-    "mot": 1,
     "one": 1,
-    "hai": 2,
     "two": 2,
-    "ba": 3,
     "three": 3,
-    "bon": 4,
-    "tu": 4,
     "four": 4,
-    "nam": 5,
     "five": 5,
     "တစ်": 1,
     "နှစ်": 2,
@@ -74,6 +68,61 @@ NUMBER_WORDS = {
     "လေး": 4,
     "ငါး": 5,
 }
+PHONE_DIGIT_WORDS = {
+    "zero": "0",
+    "oh": "0",
+    "o": "0",
+    "သုည": "0",
+    "ဝ": "0",
+    "one": "1",
+    "တစ်": "1",
+    "တစ္": "1",
+    "two": "2",
+    "နှစ်": "2",
+    "နစ်": "2",
+    "three": "3",
+    "သုံး": "3",
+    "four": "4",
+    "လေး": "4",
+    "five": "5",
+    "ငါး": "5",
+    "six": "6",
+    "ခြောက်": "6",
+    "seven": "7",
+    "ခုနစ်": "7",
+    "ခုနှစ်": "7",
+    "eight": "8",
+    "ရှစ်": "8",
+    "nine": "9",
+    "ကိုး": "9",
+}
+PHONE_DIGIT_WORD_ITEMS = sorted(
+    PHONE_DIGIT_WORDS.items(),
+    key=lambda item: len(item[0]),
+    reverse=True,
+)
+NON_MYANMAR_ADDRESS_PATTERNS = (
+    r"\b(?:viet\s*nam|vietnam|ha\s*noi|hanoi|ho\s*chi\s*minh|hcmc?|tp\.?\s*hcm|"
+    r"saigon|sai\s*gon|da\s*nang|hai\s*phong|can\s*tho|nha\s*trang|hue|"
+    r"vung\s*tau|binh\s*duong|dong\s*nai)\b",
+    r"\b(?:nguyen|tran|le\s+loi|dien\s+bien\s+phu|duong|quan|phuong)\b",
+    r"\b(?:bangkok|thailand|singapore|malaysia|kuala\s*lumpur|philippines|"
+    r"indonesia|india|china|beijing|shanghai|laos|cambodia|japan|korea|"
+    r"usa|united\s+states|canada|australia|london|uk|united\s+kingdom)\b",
+)
+NON_MYANMAR_ADDRESS_TOKENS = (
+    "ဗီယက်နမ်",
+    "ဟနွိုင်း",
+    "ဟိုချီမင်း",
+    "ထိုင်း",
+    "ဘန်ကောက်",
+    "စင်ကာပူ",
+    "မလေးရှား",
+    "တရုတ်",
+    "အိန္ဒိယ",
+    "ဂျပန်",
+    "ကိုရီးယား",
+)
 
 
 def _customer_text(transcript: list[dict[str, Any]]) -> str:
@@ -105,9 +154,91 @@ def _normalize_phone_candidate(value: str) -> str:
     cleaned = _normalize_digits(value).strip()
     prefix = "+" if cleaned.startswith("+") else ""
     digits = re.sub(r"\D", "", cleaned)
-    if not (8 <= len(digits) <= 15):
+    if not _is_myanmar_phone_digits(digits, has_plus=bool(prefix)):
         return ""
     return f"{prefix}{digits}"
+
+
+def _is_ascii_word_boundary(text: str, start: int, end: int) -> bool:
+    before_ok = start == 0 or not text[start - 1].isalnum()
+    after_ok = end >= len(text) or not text[end].isalnum()
+    return before_ok and after_ok
+
+
+def _spoken_phone_digits(value: str) -> str:
+    text = _normalize_digits(value).casefold().strip(" \t\r\n,.;:-။၊")
+    text = re.sub(r"\s*(?:ပါရှင်|ပါတယ်|ပါ)$", "", text).strip(" \t\r\n,.;:-။၊")
+    if not text:
+        return ""
+
+    digits: list[str] = []
+    index = 0
+    while index < len(text):
+        separator = re.match(r"[\s,.;:၊။\-_/()+]+", text[index:])
+        if separator:
+            index += separator.end()
+            continue
+
+        char = text[index]
+        if char.isdigit():
+            digits.append(char)
+            index += 1
+            continue
+
+        matched = False
+        for word, digit in PHONE_DIGIT_WORD_ITEMS:
+            end = index + len(word)
+            if not text.startswith(word, index):
+                continue
+            if word.isascii() and not _is_ascii_word_boundary(text, index, end):
+                continue
+            digits.append(digit)
+            index = end
+            matched = True
+            break
+        if matched:
+            continue
+
+        return ""
+
+    return "".join(digits) if len(digits) >= 8 else ""
+
+
+def _spoken_phone_candidate(value: str) -> str:
+    digits = _spoken_phone_digits(value)
+    return _normalize_phone_candidate(digits) if digits else ""
+
+
+def _spoken_phone_from_text(text: str) -> str:
+    normalized = _normalize_digits(text)
+    phone_label = r"(?:phone|mobile|ဖုန်းနံပါတ်|ဖုန်း)"
+    for match in re.finditer(
+        phone_label
+        + r"\s*(?:number|နံပါတ်|is|က|မှာ|သည်|:)?\s*"
+        + r"(.+?)(?=[။;.]|\s*(?:လိပ်စာ|address|delivery|ship|ပို့|ဝယ်ချင်|လိုချင်|မှာမယ်|မှာယူမယ်)\b|$)",
+        normalized,
+        flags=re.IGNORECASE,
+    ):
+        candidate = _spoken_phone_candidate(match.group(1))
+        if candidate:
+            return candidate
+
+    stripped = normalized.strip()
+    if stripped:
+        return _spoken_phone_candidate(stripped)
+    return ""
+
+
+def _is_myanmar_phone_digits(digits: str, *, has_plus: bool = False) -> bool:
+    if has_plus:
+        return digits.startswith("959") and 10 <= len(digits) <= 12
+    return (
+        digits.startswith("09")
+        and 9 <= len(digits) <= 11
+    ) or (
+        digits.startswith("959")
+        and 10 <= len(digits) <= 12
+    )
 
 
 def _fold_text(value: str) -> str:
@@ -118,6 +249,16 @@ def _fold_text(value: str) -> str:
 
 def _contains_any(text: str, tokens: tuple[str, ...]) -> bool:
     return any(token in text for token in tokens)
+
+
+def _is_clearly_non_myanmar_address(value: str) -> bool:
+    cleaned = _clean(value)
+    if not cleaned:
+        return False
+    folded = _fold_text(cleaned)
+    if _contains_any(cleaned, NON_MYANMAR_ADDRESS_TOKENS):
+        return True
+    return any(re.search(pattern, folded, flags=re.IGNORECASE) for pattern in NON_MYANMAR_ADDRESS_PATTERNS)
 
 
 def _number_value(value: str | None) -> int | None:
@@ -132,8 +273,8 @@ def _number_value(value: str | None) -> int | None:
 
 def _extract_phone(text: str) -> str:
     match = re.search(
-        r"(?:phone|ဖုန်းနံပါတ်|ဖုန်း|dien thoai|so dien thoai)?\s*"
-        r"(?:la|is|က|မှာ|သည်|:)?\s*"
+        r"(?:phone|mobile|ဖုန်းနံပါတ်|ဖုန်း)?\s*"
+        r"(?:is|က|မှာ|သည်|:)?\s*"
         r"(\+?[\d۰-۹٠-٩၀-၉][\d۰-۹٠-٩۰-۹ .-]{7,}[\d۰-۹٠-٩۰-۹])",
         text,
         flags=re.IGNORECASE,
@@ -146,12 +287,11 @@ def _extract_phone(text: str) -> str:
 def _extract_phone_precise(text: str) -> str:
     normalized = _normalize_digits(text)
     phone_label = (
-        r"(?:phone|số điện thoại|so dien thoai|điện thoại|dien thoai|"
-        r"sdt|sđt|so dt|số đt|ဖုန်းနံပါတ်|ဖုန်း)"
+        r"(?:phone|mobile|ဖုန်းနံပါတ်|ဖုန်း)"
     )
     label_match = re.search(
         phone_label
-        + r"\s*(?:của|cua|là|la|is|က|မှာ|သည်|:)?\s*"
+        + r"\s*(?:is|က|မှာ|သည်|:)?\s*"
         + r"(\+?\d[\d .-]{7,}\d)",
         normalized,
         flags=re.IGNORECASE,
@@ -160,6 +300,10 @@ def _extract_phone_precise(text: str) -> str:
         candidate = _normalize_phone_candidate(label_match.group(1))
         if candidate:
             return candidate
+
+    spoken_candidate = _spoken_phone_from_text(normalized)
+    if spoken_candidate:
+        return spoken_candidate
 
     stripped = normalized.strip()
     if re.fullmatch(r"\+?[\d .-]+", stripped):
@@ -185,9 +329,8 @@ def _extract_phone_from_turns(turns: list[str]) -> str:
 
 def _extract_name_from_turn(turn: str) -> str:
     patterns = (
-        r"(?:tên người nhận|ten nguoi nhan|người nhận|nguoi nhan)\s*(?:là|la|:)?\s*(.+)",
-        r"(?:tên tôi|ten toi|tôi tên|toi ten|mình tên|minh ten|tên|ten)\s*(?:là|la|:)?\s*(.+)",
-        r"(?:နာမည်|အမည်)\s*(?:က|မှာ|သည်|:)?\s*(.+)",
+        r"(?:recipient name|customer name|my name|name)\s*(?:is|:)?\s*(.+)",
+        r"(?:လက်ခံမယ့်နာမည်|လက်ခံမည့်နာမည်|ပစ္စည်းလက်ခံမယ့်နာမည်|နာမည်|အမည်)\s*(?:ကို|က|မှာ|သည်|:)?\s*(.+)",
     )
     for pattern in patterns:
         match = re.search(pattern, turn, flags=re.IGNORECASE)
@@ -195,22 +338,26 @@ def _extract_name_from_turn(turn: str) -> str:
             continue
         name = _clean(match.group(1))
         name = re.split(
-            r"\b(?:số điện thoại|so dien thoai|điện thoại|dien thoai|phone|"
-            r"địa chỉ|dia chi|address|ship|giao)\b",
+            r"\b(?:phone|mobile|address|ship|delivery)\b|(?:ဖုန်းနံပါတ်|ဖုန်း|လိပ်စာ|ပို့ရန်|ပို့ရမယ့်)",
             name,
             maxsplit=1,
             flags=re.IGNORECASE,
         )[0].strip(" \t\r\n,.;:-")
+        name = re.split(r"(?:လို့|ဟု)", name, maxsplit=1)[0].strip(" \t\r\n,.;:-။၊")
         folded_name = _fold_text(name)
         if (
             2 <= len(name) <= 80
             and re.search(r"[A-Za-zÀ-ỹ\u1000-\u109F]", name)
             and not re.search(r"\d", _normalize_digits(name))
-            and folded_name not in {"la", "ten", "ten la", "sdt"}
+            and folded_name not in {"name", "my name", "phone", "address"}
             and not re.search(
-                r"\b(?:combo|hop|hộp|kyat|mua|dat|đặt|"
-                r"so dien thoai|dien thoai|dia chi)\b",
+                r"\b(?:combo|box|boxes|kyat|buy|order|purchase|phone|address|delivery)\b|"
+                r"(?:ကွန်ဘို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ)",
                 folded_name,
+            )
+            and not re.search(
+                r"(?:ကွန်ဘို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|ဟုတ်|မှန်|မလို|အော်ဒါ)",
+                name,
             )
         ):
             return name
@@ -224,14 +371,16 @@ def _is_valid_customer_name(name: str) -> bool:
         2 <= len(cleaned) <= 80
         and re.search(r"[A-Za-zÀ-ỹ\u1000-\u109F]", cleaned)
         and not re.search(r"\d", _normalize_digits(cleaned))
-        and folded_name not in {"la", "ten", "ten la", "sdt"}
+        and folded_name not in {"name", "my name", "phone", "address"}
         and not re.search(
-            r"\b(?:combo|hop|hộp|kyat|mua|dat|đặt|"
-            r"so dien thoai|dien thoai|dia chi|address|"
-            r"da|vang|ok|dung|dung roi|len don|xac nhan|"
-            r"giup|cho toi|nhe|nha|khong|co|"
-            r"ngõ|ngo|duong|đường)\b",
+            r"\b(?:combo|box|boxes|kyat|buy|order|purchase|phone|address|delivery|"
+            r"yes|ok|correct|confirm|no|need|street|road|township)\b|"
+            r"(?:ကွန်ဘို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|လမ်း|မြို့နယ်|ဟုတ်|မှန်|မလို)",
             folded_name,
+        )
+        and not re.search(
+            r"(?:ကွန်ဘို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|လမ်း|မြို့နယ်|ဟုတ်|မှန်|မလို|အော်ဒါ)",
+            cleaned,
         )
     )
 
@@ -265,8 +414,9 @@ def _extract_customer_name_from_transcript(transcript: list[dict[str, Any]]) -> 
         candidate = _clean(item.get("text", ""))
         if not _is_valid_customer_name(candidate):
             continue
-        context = _fold_text(_agent_context_before(transcript, index))
-        if re.search(r"\b(?:ten|nguoi nhan|anh\/chi\s+ten|ten\s+gi)\b", context):
+        raw_context = _agent_context_before(transcript, index)
+        context = _fold_text(raw_context)
+        if re.search(r"\b(?:name|recipient|customer name)\b", context) or re.search(r"(?:နာမည်|အမည်)", raw_context):
             return candidate
     return ""
 
@@ -276,11 +426,30 @@ def _looks_like_address(value: str) -> bool:
     folded = _fold_text(cleaned)
     if len(cleaned) < 8:
         return False
+    location_tokens = (
+        "yangon",
+        "mandalay",
+        "naypyidaw",
+        "township",
+        "road",
+        "street",
+        "ward",
+        "lane",
+        "ရန်ကုန်",
+        "မန္တလေး",
+        "နေပြည်တော်",
+        "မြို့",
+        "မြို့နယ်",
+        "လမ်း",
+        "ရပ်ကွက်",
+        "အမှတ်",
+    )
+    if _contains_any(folded, location_tokens) or _contains_any(cleaned, location_tokens):
+        return True
     return bool(
         re.search(r"\d", _normalize_digits(cleaned))
         and re.search(
-            r"\b(?:so|ngo|ngach|duong|pho|phuong|quan|huyen|"
-            r"ha noi|tp|thanh pho|toa|can|chung cu)\b",
+            r"\b(?:no|number|room|building|floor|block)\b",
             folded,
         )
     )
@@ -289,16 +458,16 @@ def _looks_like_address(value: str) -> bool:
 def _extract_address(text: str) -> str:
     patterns = (
         r"(?:လိပ်စာ|ပို့ရမယ့်လိပ်စာ|ပို့ရန်လိပ်စာ|နေရပ်လိပ်စာ|ပို့ပေးရမယ့်နေရာ|နေရာ)\s*(?:က|မှာ|သည်|:)?\s*(.+?)(?=[။;]|\s*(?:ဖုန်း|ဝယ်ချင်|လိုချင်|မှာမယ်|မှာယူမယ်)|$)",
-        r"(?:address|địa chỉ|dia chi)\s*(?:là|la|is|:)?\s*(.+?)(?=[.;]|\s+(?:phone|số điện thoại|so dien thoai|tôi muốn|toi muon|tôi cần|toi can)\b|$)",
-        r"(?:ship|giao)\s*(?:đến|den|về|ve|tới|toi)\s+(.+?)(?=[.;]|$)",
-        r"\b((?:số|so)\s+\d+.+)$",
+        r"(?:address|delivery address)\s*(?:is|:)?\s*(.+?)(?=[.;]|\s+(?:phone|buy|order|purchase)\b|$)",
+        r"(?:ship|deliver|delivery)\s*(?:to)?\s+(.+?)(?=[.;]|$)",
+        r"\b((?:no\.?|number)\s+\d+.+)$",
     )
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.IGNORECASE)
         if match:
             address = _clean(match.group(1))
             return re.split(
-                r"(?:\b(?:age|tuoi|years?\s+old|female|male|woman|man)\b|အသက်|အမျိုးသမီး|အမျိုးသား)",
+                r"(?:\b(?:age|years?\s+old|female|male|woman|man)\b|အသက်|အမျိုးသမီး|အမျိုးသား)",
                 address,
                 maxsplit=1,
                 flags=re.IGNORECASE,
@@ -308,12 +477,10 @@ def _extract_address(text: str) -> str:
 
 def _extract_address_from_transcript(transcript: list[dict[str, Any]]) -> str:
     turns = _customer_turns(transcript)
-    explicit_address = next(
-        (candidate for turn in reversed(turns) if (candidate := _extract_address(turn))),
-        "",
-    )
-    if explicit_address:
-        return explicit_address
+    for turn in reversed(turns):
+        explicit_address = _extract_address(turn)
+        if explicit_address:
+            return "" if _is_clearly_non_myanmar_address(explicit_address) else explicit_address
 
     for index in range(len(transcript) - 1, -1, -1):
         item = transcript[index]
@@ -322,16 +489,17 @@ def _extract_address_from_transcript(transcript: list[dict[str, Any]]) -> str:
         candidate = _clean(item.get("text", ""))
         if not _looks_like_address(candidate):
             continue
-        context = _fold_text(_agent_context_before(transcript, index))
-        if re.search(r"\b(?:dia chi|giao hang|ship|giao den|nhan hang)\b", context):
-            return candidate
+        raw_context = _agent_context_before(transcript, index)
+        context = _fold_text(raw_context)
+        if re.search(r"\b(?:address|delivery|ship|deliver)\b", context) or re.search(r"(?:လိပ်စာ|ပို့)", raw_context):
+            return "" if _is_clearly_non_myanmar_address(candidate) else candidate
     return ""
 
 
 def _customer_attempted_phone(text: str) -> bool:
     return bool(
         re.search(
-            r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|số điện thoại|so dien thoai|điện thoại|dien thoai)",
+            r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|mobile)",
             text,
             flags=re.IGNORECASE,
         )
@@ -339,17 +507,17 @@ def _customer_attempted_phone(text: str) -> bool:
 
 
 def _extract_quantity(text: str) -> int | None:
-    match = re.search(r"([\d۰-۹٠-٩۰-۹]+)\s*(?:ဘူး|ဗူး|hop|bo|box)", text, flags=re.IGNORECASE)
+    match = re.search(r"([\d۰-۹٠-٩۰-۹]+)\s*(?:ဘူး|ဗူး|box|boxes)", text, flags=re.IGNORECASE)
     if match:
         return int(_normalize_digits(match.group(1)))
     for word, value in NUMBER_WORDS.items():
-        if re.search(rf"{word}\s*(?:ဘူး|ဗူး|hop|bo|box)", text, flags=re.IGNORECASE):
+        if re.search(rf"{word}\s*(?:ဘူး|ဗူး|box|boxes)", text, flags=re.IGNORECASE):
             return value
     folded = _fold_text(text)
-    number_pattern = r"(\d+|mot|hai|ba|bon|tu|nam|one|two|three|four|five)"
+    number_pattern = r"(\d+|one|two|three|four|five)"
     patterns = (
-        rf"\b{number_pattern}\s*(?:hop|bo|box)\b",
-        rf"\b(?:toi\s+)?(?:mua|dat|lay|chot|order|buy|purchase)\s+{number_pattern}(?!\s*combo\b)",
+        rf"\b{number_pattern}\s*(?:box|boxes)\b",
+        rf"\b(?:order|buy|purchase|take)\s+{number_pattern}(?!\s*combo\b)",
     )
     for pattern in patterns:
         match = re.search(pattern, folded, flags=re.IGNORECASE)
@@ -369,7 +537,6 @@ def _has_negated_buy_intent(text: str) -> bool:
     folded = _fold_text(text)
     return bool(
         re.search(
-            r"\b(?:khong|chua)\s+(?:(?:muon|can)\s+)?(?:mua|dat|lay|chot|order)\b|"
             r"\b(?:do\s+not|don't|not|not\s+yet)\s+(?:buy|order|purchase)\b",
             folded,
         )
@@ -395,7 +562,7 @@ def _has_buy_intent(text: str) -> bool:
     ):
         return True
     folded = _fold_text(text)
-    return bool(re.search(r"\b(?:mua|dat|lay|chot|order|buy|purchase)\b", folded, flags=re.IGNORECASE))
+    return bool(re.search(r"\b(?:order|buy|purchase|take)\b", folded, flags=re.IGNORECASE))
 
 
 def _is_question(text: str) -> bool:
@@ -404,23 +571,26 @@ def _is_question(text: str) -> bool:
     folded = _fold_text(text)
     return bool(
         re.search(
-            r"\b(?:thi\s+the\s+nao|bao\s+nhieu|gia|price|how\s+much|what\s+about)\b",
+            r"\b(?:price|how\s+much|what\s+about|which|available)\b",
             folded,
         )
     )
 
 
 def _is_delivery_order_request(text: str) -> bool:
-    return bool(re.search(r"\b(?:ship|giao)\s+(?:cho\s+)?(?:toi\s+)?", _fold_text(text)))
+    return bool(
+        re.search(r"\b(?:ship|deliver|delivery)\b", _fold_text(text))
+        or _contains_any(text, ("ပို့ပေး", "ပို့ရန်", "ပို့ရမယ့်"))
+    )
 
 
 def _is_retail_selection(text: str) -> bool:
     folded = _fold_text(text)
     return bool(
         re.search(
-            r"\b(?:mua\s+le|ban\s+le|lay\s+le|hop\s+le|khong\s+combo)\b",
+            r"\b(?:retail|single box|one by one|no combo)\b",
             folded,
-        )
+        ) or _contains_any(text, ("လက်လီ", "တစ်ဘူးချင်း", "တစ်ဘူးစီ", "ကွန်ဘိုမဟုတ်"))
     )
 
 
@@ -433,8 +603,10 @@ def _is_no_need(text: str) -> bool:
             "မလိုအပ်",
             "မလိုဘူး",
             "မလိုပါ",
+            "မဝယ်တော့",
             "မယူတော့",
             "မမှာတော့",
+            "အော်ဒါဖျက်",
             "စိတ်မဝင်စား",
             "စိတ်မပါ",
         ),
@@ -443,8 +615,7 @@ def _is_no_need(text: str) -> bool:
     folded = _fold_text(text)
     return bool(
         re.search(
-            r"\b(?:khong\s+can|khong\s+muon|khong\s+quan\s+tam|"
-            r"khong\s+mua\s+nua|not\s+interested|no\s+need)\b",
+            r"\b(?:not\s+interested|no\s+need|do\s+not\s+need|do\s+not\s+want)\b",
             folded,
         )
     )
@@ -456,8 +627,7 @@ def _is_deferred(text: str) -> bool:
     folded = _fold_text(text)
     return bool(
         re.search(
-            r"\b(?:chua\s+(?:mua|dat|chot)|suy\s+nghi|can\s+nhac|"
-            r"hoi\s+nguoi\s+nha|not\s+yet|thinking|considering)\b",
+            r"\b(?:not\s+yet|thinking|considering|decide\s+later|ask\s+family)\b",
             folded,
         )
     )
@@ -500,8 +670,10 @@ def extract_order_selection(transcript: list[dict[str, Any]]) -> dict[str, Any] 
                 pending_generic_intent = False
             else:
                 # A general wish to buy still needs a concrete product/variant and count.
-                selection = None
-                pending_generic_intent = True
+                if selection is None:
+                    pending_generic_intent = True
+                else:
+                    pending_generic_intent = False
             continue
 
         if pending_generic_intent and concrete_item and not _is_question(turn):
@@ -529,8 +701,8 @@ def _extract_combo(text: str) -> dict[str, Any] | None:
             return COMBO_CATALOG.get(combo_number)
 
     folded = _fold_text(text)
-    number_pattern = r"(\d+|mot|hai|ba|bon|tu|nam|one|two|three|four|five)"
-    match = re.search(rf"\bcombo\s*(?:so|number|#)?\s*{number_pattern}\b", folded)
+    number_pattern = r"(\d+|one|two|three|four|five)"
+    match = re.search(rf"\bcombo\s*(?:number|#)?\s*{number_pattern}\b", folded)
     if not match:
         match = re.search(r"Combo\s*([0-9]+)", _normalize_digits(text), flags=re.IGNORECASE)
     if not match:
@@ -553,8 +725,8 @@ def _extract_product(text: str) -> dict[str, Any] | None:
 
 def _extract_age_range(text: str) -> tuple[str, float]:
     match = re.search(
-        r"(?:အသက်|age|tuoi)\s*(?:က|မှာ|သည်|la|is|:)?\s*([\d۰-۹٠-٩۰-۹]{1,2})|"
-        r"([\d۰-۹٠-٩۰-۹]{1,2})\s*(?:tuoi|years? old|နှစ်)",
+        r"(?:အသက်|age)\s*(?:က|မှာ|သည်|is|:)?\s*([\d۰-۹٠-٩۰-۹]{1,2})|"
+        r"([\d۰-۹٠-٩۰-۹]{1,2})\s*(?:years? old|နှစ်)",
         text,
         flags=re.IGNORECASE,
     )
@@ -598,7 +770,7 @@ def _extract_objection(text: str) -> str:
     ):
         return "price"
     if re.search(
-        r"\b(?:gia cao|dat qua|hoi dat|too expensive|price is high|expensive)\b",
+        r"\b(?:too expensive|price is high|expensive)\b",
         text,
         flags=re.IGNORECASE,
     ):
@@ -624,7 +796,7 @@ def _intent_status(
     if _contains_any(text, ("သောက်နည်း", "ဘေးထွက်", "သိချင်", "မေးချင်", "အကြံ", "စိတ်ဝင်စား")):
         return "needs_consultation"
     if re.search(
-        r"\b(?:tu van|cach dung|an toan|hieu qua|quan tam|advise|consult|interested)\b",
+        r"\b(?:advise|consult|interested|how to use|safe|effective)\b",
         text,
         flags=re.IGNORECASE,
     ):
@@ -632,7 +804,7 @@ def _intent_status(
     if _contains_any(text, ("ဈေး", "စျေး", "ဘယ်လောက်", "combo", "Combo")):
         return "price_checking"
     if re.search(
-        r"\b(?:gia|bao nhieu|phi ship|price|how much|combo)\b",
+        r"\b(?:price|how much|delivery fee|shipping fee|combo)\b",
         _fold_text(text),
         flags=re.IGNORECASE,
     ):
@@ -647,16 +819,16 @@ def _need_summary(
     order_selection: dict[str, Any] | None,
 ) -> str:
     if intent_status == "no_need":
-        return "Chưa có nhu cầu"
+        return "လိုအပ်ချက်မရှိ"
     if order_selection:
         combo = order_selection.get("combo")
         quantity = order_selection.get("quantity")
         product = order_selection.get("product") or PRODUCT_CATALOG["venus bigone"]
         if combo:
-            return f"Mua Combo {combo['quantity']}"
+            return f"Combo {combo['quantity']} ဝယ်မည်"
         if quantity:
-            return f"Mua lẻ {quantity} hộp {product['name']}"
-        return f"Mua {product['name']}"
+            return f"{quantity} ဘူး {product['name']} ဝယ်မည်"
+        return f"{product['name']} ဝယ်မည်"
     return text[:240]
 
 
@@ -668,7 +840,8 @@ def extract_customer_facts(
     turns = _customer_turns(transcript)
     name = _extract_customer_name_from_transcript(transcript)
     stated_phone = _extract_phone_from_turns(turns)
-    phone = stated_phone or ("" if _customer_attempted_phone(text) else fallback_phone)
+    metadata_phone = _normalize_phone_candidate(fallback_phone)
+    phone = stated_phone or ("" if _customer_attempted_phone(text) else metadata_phone)
     address = _extract_address_from_transcript(transcript)
     age_range, age_confidence = _extract_age_range(text)
     gender, gender_confidence = _extract_gender(text)
@@ -747,12 +920,12 @@ def analyze_call(transcript: list[dict[str, Any]], fallback_phone: str = "") -> 
     )
     confidence = 0.86 if intent_status in {"ready_to_order", "no_need"} else 0.72 if intent_status != "unknown" else 0.3
     next_action = {
-        "ready_to_order": "Kiem tra don nhap va xac nhan lai voi khach.",
-        "needs_consultation": "Tu van them ve cach dung, an toan va loi ich chinh.",
-        "considering": "Goi lai nhe nhang va xu ly ly do khach con phan van.",
-        "price_checking": "Gui gia, combo va uu dai phu hop.",
-        "no_need": "Dua vao nhom cham soc lai, khong goi don.",
-    }.get(intent_status, "Ra lai transcript de xac dinh buoc tiep theo.")
+        "ready_to_order": "အော်ဒါအချက်အလက်ကို စစ်ပြီး customer နဲ့ ပြန်အတည်ပြုပါ။",
+        "needs_consultation": "သောက်သုံးနည်း၊ သတိပြုရန်နှင့် အဓိကအကျိုးကျေးဇူးများကို ထပ်ရှင်းပြပါ။",
+        "considering": "Customer စဉ်းစားနေသော အကြောင်းရင်းကို ဖြေရှင်းပြီး နူးညံ့စွာ ပြန်ဆက်သွယ်ပါ။",
+        "price_checking": "စျေးနှုန်း၊ combo နှင့် ပို့ခအချက်အလက်ကို ပြောပါ။",
+        "no_need": "နောက်ထပ်အော်ဒါ follow-up မလုပ်ပါနှင့်။",
+    }.get(intent_status, "Transcript ကို ပြန်စစ်ပြီး နောက်တစ်ဆင့်ကို သတ်မှတ်ပါ။")
 
     return {
         "customer": customer,
@@ -761,7 +934,7 @@ def analyze_call(transcript: list[dict[str, Any]], fallback_phone: str = "") -> 
             "sentiment": "neutral",
             "urgency": urgency,
             "objection": objection,
-            "summary": text[:300] if text else "Chua co du noi dung khach hang.",
+            "summary": text[:300] if text else "Customer ပြောဆိုချက် မရှိသေးပါ။",
             "next_action": next_action,
             "confidence": confidence,
         },

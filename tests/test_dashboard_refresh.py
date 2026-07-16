@@ -24,7 +24,7 @@ def test_dashboard_renders_call_recording_player():
     main = Path("app/main.py").read_text(encoding="utf-8")
 
     assert "renderRecordingCard(call)" in source
-    assert "Nghe lại cuộc gọi" in source
+    assert "Call recording" in source
     assert "recording?.files" in source
     assert "/recording/" in main
     assert "<audio controls" in source

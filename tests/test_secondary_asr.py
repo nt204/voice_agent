@@ -29,7 +29,7 @@ def test_pcm16_is_wrapped_as_valid_mono_wav() -> None:
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
-        ("Transcript: Tôi muốn mua một combo.", "Tôi muốn mua một combo."),
+        ("Transcript: ကွန်ဘိုတစ်ခု ဝယ်ချင်တယ်။", "ကွန်ဘိုတစ်ခု ဝယ်ချင်တယ်။"),
         ("```text\n지금 몇 시예요?\n```", "지금 몇 시예요?"),
         ("[unclear]", ""),
     ],
@@ -44,7 +44,7 @@ class _FakeModels:
 
     async def generate_content(self, **kwargs):
         self.kwargs = kwargs
-        return type("Response", (), {"text": "Tôi muốn mua một combo."})()
+        return type("Response", (), {"text": "ကွန်ဘိုတစ်ခု ဝယ်ချင်တယ်။"})()
 
 
 class _FakeClient:
@@ -64,17 +64,17 @@ def test_secondary_asr_sends_audio_to_configured_model() -> None:
         )
     )
 
-    assert result == "Tôi muốn mua một combo."
+    assert result == "ကွန်ဘိုတစ်ခု ဝယ်ချင်တယ်။"
     assert client.aio.models.kwargs["model"] == "test-asr-model"
 
 
 def test_secondary_asr_prompt_prioritizes_expected_customer_languages() -> None:
     prompt = build_transcription_prompt(
         live_candidate="wrong-script candidate",
-        language_priority="Vietnamese",
+        language_priority="Burmese, Myanmar English",
     )
 
-    assert "Expected customer languages, in priority order: Vietnamese" in prompt
+    assert "Expected customer languages, in priority order: Burmese, Myanmar English" in prompt
     assert "audio remains the source of truth" in prompt
     assert "independent of any Live ASR candidate" in prompt
 
@@ -110,7 +110,7 @@ def test_bridge_records_and_replays_secondary_asr_transcript(monkeypatch) -> Non
         live_candidate: str,
     ) -> str:
         live_candidates.append(live_candidate)
-        return "Tôi muốn mua một combo."
+        return "ကွန်ဘိုတစ်ခု ဝယ်ချင်တယ်။"
 
     async def on_transcript(speaker: str, text: str) -> None:
         recorded.append((speaker, text))
@@ -150,7 +150,7 @@ def test_bridge_records_and_replays_secondary_asr_transcript(monkeypatch) -> Non
     assert len(session.client_content) == 1
     content = session.client_content[0]["turns"]
     assert content.role == "user"
-    assert content.parts[0].text == "Tôi muốn mua một combo."
+    assert content.parts[0].text == "ကွန်ဘိုတစ်ခု ဝယ်ချင်တယ်။"
 
 
 def test_bridge_does_not_replay_when_secondary_asr_matches_live_transcript(monkeypatch) -> None:
@@ -165,7 +165,7 @@ def test_bridge_does_not_replay_when_secondary_asr_matches_live_transcript(monke
         turn_number: int,
         live_candidate: str,
     ) -> str:
-        return "Tôi muốn mua một combo."
+        return "ကွန်ဘိုတစ်ခု ဝယ်ချင်တယ်။"
 
     async def on_transcript(speaker: str, text: str) -> None:
         recorded.append((speaker, text))
@@ -188,7 +188,7 @@ def test_bridge_does_not_replay_when_secondary_asr_matches_live_transcript(monke
         bridge.session = session
         await bridge.start_input_activity()
         await bridge.send_input_audio(b"\x01\x00" * 320)
-        bridge.realtime_live_transcript_parts.append("Tôi muốn mua một combo.")
+        bridge.realtime_live_transcript_parts.append("ကွန်ဘိုတစ်ခု ဝယ်ချင်တယ်။")
         await bridge.end_input_activity()
         await bridge.wait_for_audio_turns()
         return session
@@ -277,8 +277,8 @@ class _BatchModels:
             {
                 "text": (
                     '{"turns":['
-                    '{"index":0,"text":"Tôi muốn mua một combo"},'
-                    '{"index":1,"text":"Combo 2 thì thế nào?"}'
+                    '{"index":0,"text":"ကွန်ဘိုတစ်ခု ဝယ်ချင်တယ်"},'
+                    '{"index":1,"text":"Combo 2 က ဘယ်လိုလဲ"}'
                     "]}"
                 )
             },
@@ -306,8 +306,8 @@ def test_secondary_asr_batches_all_completed_turns_in_one_request() -> None:
     )
 
     assert result == {
-        0: "Tôi muốn mua một combo",
-        1: "Combo 2 thì thế nào?",
+        0: "ကွန်ဘိုတစ်ခု ဝယ်ချင်တယ်",
+        1: "Combo 2 က ဘယ်လိုလဲ",
     }
     assert len(client.models.calls) == 1
     assert client.models.calls[0]["model"] == "batch-asr-model"

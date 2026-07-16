@@ -28,6 +28,7 @@ from app.database import init_db
 from app.gemini_bridge import GeminiCallBridge
 from app.logging_utils import log
 from app.admin import router as admin_router
+from app.phone_numbers import normalize_phone_number
 from app.recording_manager import latest_recording_for_call, recording_path_for_call
 
 app = FastAPI(title="Viber Gemini Live Bridge")
@@ -411,13 +412,7 @@ def _telnyx_error_detail(response: httpx.Response) -> str:
 
 
 def _normalize_phone_number(number: str) -> str:
-    cleaned = "".join(char for char in number.strip() if char.isdigit() or char == "+")
-    if cleaned.startswith("+"):
-        return f"+{''.join(char for char in cleaned[1:] if char.isdigit())}"
-    digits = "".join(char for char in cleaned if char.isdigit())
-    if digits.startswith("0") and len(digits) >= 9:
-        return f"+84{digits[1:]}"
-    return digits
+    return normalize_phone_number(number)
 
 
 @app.post("/infobip/events")
@@ -450,7 +445,7 @@ async def telnyx_outbound_stream_status(request: Request) -> dict[str, bool]:
         call_history.update_outbound_request_by_call_sid(
             call_sid,
             call_status,
-            customer_phone=str(payload.get("To") or payload.get("to") or "").strip(),
+            customer_phone=_normalize_phone_number(str(payload.get("To") or payload.get("to") or "")),
             started_at=str(
                 payload.get("AnsweredTime")
                 or payload.get("StartTime")
@@ -703,6 +698,7 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     if mode == "outbound"
                     else str(start.get("from") or start.get("to") or "")
                 )
+                cust_phone = _normalize_phone_number(cust_phone)
                 call_history.start_call(
                     call_id=call_id,
                     direction="outbound" if mode == "outbound" else "inbound",
@@ -727,6 +723,7 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     if mode == "outbound"
                     else str(start.get("to") or start.get("from") or "")
                 )
+                to_phone = _normalize_phone_number(to_phone)
                 recorder = CallRecorder(
                     call_id=call_id,
                     sample_rate=sample_rate,
@@ -937,7 +934,7 @@ async def signalwire_ws(websocket: WebSocket) -> None:
                     call_id=call_id,
                     direction="inbound",
                     provider="signalwire",
-                    customer_phone=str(start.get("from") or ""),
+                    customer_phone=_normalize_phone_number(str(start.get("from") or "")),
                 )
                 sample_rate = int(media_format.get("sampleRate") or sample_rate)
                 encoding = media_format.get("encoding") or encoding
@@ -1035,7 +1032,9 @@ async def infobip_ws(websocket: WebSocket) -> None:
                         call_id=call_id,
                         direction="inbound",
                         provider="infobip",
-                        customer_phone=str(event.get("from") or event.get("caller") or ""),
+                        customer_phone=_normalize_phone_number(
+                            str(event.get("from") or event.get("caller") or "")
+                        ),
                     )
                     sample_rate = extract_sample_rate(event.get("content-type"), sample_rate)
                     print(f"[{call_id}] Infobip WebSocket connected at {sample_rate}Hz", flush=True)

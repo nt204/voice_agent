@@ -1,40 +1,40 @@
 # Voice AI Sales
 
-Backend FastAPI cho AI gọi vào/gọi ra qua Telnyx, lưu lịch sử cuộc gọi, transcript, phân tích nhu cầu khách hàng và tự tạo đơn hàng AI khi khách chốt mua.
+FastAPI backend for Myanmar-market AI inbound/outbound sales calls via Telnyx. It stores call history and transcripts, analyzes customer intent, and creates AI order records when a customer commits to buy.
 
-## Chạy bằng một lệnh Docker
+## Run With Docker
 
-Tạo `.env` từ mẫu nếu chưa có:
+Create `.env` from the sample if needed:
 
 ```bash
 copy .env.example .env
 ```
 
-Chạy app:
+Start the app:
 
 ```bash
 docker compose up --build
 ```
 
-Mở dashboard:
+Open the dashboard:
 
 ```text
 http://localhost:3000/admin
 ```
 
-## Endpoint chính
+## Main Endpoints
 
-- `GET /` dashboard quản lý sales
-- `GET /health` kiểm tra app
-- `GET /api/calls` danh sách cuộc gọi
-- `GET /api/orders` danh sách đơn hàng AI
-- `POST /telnyx/outbound/call` gọi ra qua Telnyx
-- `GET|POST /telnyx/answer` webhook gọi vào
-- `GET|POST /telnyx/outbound/answer` webhook gọi ra
+- `GET /` sales dashboard
+- `GET /health` app health check
+- `GET /api/calls` call list
+- `GET /api/orders` AI order list
+- `POST /telnyx/outbound/call` outbound Telnyx call
+- `GET|POST /telnyx/answer` inbound call webhook
+- `GET|POST /telnyx/outbound/answer` outbound call webhook
 
-## Ghi chú triển khai
+## Deployment Notes
 
-- App chạy trong container ở cổng `3000`.
-- Máy host mở cố định ở cổng `3000`.
-- Dữ liệu SQLite được lưu trong Docker volume `voice_app_data`.
-- Không commit API key thật trong `.env`.
+- The app listens on port `3000` inside the container.
+- The host maps port `3000` to the app container.
+- SQLite call history is stored in the Docker volume `voice_app_data`.
+- Do not commit real API keys in `.env`.

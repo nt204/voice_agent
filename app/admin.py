@@ -251,7 +251,7 @@ def _admin_html() -> str:
     </div>
     <div class="report" id="report"></div>
     <div class="outbound">
-      <input id="outboundTo" type="tel" placeholder="Customer phone, e.g. +959...">
+      <input id="outboundTo" type="tel" placeholder="Customer phone, e.g. +959..., +849..., VN 09...">
       <input id="outboundFrom" type="tel" placeholder="From number, optional">
       <button class="primary" id="callOut">Call Out</button>
     </div>

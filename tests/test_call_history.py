@@ -5,7 +5,7 @@ import sqlite3
 def test_outbound_status_creates_call_when_stream_never_started(tmp_path):
     store = CallHistoryStore(tmp_path / "call_history.db")
     request = store.create_outbound_request(
-        to_number="+84961695448",
+        to_number="+95961695448",
         from_number="+19482194502",
     )
     store.mark_outbound_request_started(request["id"], "call-sid-1")
@@ -13,7 +13,7 @@ def test_outbound_status_creates_call_when_stream_never_started(tmp_path):
     store.update_outbound_request_by_call_sid(
         "call-sid-1",
         "completed",
-        customer_phone="+84961695448",
+        customer_phone="+95961695448",
         started_at="2026-07-13T04:57:20.389461Z",
         ended_at="2026-07-13T04:57:21.029432Z",
     )
@@ -22,7 +22,7 @@ def test_outbound_status_creates_call_when_stream_never_started(tmp_path):
     assert len(calls) == 1
     assert calls[0]["id"] == "call-sid-1"
     assert calls[0]["status"] == "completed"
-    assert calls[0]["customer"]["phone"] == "+84961695448"
+    assert calls[0]["customer"]["phone"] == "+95961695448"
     assert calls[0]["started_at"] == "2026-07-13T04:57:20.389461Z"
     assert calls[0]["ended_at"] == "2026-07-13T04:57:21.029432Z"
 
@@ -30,24 +30,24 @@ def test_outbound_status_creates_call_when_stream_never_started(tmp_path):
 def test_outbound_status_does_not_overwrite_stream_call_phone_with_empty_value(tmp_path):
     store = CallHistoryStore(tmp_path / "call_history.db")
     request = store.create_outbound_request(
-        to_number="+84961695448",
+        to_number="+95961695448",
         from_number="+19482194502",
     )
     store.mark_outbound_request_started(request["id"], "call-sid-1")
-    store.start_call("call-sid-1", "outbound", "telnyx", "+84961695448")
+    store.start_call("call-sid-1", "outbound", "telnyx", "+95961695448")
 
     store.update_outbound_request_by_call_sid("call-sid-1", "completed")
 
     call = store.get_call("call-sid-1")
     assert call is not None
     assert call["status"] == "completed"
-    assert call["customer"]["phone"] == "+84961695448"
+    assert call["customer"]["phone"] == "+95961695448"
 
 
 def test_started_outbound_request_is_visible_before_callbacks_arrive(tmp_path):
     store = CallHistoryStore(tmp_path / "call_history.db")
     request = store.create_outbound_request(
-        to_number="+84961695448",
+        to_number="+95961695448",
         from_number="+19482194502",
     )
 
@@ -57,14 +57,14 @@ def test_started_outbound_request_is_visible_before_callbacks_arrive(tmp_path):
     assert call is not None
     assert call["direction"] == "outbound"
     assert call["status"] == "active"
-    assert call["customer"]["phone"] == "+84961695448"
+    assert call["customer"]["phone"] == "+95961695448"
 
 
 def test_startup_backfills_existing_outbound_requests_without_call_rows(tmp_path):
     db_path = tmp_path / "call_history.db"
     store = CallHistoryStore(db_path)
     request = store.create_outbound_request(
-        to_number="+84961695448",
+        to_number="+95961695448",
         from_number="+19482194502",
     )
     store.mark_outbound_request_started(request["id"], "call-sid-1")
@@ -106,10 +106,10 @@ def test_store_accepts_database_url_and_migrates_sqlite_history(tmp_path):
     assert target.migrate_from_sqlite(source_path) == {}
 
 
-def test_vietnamese_combo_buy_intent_creates_missing_info_order(tmp_path):
+def test_myanmar_combo_buy_intent_creates_missing_info_order(tmp_path):
     store = CallHistoryStore(tmp_path / "call_history.db")
-    store.start_call("combo-call", "outbound", "telnyx", "+84961695448")
-    store.add_transcript("combo-call", "customer", "အင်း 응. Tôi mua một combo số một. là bao nhiêu tiền?")
+    store.start_call("combo-call", "outbound", "telnyx", "+95961695448")
+    store.add_transcript("combo-call", "customer", "အင်း၊ ကွန်ဘို ၁ မှာယူမယ်။ စျေးဘယ်လောက်လဲ။")
 
     store.finish_call("combo-call")
 
@@ -118,7 +118,7 @@ def test_vietnamese_combo_buy_intent_creates_missing_info_order(tmp_path):
     assert call["analysis"]["intent_status"] == "ready_to_order"
     assert call["order"] is not None
     assert call["order"]["status"] == "missing_info"
-    assert call["order"]["customer_phone"] == "+84961695448"
+    assert call["order"]["customer_phone"] == "+95961695448"
     assert call["order"]["product_name"] == "Venus BigOne Combo 1"
     assert call["order"]["quantity"] == 1
     assert call["order"]["total_price"] == 120000
@@ -128,9 +128,9 @@ def test_vietnamese_combo_buy_intent_creates_missing_info_order(tmp_path):
 def test_legacy_customer_parser_rejects_phone_as_name() -> None:
     extracted = extract_customer_info(
         [
-            {"speaker": "customer", "text": "Tôi muốn mua một"},
-            {"speaker": "customer", "text": "Tên là 0961695448 Số hai"},
-            {"speaker": "customer", "text": "Địa chỉ là số 2 ngõ 49 đường Lê Đức Thọ Hà Nội"},
+            {"speaker": "customer", "text": "Venus BigOne တစ်ဘူး ဝယ်မယ်"},
+            {"speaker": "customer", "text": "နာမည်က 0961695448 နှစ်"},
+            {"speaker": "customer", "text": "လိပ်စာက No. 2 Insein Road, Yangon"},
         ]
     )
 
@@ -139,18 +139,18 @@ def test_legacy_customer_parser_rejects_phone_as_name() -> None:
 
 def test_finish_call_prefers_sales_parser_name_over_legacy_regex(tmp_path, monkeypatch):
     store = CallHistoryStore(tmp_path / "call_history.db")
-    store.start_call("name-call", "outbound", "telnyx", "+84961695448")
-    store.add_transcript("name-call", "customer", "Tôi muốn mua một")
-    store.add_transcript("name-call", "customer", "Tên là 0961695448 Số hai")
-    store.add_transcript("name-call", "customer", "Địa chỉ là số 2 ngõ 49 đường Lê Đức Thọ Hà Nội")
+    store.start_call("name-call", "outbound", "telnyx", "+95961695448")
+    store.add_transcript("name-call", "customer", "Venus BigOne တစ်ဘူး ဝယ်မယ်")
+    store.add_transcript("name-call", "customer", "နာမည်က 0961695448 နှစ်")
+    store.add_transcript("name-call", "customer", "လိပ်စာက No. 2 Insein Road, Yangon")
 
     def fake_analyze_call(transcript, fallback_phone=""):
         return {
             "customer": {
                 "name": "",
                 "phone": "0961695448",
-                "address": "số 2 ngõ 49 đường Lê Đức Thọ Hà Nội",
-                "need": "Mua lẻ 1 hộp Venus BigOne",
+                "address": "No. 2 Insein Road, Yangon",
+                "need": "1 ဘူး Venus BigOne ဝယ်မည်",
             },
             "analysis": {
                 "intent_status": "ready_to_order",
@@ -163,8 +163,8 @@ def test_finish_call_prefers_sales_parser_name_over_legacy_regex(tmp_path, monke
             },
             "order": {
                 "customer_phone": "0961695448",
-                "customer_name": "Trí",
-                "shipping_address": "số 2 ngõ 49 đường Lê Đức Thọ Hà Nội",
+                "customer_name": "Aung",
+                "shipping_address": "No. 2 Insein Road, Yangon",
                 "product_name": "Venus BigOne",
                 "quantity": 1,
                 "unit_price": 120000,
@@ -184,14 +184,14 @@ def test_finish_call_prefers_sales_parser_name_over_legacy_regex(tmp_path, monke
 
     call = store.get_call("name-call")
     assert call is not None
-    assert call["customer"]["name"] == "Trí"
-    assert call["customer"]["need"] == "Mua lẻ 1 hộp Venus BigOne"
-    assert call["order"]["customer_name"] == "Trí"
+    assert call["customer"]["name"] == "Aung"
+    assert call["customer"]["need"] == "1 ဘူး Venus BigOne ဝယ်မည်"
+    assert call["order"]["customer_name"] == "Aung"
 
 
 def test_finish_call_defaults_missing_demographic_fields(tmp_path, monkeypatch):
     store = CallHistoryStore(tmp_path / "call_history.db")
-    store.start_call("missing-demographics", "outbound", "telnyx", "+84961695448")
+    store.start_call("missing-demographics", "outbound", "telnyx", "+95961695448")
     store.add_transcript("missing-demographics", "customer", "တောင်မိုးမိုး 1 combo")
 
     def fake_analyze_call(transcript, fallback_phone=""):
@@ -232,7 +232,7 @@ def test_finish_call_defaults_missing_demographic_fields(tmp_path, monkeypatch):
 def test_final_asr_can_clear_an_unreliable_live_transcript(tmp_path):
     store = CallHistoryStore(tmp_path / "call_history.db")
     store.start_call("unclear-turn", "inbound", "telnyx")
-    store.add_transcript("unclear-turn", "customer", "Tôi muốn mua Combo 5")
+    store.add_transcript("unclear-turn", "customer", "Combo 5 ဝယ်မယ်")
 
     store.update_customer_transcript_by_index("unclear-turn", 0, "")
 
