@@ -107,6 +107,46 @@ def test_bridge_returns_authoritative_delivery_state_to_live_model(monkeypatch) 
     assert response["next_action"] == "confirm_phone"
 
 
+def test_bridge_records_phone_after_customer_confirms_it(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
+    transcripts = []
+
+    async def send_audio(_: bytes) -> None:
+        pass
+
+    async def record(speaker: str, text: str) -> None:
+        transcripts.append((speaker, text))
+
+    async def run() -> GeminiCallBridge:
+        bridge = GeminiCallBridge(
+            call_id="confirmed-phone",
+            call_sample_rate=16000,
+            send_audio=send_audio,
+            send_initial_greeting=False,
+            on_transcript=record,
+        )
+        bridge.session = _FakeSession()
+        for action, value in (("set", "09789119333"), ("confirm", "")):
+            await bridge._handle_tool_call(
+                types.LiveServerToolCall(
+                    function_calls=[
+                        types.FunctionCall(
+                            id=f"phone-{action}",
+                            name=DELIVERY_STATE_FUNCTION,
+                            args={"field": "phone", "action": action, "value": value},
+                        )
+                    ]
+                )
+            )
+        return bridge
+
+    bridge = asyncio.run(run())
+
+    assert bridge.delivery_state.confirmed_facts()["phone"] == "09789119333"
+    assert transcripts == [("customer", "ဖုန်းနံပါတ် 09789119333")]
+
+
 def test_dtmf_phone_is_recorded_and_sent_to_live_conversation(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)

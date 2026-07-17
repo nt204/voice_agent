@@ -445,7 +445,9 @@ async def telnyx_outbound_stream_status(request: Request) -> dict[str, bool]:
         call_history.update_outbound_request_by_call_sid(
             call_sid,
             call_status,
-            customer_phone=_normalize_phone_number(str(payload.get("To") or payload.get("to") or "")),
+            dialed_phone=_normalize_phone_number(
+                str(payload.get("To") or payload.get("to") or "")
+            ),
             started_at=str(
                 payload.get("AnsweredTime")
                 or payload.get("StartTime")
@@ -703,7 +705,8 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     call_id=call_id,
                     direction="outbound" if mode == "outbound" else "inbound",
                     provider="telnyx",
-                    customer_phone=cust_phone,
+                    customer_phone=cust_phone if mode != "outbound" else "",
+                    dialed_phone=cust_phone if mode == "outbound" else "",
                 )
                 sample_rate = int(media_format.get("sample_rate") or sample_rate)
                 codec = media_format.get("encoding") or codec
@@ -815,6 +818,10 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
 
             elif event_type == "dtmf":
                 log(f"[{call_id}] Telnyx DTMF: {event.get('dtmf')}")
+                if bridge:
+                    dtmf = event.get("dtmf")
+                    digit = dtmf.get("digit") if isinstance(dtmf, dict) else dtmf
+                    await bridge.handle_dtmf(str(digit or ""))
 
             elif event_type == "mark":
                 pass
@@ -982,6 +989,10 @@ async def signalwire_ws(websocket: WebSocket) -> None:
 
             elif event_type == "dtmf":
                 log(f"[{call_id}] SignalWire DTMF: {event.get('dtmf')}")
+                if bridge:
+                    dtmf = event.get("dtmf")
+                    digit = dtmf.get("digit") if isinstance(dtmf, dict) else dtmf
+                    await bridge.handle_dtmf(str(digit or ""))
 
             elif event_type == "mark":
                 pass

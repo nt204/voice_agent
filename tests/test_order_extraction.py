@@ -138,6 +138,55 @@ def test_spoken_burmese_phone_from_transcript_overrides_empty_payload() -> None:
     assert result["order"]["missing_fields"] == []
 
 
+def test_split_burmese_phone_turns_are_joined_without_using_digit_as_name() -> None:
+    payload = {
+        "intent_status": "ready_to_order",
+        "customer_name": "လေး",
+        "customer_phone": None,
+        "shipping_address": "အမှတ် ၉၆ ဟံသာဝတီလမ်း၊ အရှေ့ဒဂုံမြို့နယ်",
+        "product_name": "Venus BigOne Combo 2",
+        "quantity": 2,
+        "unit_price": 105000,
+        "total_price": 210000,
+        "combo": "Combo 2",
+        "confidence": 0.86,
+    }
+    transcript = [
+        {"speaker": "customer", "text": "Combo 2 နှစ်ဘူး ယူချင်ပါတယ်ရှင်"},
+        {"speaker": "agent", "text": "လက်ခံမယ့်သူရဲ့ နာမည်လေး ပြောပေးပါဦးရှင်"},
+        {"speaker": "customer", "text": "အာ မီမီ ပါ"},
+        {"speaker": "agent", "text": "ဖုန်းနံပါတ်ကို တစ်လုံးချင်း ဖြည်းဖြည်း ပြောပေးပါရှင်"},
+        {"speaker": "customer", "text": "သုည ကိုး"},
+        {"speaker": "agent", "text": "သုည ကိုး"},
+        {"speaker": "customer", "text": "ကိုး"},
+        {"speaker": "agent", "text": "ကိုး"},
+        {"speaker": "customer", "text": "ကိုး ရှစ် သုည"},
+        {"speaker": "agent", "text": "ကိုး ရှစ် သုည"},
+        {"speaker": "customer", "text": "ကိုး ကိုး ခုနစ်"},
+        {"speaker": "agent", "text": "ကိုး ကိုး ခုနစ်"},
+        {"speaker": "customer", "text": "လေး"},
+        {"speaker": "customer", "text": "အင်း ဟုတ်ပြီ"},
+        {
+            "speaker": "customer",
+            "text": "လိပ်စာက အမှတ် ၉၆ ဟံသာဝတီလမ်း၊ အရှေ့ဒဂုံမြို့နယ် ပါ",
+        },
+    ]
+
+    result = _merge_payload(
+        payload,
+        transcript,
+        fallback_phone="+959793905153",
+        fallback={},
+    )
+
+    assert result["customer"]["name"] == "မီမီ"
+    assert result["customer"]["phone"] == "0999809974"
+    assert result["order"]["customer_name"] == "မီမီ"
+    assert result["order"]["customer_phone"] == "0999809974"
+    assert result["order"]["status"] == "ready_to_confirm"
+    assert result["order"]["missing_fields"] == []
+
+
 def test_non_myanmar_payload_address_is_sanitized_to_missing() -> None:
     payload = {
         "intent_status": "ready_to_order",

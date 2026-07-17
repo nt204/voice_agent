@@ -179,6 +179,14 @@ ORDER_CONFIRMATION_TEMPLATE_RULES = """Order confirmation template:
 - If any required field is still missing, do not read the template; ask for only one missing field at a time."""
 
 
+PHONE_NUMBER_LISTENING_GUIDE = """Phone number listening guide:
+- When asking for a phone number, politely ask in Burmese: "ဖုန်းနံပါတ်ကို တစ်လုံးချင်း ဖြည်းဖြည်း ပြောပေးပါရှင်။"
+- Listen for one digit at a time. Burmese digit words are: 0 = သုည or ဝ; 1 = တစ်; 2 = နှစ်; 3 = သုံး; 4 = လေး; 5 = ငါး; 6 = ခြောက်; 7 = ခုနစ် or ခုနှစ်; 8 = ရှစ်; 9 = ကိုး.
+- Keep every digit in the exact order spoken. Never interpret a phone-number sequence as a quantity, price, age, or combo number.
+- After receiving a complete number, read the number back digit by digit and ask the customer to confirm it.
+- If any digit is unclear or the number is incomplete, do not guess. Ask the customer to repeat the phone number one digit at a time."""
+
+
 def _mode_rules(mode: str) -> str:
     if mode == "inbound":
         return ""
@@ -243,6 +251,7 @@ def gemini_system_instruction(mode: str = "inbound") -> str:
 - Ask for phone after name, then address in the next turn. If a field is missing, ask only for that field.
 - Address must be a Myanmar delivery location only; do not mix in demographics or unrelated personal details. If the customer gives an address clearly outside Myanmar, ask for a Myanmar delivery address.
 - Read back product/combo, quantity, recipient name if available, phone number, and shipping address. Say the order is confirmed only after the customer says the information is correct.""",
+        PHONE_NUMBER_LISTENING_GUIDE,
         ORDER_CONFIRMATION_TEMPLATE_RULES,
     ]
 

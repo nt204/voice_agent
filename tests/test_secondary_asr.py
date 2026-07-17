@@ -8,6 +8,7 @@ import app.main as main
 from app.gemini_bridge import GeminiCallBridge
 from app.secondary_asr import (
     SecondaryAsrTranscriber,
+    build_batch_transcription_prompt,
     build_transcription_prompt,
     clean_transcript_response,
     pcm16_to_wav,
@@ -66,6 +67,9 @@ def test_secondary_asr_sends_audio_to_configured_model() -> None:
 
     assert result == "ကွန်ဘိုတစ်ခု ဝယ်ချင်တယ်။"
     assert client.aio.models.kwargs["model"] == "test-asr-model"
+    request_config = client.aio.models.kwargs["config"]
+    assert request_config.thinking_config.thinking_budget == 0
+    assert request_config.max_output_tokens >= 500
 
 
 def test_secondary_asr_prompt_prioritizes_expected_customer_languages() -> None:
@@ -77,6 +81,26 @@ def test_secondary_asr_prompt_prioritizes_expected_customer_languages() -> None:
     assert "Expected customer languages, in priority order: Burmese, Myanmar English" in prompt
     assert "audio remains the source of truth" in prompt
     assert "independent of any Live ASR candidate" in prompt
+
+
+def test_secondary_asr_prompts_recognize_burmese_phone_digit_words() -> None:
+    single_prompt = build_transcription_prompt()
+    batch_prompt = build_batch_transcription_prompt()
+
+    for prompt in (single_prompt, batch_prompt):
+        assert "Burmese phone digits" in prompt
+        assert "0 = သုည or ဝ" in prompt
+        assert "1 = တစ်" in prompt
+        assert "2 = နှစ်" in prompt
+        assert "3 = သုံး" in prompt
+        assert "4 = လေး" in prompt
+        assert "5 = ငါး" in prompt
+        assert "6 = ခြောက်" in prompt
+        assert "7 = ခုနစ် or ခုနှစ်" in prompt
+        assert "8 = ရှစ်" in prompt
+        assert "9 = ကိုး" in prompt
+        assert "one digit at a time" in prompt
+        assert "Pauses between digits do not mean the phone number has ended" in prompt
 
 
 class _FakeLiveSession:
@@ -311,6 +335,8 @@ def test_secondary_asr_batches_all_completed_turns_in_one_request() -> None:
     }
     assert len(client.models.calls) == 1
     assert client.models.calls[0]["model"] == "batch-asr-model"
+    request_config = client.models.calls[0]["config"]
+    assert request_config.thinking_config.thinking_budget == 0
 
 
 def test_post_call_asr_reuses_in_call_results(monkeypatch) -> None:

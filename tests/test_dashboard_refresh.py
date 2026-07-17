@@ -29,4 +29,6 @@ def test_dashboard_renders_call_recording_player():
     assert "/recording/" in main
     assert "<audio controls" in source
     assert ".recording-card" in styles
-    assert "layout-8" in html
+    assert "layout-9" in html
+    assert "Dialed phone" in source
+    assert "Customer-provided phone" in source

@@ -9,6 +9,11 @@ from google.genai import types
 
 from app.audio import PcmFrameBuffer, extract_sample_rate, frame_bytes_for_pcm16
 from app.config import config, gemini_system_instruction, require_env
+from app.live_order_state import (
+    DELIVERY_STATE_FUNCTION,
+    LiveDeliveryState,
+    delivery_state_tool,
+)
 from app.logging_utils import log
 
 SendAudio = Callable[[bytes], Awaitable[None]]
@@ -91,6 +96,9 @@ class GeminiCallBridge:
         self.output_muted = False
         self.completed_turn_count = 0
         self.last_output_at = 0.0
+        self.delivery_state = LiveDeliveryState()
+        self.dtmf_digits = ""
+        self.recorded_confirmed_facts: set[tuple[str, str]] = set()
 
     async def start(self) -> None:
         live = self.client.aio.live.connect(
@@ -104,6 +112,7 @@ class GeminiCallBridge:
                 system_instruction=types.Content(
                     parts=[types.Part(text=self.system_instruction or gemini_system_instruction())]
                 ),
+                tools=[delivery_state_tool()],
                 input_audio_transcription=_audio_transcription_config(),
                 output_audio_transcription=_audio_transcription_config(),
                 realtime_input_config=types.RealtimeInputConfig(
@@ -347,6 +356,8 @@ class GeminiCallBridge:
         try:
             while True:
                 async for response in self.session.receive():
+                    if response.tool_call:
+                        await self._handle_tool_call(response.tool_call)
                     content = response.server_content
                     if content:
                         if content.input_transcription and content.input_transcription.text:
@@ -397,6 +408,89 @@ class GeminiCallBridge:
         result = self.on_transcript(speaker, text)
         if asyncio.iscoroutine(result):
             await result
+
+    async def _handle_tool_call(self, tool_call: types.LiveServerToolCall) -> None:
+        if not self.session:
+            return
+
+        function_responses = []
+        for function_call in tool_call.function_calls or []:
+            if function_call.name != DELIVERY_STATE_FUNCTION:
+                result = {"ok": False, "message": "Unsupported tool."}
+            else:
+                args = dict(function_call.args or {})
+                field = str(args.get("field") or "")
+                action = str(args.get("action") or "")
+                result = self.delivery_state.apply(
+                    field=field,
+                    action=action,
+                    value=str(args.get("value") or ""),
+                )
+                if result["ok"] and action == "confirm":
+                    await self._record_confirmed_fact(field)
+
+            function_responses.append(
+                types.FunctionResponse(
+                    id=function_call.id,
+                    name=function_call.name,
+                    response=result,
+                )
+            )
+
+        if function_responses:
+            await self.session.send_tool_response(
+                function_responses=function_responses,
+            )
+
+    async def _record_confirmed_fact(self, field: str) -> None:
+        facts = self.delivery_state.confirmed_facts()
+        value = facts.get(field, "")
+        marker = (field, value)
+        if not value or marker in self.recorded_confirmed_facts:
+            return
+        self.recorded_confirmed_facts.add(marker)
+        label = "ဖုန်းနံပါတ်" if field == "phone" else "လိပ်စာ"
+        await self._record_transcript("customer", f"{label} {value}")
+
+    async def handle_dtmf(self, digit: str) -> None:
+        digit = str(digit or "").strip()
+        if digit == "*":
+            self.dtmf_digits = ""
+            return
+        if digit in "0123456789":
+            if len(self.dtmf_digits) < 15:
+                self.dtmf_digits += digit
+            return
+        if digit != "#" or not self.dtmf_digits:
+            return
+
+        phone = self.dtmf_digits
+        self.dtmf_digits = ""
+        result = self.delivery_state.apply(
+            field="phone",
+            action="set",
+            value=phone,
+        )
+        if not result["ok"]:
+            return
+
+        text = f"ဖုန်းနံပါတ် {self.delivery_state.phone}"
+        await self._record_transcript("customer", text)
+        if self.session:
+            await self.session.send_client_content(
+                turns=types.Content(
+                    role="user",
+                    parts=[
+                        types.Part(
+                            text=(
+                                f"{text}။ Customer entered this number by keypad. "
+                                "Read it back digit by digit and ask for confirmation."
+                            )
+                        )
+                    ],
+                ),
+                turn_complete=True,
+            )
 
     async def _process_audio_turn_correction(
         self,

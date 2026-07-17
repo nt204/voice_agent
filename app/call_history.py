@@ -46,6 +46,7 @@ calls_table = Table(
     Column("provider", String(50), nullable=False),
     Column("status", String(30), nullable=False),
     Column("customer_phone", Text, nullable=False, server_default=""),
+    Column("dialed_phone", Text, nullable=False, server_default=""),
     Column("started_at", Text, nullable=False),
     Column("ended_at", Text),
     Column("customer_name", Text, nullable=False, server_default=""),
@@ -280,6 +281,7 @@ class SQLiteCallHistoryStore:
                     provider TEXT NOT NULL,
                     status TEXT NOT NULL,
                     customer_phone TEXT NOT NULL DEFAULT '',
+                    dialed_phone TEXT NOT NULL DEFAULT '',
                     started_at TEXT NOT NULL,
                     ended_at TEXT,
                     customer_name TEXT NOT NULL DEFAULT '',
@@ -352,6 +354,10 @@ class SQLiteCallHistoryStore:
                 connection.execute(
                     "ALTER TABLE calls ADD COLUMN interest_status TEXT NOT NULL DEFAULT 'unknown'"
                 )
+            if "dialed_phone" not in columns:
+                connection.execute(
+                    "ALTER TABLE calls ADD COLUMN dialed_phone TEXT NOT NULL DEFAULT ''"
+                )
             outbound_schema = connection.execute(
                 """
                 SELECT sql FROM sqlite_master
@@ -384,12 +390,51 @@ class SQLiteCallHistoryStore:
                     """
                 )
             self._backfill_outbound_request_calls(connection)
+            connection.execute(
+                """
+                UPDATE calls
+                SET dialed_phone = COALESCE(
+                    (
+                        SELECT request.to_number
+                        FROM outbound_call_requests AS request
+                        WHERE request.call_sid = calls.id
+                        ORDER BY request.id DESC
+                        LIMIT 1
+                    ),
+                    customer_phone
+                )
+                WHERE direction = 'outbound' AND dialed_phone = ''
+                """
+            )
+            connection.execute(
+                """
+                UPDATE calls
+                SET customer_phone = (
+                    SELECT orders.customer_phone
+                    FROM orders
+                    WHERE orders.call_id = calls.id
+                      AND orders.customer_phone <> ''
+                    ORDER BY orders.id DESC
+                    LIMIT 1
+                )
+                WHERE direction = 'outbound'
+                  AND customer_phone = dialed_phone
+                  AND EXISTS (
+                    SELECT 1
+                    FROM orders
+                    WHERE orders.call_id = calls.id
+                      AND orders.customer_phone <> ''
+                      AND orders.customer_phone <> calls.dialed_phone
+                  )
+                """
+            )
 
     def _backfill_outbound_request_calls(self, connection: sqlite3.Connection) -> None:
         connection.execute(
             """
             INSERT INTO calls (
-                id, direction, provider, status, customer_phone, started_at, ended_at
+                id, direction, provider, status, customer_phone, dialed_phone,
+                started_at, ended_at
             )
             SELECT
                 call_sid,
@@ -400,6 +445,7 @@ class SQLiteCallHistoryStore:
                     WHEN status = 'completed' THEN 'completed'
                     ELSE 'failed'
                 END,
+                '',
                 to_number,
                 created_at,
                 CASE
@@ -454,6 +500,7 @@ class SQLiteCallHistoryStore:
         call_sid: str,
         status: str,
         customer_phone: str = "",
+        dialed_phone: str = "",
         started_at: str = "",
         ended_at: str = "",
     ) -> None:
@@ -474,14 +521,15 @@ class SQLiteCallHistoryStore:
                 connection.execute(
                     """
                     INSERT INTO calls (
-                        id, direction, provider, status, customer_phone, started_at, ended_at
+                        id, direction, provider, status, customer_phone, dialed_phone,
+                        started_at, ended_at
                     )
-                    VALUES (?, 'outbound', 'telnyx', ?, ?, ?, ?)
+                    VALUES (?, 'outbound', 'telnyx', ?, '', ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         status=excluded.status,
-                        customer_phone=CASE
-                            WHEN excluded.customer_phone <> '' THEN excluded.customer_phone
-                            ELSE calls.customer_phone
+                        dialed_phone=CASE
+                            WHEN excluded.dialed_phone <> '' THEN excluded.dialed_phone
+                            ELSE calls.dialed_phone
                         END,
                         ended_at=CASE
                             WHEN excluded.ended_at IS NOT NULL THEN excluded.ended_at
@@ -491,7 +539,7 @@ class SQLiteCallHistoryStore:
                     (
                         call_sid,
                         call_status,
-                        customer_phone.strip(),
+                        (dialed_phone or customer_phone).strip(),
                         started_at.strip() or _now(),
                         ended_at.strip() or None,
                     ),
@@ -558,13 +606,16 @@ class SQLiteCallHistoryStore:
         direction: str,
         provider: str,
         customer_phone: str = "",
+        dialed_phone: str = "",
     ) -> None:
         normalized_direction = direction if direction in {"inbound", "outbound"} else "inbound"
         with self._lock, closing(self._connect()) as connection, connection:
             connection.execute(
                 """
-                INSERT INTO calls (id, direction, provider, status, customer_phone, started_at)
-                VALUES (?, ?, ?, 'active', ?, ?)
+                INSERT INTO calls (
+                    id, direction, provider, status, customer_phone, dialed_phone, started_at
+                )
+                VALUES (?, ?, ?, 'active', ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     direction=excluded.direction,
                     provider=excluded.provider,
@@ -572,9 +623,20 @@ class SQLiteCallHistoryStore:
                     customer_phone=CASE
                         WHEN excluded.customer_phone <> '' THEN excluded.customer_phone
                         ELSE calls.customer_phone
+                    END,
+                    dialed_phone=CASE
+                        WHEN excluded.dialed_phone <> '' THEN excluded.dialed_phone
+                        ELSE calls.dialed_phone
                     END
                 """,
-                (call_id, normalized_direction, provider, customer_phone, _now()),
+                (
+                    call_id,
+                    normalized_direction,
+                    provider,
+                    customer_phone,
+                    dialed_phone,
+                    _now(),
+                ),
             )
 
     def add_transcript(self, call_id: str, speaker: str, text: str) -> None:
@@ -668,10 +730,11 @@ class SQLiteCallHistoryStore:
         if query.strip():
             clauses.append(
                 "(id LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ? "
+                "OR dialed_phone LIKE ? "
                 "OR customer_address LIKE ? OR customer_need LIKE ?)"
             )
             needle = f"%{query.strip()}%"
-            params.extend([needle] * 5)
+            params.extend([needle] * 6)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         params.append(max(1, min(limit, 500)))
         with self._lock, closing(self._connect()) as connection:
@@ -893,6 +956,7 @@ class SQLiteCallHistoryStore:
             "started_at": row["started_at"],
             "ended_at": ended_at,
             "duration_seconds": duration_seconds,
+            "dialed_phone": row["dialed_phone"],
             "customer": {
                 "name": row["customer_name"],
                 "phone": row["customer_phone"],

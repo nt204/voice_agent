@@ -10,6 +10,14 @@ from google.genai import types
 from app.config import config, require_env
 
 
+BURMESE_PHONE_DIGIT_GUIDE = """Burmese phone digits:
+- A phone number may be spoken one digit at a time: 0 = သုည or ဝ; 1 = တစ်; 2 = နှစ်; 3 = သုံး; 4 = လေး; 5 = ငါး; 6 = ခြောက်; 7 = ခုနစ် or ခုနှစ်; 8 = ရှစ်; 9 = ကိုး.
+- When the context is a phone number, recognize every spoken digit in order. Do not combine the sequence into a quantity, price, age, or arithmetic value.
+- Listen through the entire audio before answering. Pauses between digits do not mean the phone number has ended.
+- Preserve the complete digit sequence supported by the audio. Do not guess a missing or unclear digit.
+"""
+
+
 TRANSCRIPTION_PROMPT = """Transcribe this customer phone-call audio verbatim.
 
 Rules:
@@ -19,7 +27,7 @@ Rules:
 - Preserve numbers, product names, quantities, and place names as heard.
 - Return only the transcript, with no label, explanation, markdown, or quotation marks.
 - If speech is genuinely unintelligible, return exactly [unclear].
-"""
+""" + "\n" + BURMESE_PHONE_DIGIT_GUIDE
 
 
 def build_transcription_prompt(*, live_candidate: str = "", language_priority: str = "") -> str:
@@ -42,7 +50,7 @@ Rules:
 - Keep product names, quantities, phone numbers, and place names exactly as supported by audio.
 - Return one result for every clip. Use an empty string when a clip is unintelligible.
 - Return JSON matching the supplied schema only.
-"""
+""" + "\n" + BURMESE_PHONE_DIGIT_GUIDE
     if language_priority.strip():
         prompt += (
             "\nExpected customer languages, in priority order: "
@@ -141,7 +149,8 @@ class SecondaryAsrTranscriber:
                     ),
                     config=types.GenerateContentConfig(
                         temperature=0,
-                        max_output_tokens=250,
+                        max_output_tokens=750,
+                        thinking_config=types.ThinkingConfig(thinking_budget=0),
                     ),
                 )
                 return clean_transcript_response(getattr(response, "text", "") or "")
@@ -196,6 +205,7 @@ class SecondaryAsrTranscriber:
                         response_json_schema=BATCH_TRANSCRIPTION_SCHEMA,
                         temperature=0,
                         max_output_tokens=min(2000, max(300, len(usable) * 180)),
+                        thinking_config=types.ThinkingConfig(thinking_budget=0),
                     ),
                 )
                 payload = json.loads(getattr(response, "text", "") or "{}")

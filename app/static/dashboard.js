@@ -282,14 +282,15 @@ function renderCalls(calls) {
 
   callList.innerHTML = page.items.map(call => {
     const customer = call.customer || {};
-    const title = customer.name || customer.phone || "Unknown customer";
+    const displayPhone = customer.phone || call.dialed_phone || "";
+    const title = customer.name || displayPhone || "Unknown customer";
     const need = customer.need || "No need recorded";
     const isSelected = state.selectedId === call.id;
     return `
       <button class="lead-row ${isSelected ? "selected" : ""}" data-id="${escapeHtml(call.id)}" type="button">
         <span class="lead-person">
           <strong><i class="lead-phone-icon" aria-hidden="true">&#9742;</i>${escapeHtml(title)}</strong>
-          <small>${escapeHtml(customer.phone || call.id)}</small>
+          <small>${escapeHtml(displayPhone || call.id)}</small>
         </span>
         <span class="lead-need" title="${escapeHtml(need)}">${escapeHtml(need)}</span>
         <span class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</span>
@@ -461,6 +462,8 @@ async function loadDetail(callId, { silent = false } = {}) {
 
 function renderDetail(call, { scrollTop = 0, wasNearBottom = true } = {}) {
   const customer = call.customer || {};
+  const dialedPhone = call.dialed_phone || "";
+  const redialPhone = dialedPhone || customer.phone || "";
   state.selectedDetailStatus = call.status || "";
   const field = value => escapeHtml(value || "Not provided");
   const transcript = call.transcript && call.transcript.length
@@ -482,18 +485,19 @@ function renderDetail(call, { scrollTop = 0, wasNearBottom = true } = {}) {
         <i class="detail-call-icon" aria-hidden="true">&#9742;</i>
         <div>
           <span class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</span>
-          <h2>${field(customer.name || customer.phone || "Customer")}</h2>
+          <h2>${field(customer.name || customer.phone || dialedPhone || "Customer")}</h2>
           <p>${directionLabel(call.direction)} | ${escapeHtml(call.provider)} | ${formatTime(call.started_at)} | ${formatDay(call.started_at)}</p>
         </div>
       </div>
       <div class="detail-actions">
-        <button class="detail-action redial-button" data-phone="${escapeHtml(customer.phone)}" type="button">&#9742; Redial</button>
+        <button class="detail-action redial-button" data-phone="${escapeHtml(redialPhone)}" type="button">&#9742; Redial</button>
         <button class="detail-action icon-only" type="button" aria-label="More actions">&#8942;</button>
       </div>
     </div>
 
     <div class="info-grid detail-stats">
-      <div><span>Phone</span><strong>${field(customer.phone)}</strong></div>
+      <div><span>Dialed phone</span><strong>${field(dialedPhone)}</strong></div>
+      <div><span>Customer-provided phone</span><strong>${field(customer.phone)}</strong></div>
       <div><span>Time</span><strong>${formatTime(call.started_at)}<small>${formatDay(call.started_at)}</small></strong></div>
       <div><span>Call type</span><strong>${directionLabel(call.direction)}</strong></div>
       <div><span>Status</span><strong><em class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</em></strong></div>

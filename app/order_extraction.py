@@ -262,8 +262,8 @@ def _merge_payload(
         customer_text=customer_text,
     )
     customer_name = (
-        _string(payload.get("customer_name"))
-        or _string(customer_facts.get("name"))
+        _string(customer_facts.get("name"))
+        or _string(payload.get("customer_name"))
         or _string(fallback_customer.get("name"))
         or _string(fallback_order.get("customer_name"))
     )

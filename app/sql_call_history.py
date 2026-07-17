@@ -4,7 +4,7 @@ from typing import Any
 
 from app.logging_utils import log
 
-from sqlalchemy import create_engine, func, select, text
+from sqlalchemy import create_engine, func, inspect, select, text
 from sqlalchemy.engine import Connection
 
 from app.call_history import (
@@ -49,14 +49,65 @@ class SqlAlchemyCallHistoryStore:
     def _initialize(self) -> None:
         metadata.create_all(self.engine)
         with self.engine.begin() as connection:
+            columns = {column["name"] for column in inspect(connection).get_columns("calls")}
+            if "dialed_phone" not in columns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE calls "
+                        "ADD COLUMN dialed_phone TEXT NOT NULL DEFAULT ''"
+                    )
+                )
             self._backfill_outbound_request_calls(connection)
+            connection.execute(
+                text(
+                    """
+                    UPDATE calls
+                    SET dialed_phone = COALESCE(
+                        (
+                            SELECT request.to_number
+                            FROM outbound_call_requests AS request
+                            WHERE request.call_sid = calls.id
+                            ORDER BY request.id DESC
+                            LIMIT 1
+                        ),
+                        customer_phone
+                    )
+                    WHERE direction = 'outbound' AND dialed_phone = ''
+                    """
+                )
+            )
+            connection.execute(
+                text(
+                    """
+                    UPDATE calls
+                    SET customer_phone = (
+                        SELECT orders.customer_phone
+                        FROM orders
+                        WHERE orders.call_id = calls.id
+                          AND orders.customer_phone <> ''
+                        ORDER BY orders.id DESC
+                        LIMIT 1
+                    )
+                    WHERE direction = 'outbound'
+                      AND customer_phone = dialed_phone
+                      AND EXISTS (
+                        SELECT 1
+                        FROM orders
+                        WHERE orders.call_id = calls.id
+                          AND orders.customer_phone <> ''
+                          AND orders.customer_phone <> calls.dialed_phone
+                      )
+                    """
+                )
+            )
 
     def _backfill_outbound_request_calls(self, connection: Connection) -> None:
         connection.execute(
             text(
                 """
                 INSERT INTO calls (
-                    id, direction, provider, status, customer_phone, started_at, ended_at
+                    id, direction, provider, status, customer_phone, dialed_phone,
+                    started_at, ended_at
                 )
                 SELECT
                     call_sid,
@@ -67,6 +118,7 @@ class SqlAlchemyCallHistoryStore:
                         WHEN status = 'completed' THEN 'completed'
                         ELSE 'failed'
                     END,
+                    '',
                     to_number,
                     created_at,
                     CASE
@@ -79,9 +131,9 @@ class SqlAlchemyCallHistoryStore:
                   AND status IN ('queued', 'started', 'completed', 'no_answer', 'busy', 'canceled', 'failed')
                 ON CONFLICT(id) DO UPDATE SET
                     status=excluded.status,
-                    customer_phone=CASE
-                        WHEN excluded.customer_phone <> '' THEN excluded.customer_phone
-                        ELSE calls.customer_phone
+                    dialed_phone=CASE
+                        WHEN excluded.dialed_phone <> '' THEN excluded.dialed_phone
+                        ELSE calls.dialed_phone
                     END,
                     ended_at=CASE
                         WHEN excluded.ended_at IS NOT NULL THEN excluded.ended_at
@@ -149,7 +201,7 @@ class SqlAlchemyCallHistoryStore:
             self.update_outbound_request_by_call_sid(
                 call_sid,
                 "started",
-                customer_phone=request["to_number"],
+                dialed_phone=request["to_number"],
                 started_at=request["created_at"],
             )
 
@@ -161,6 +213,7 @@ class SqlAlchemyCallHistoryStore:
         call_sid: str,
         status: str,
         customer_phone: str = "",
+        dialed_phone: str = "",
         started_at: str = "",
         ended_at: str = "",
     ) -> None:
@@ -184,10 +237,11 @@ class SqlAlchemyCallHistoryStore:
                     text(
                         """
                         INSERT INTO calls (
-                            id, direction, provider, status, customer_phone, started_at, ended_at
+                            id, direction, provider, status, customer_phone, dialed_phone,
+                            started_at, ended_at
                         )
                         VALUES (
-                            :call_sid, 'outbound', 'telnyx', :status, :customer_phone,
+                            :call_sid, 'outbound', 'telnyx', :status, '', :dialed_phone,
                             :started_at, :ended_at
                         )
                         ON CONFLICT(id) DO UPDATE SET
@@ -196,9 +250,9 @@ class SqlAlchemyCallHistoryStore:
                                 WHEN :replace_started_at THEN excluded.started_at
                                 ELSE calls.started_at
                             END,
-                            customer_phone=CASE
-                                WHEN excluded.customer_phone <> '' THEN excluded.customer_phone
-                                ELSE calls.customer_phone
+                            dialed_phone=CASE
+                                WHEN excluded.dialed_phone <> '' THEN excluded.dialed_phone
+                                ELSE calls.dialed_phone
                             END,
                             ended_at=CASE
                                 WHEN excluded.ended_at IS NOT NULL THEN excluded.ended_at
@@ -209,7 +263,7 @@ class SqlAlchemyCallHistoryStore:
                     {
                         "call_sid": call_sid,
                         "status": call_status,
-                        "customer_phone": customer_phone.strip(),
+                        "dialed_phone": (dialed_phone or customer_phone).strip(),
                         "started_at": started_at.strip() or _now(),
                         "replace_started_at": bool(started_at.strip()),
                         "ended_at": ended_at.strip() or None,
@@ -264,14 +318,20 @@ class SqlAlchemyCallHistoryStore:
         direction: str,
         provider: str,
         customer_phone: str = "",
+        dialed_phone: str = "",
     ) -> None:
         normalized_direction = direction if direction in {"inbound", "outbound"} else "inbound"
         with self._lock, self.engine.begin() as connection:
             connection.execute(
                 text(
                     """
-                    INSERT INTO calls (id, direction, provider, status, customer_phone, started_at)
-                    VALUES (:id, :direction, :provider, 'active', :customer_phone, :started_at)
+                    INSERT INTO calls (
+                        id, direction, provider, status, customer_phone, dialed_phone, started_at
+                    )
+                    VALUES (
+                        :id, :direction, :provider, 'active', :customer_phone,
+                        :dialed_phone, :started_at
+                    )
                     ON CONFLICT(id) DO UPDATE SET
                         direction=excluded.direction,
                         provider=excluded.provider,
@@ -279,6 +339,10 @@ class SqlAlchemyCallHistoryStore:
                         customer_phone=CASE
                             WHEN excluded.customer_phone <> '' THEN excluded.customer_phone
                             ELSE calls.customer_phone
+                        END,
+                        dialed_phone=CASE
+                            WHEN excluded.dialed_phone <> '' THEN excluded.dialed_phone
+                            ELSE calls.dialed_phone
                         END
                     """
                 ),
@@ -287,6 +351,7 @@ class SqlAlchemyCallHistoryStore:
                     "direction": normalized_direction,
                     "provider": provider,
                     "customer_phone": customer_phone,
+                    "dialed_phone": dialed_phone,
                     "started_at": _now(),
                 },
             )
@@ -397,6 +462,7 @@ class SqlAlchemyCallHistoryStore:
                 calls_table.c.id.like(needle)
                 | calls_table.c.customer_name.like(needle)
                 | calls_table.c.customer_phone.like(needle)
+                | calls_table.c.dialed_phone.like(needle)
                 | calls_table.c.customer_address.like(needle)
                 | calls_table.c.customer_need.like(needle)
             )

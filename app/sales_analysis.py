@@ -165,8 +165,14 @@ def _is_ascii_word_boundary(text: str, start: int, end: int) -> bool:
     return before_ok and after_ok
 
 
-def _spoken_phone_digits(value: str) -> str:
+def _phone_digit_fragment(value: str) -> str:
     text = _normalize_digits(value).casefold().strip(" \t\r\n,.;:-။၊")
+    text = re.sub(
+        r"^(?:(?:အာ|အင်း|ဟုတ်ကဲ့|အိုကေ|ok)\s+)+",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
     text = re.sub(r"\s*(?:ပါရှင်|ပါတယ်|ပါ)$", "", text).strip(" \t\r\n,.;:-။၊")
     if not text:
         return ""
@@ -201,7 +207,12 @@ def _spoken_phone_digits(value: str) -> str:
 
         return ""
 
-    return "".join(digits) if len(digits) >= 8 else ""
+    return "".join(digits)
+
+
+def _spoken_phone_digits(value: str) -> str:
+    digits = _phone_digit_fragment(value)
+    return digits if len(digits) >= 8 else ""
 
 
 def _spoken_phone_candidate(value: str) -> str:
@@ -324,6 +335,24 @@ def _extract_phone_from_turns(turns: list[str]) -> str:
         phone = _extract_phone_precise(turn)
         if phone:
             return phone
+
+    fragments: list[str] = []
+    for turn in turns:
+        fragment = _phone_digit_fragment(turn)
+        if fragment:
+            fragments.append(fragment)
+            continue
+        if fragments:
+            candidate = _normalize_phone_candidate("".join(fragments))
+            if candidate:
+                return candidate
+            fragments.clear()
+
+    if fragments:
+        candidate = _normalize_phone_candidate("".join(fragments))
+        if candidate:
+            return candidate
+
     return _extract_phone_precise(" ".join(turns))
 
 
@@ -349,6 +378,7 @@ def _extract_name_from_turn(turn: str) -> str:
             2 <= len(name) <= 80
             and re.search(r"[A-Za-zÀ-ỹ\u1000-\u109F]", name)
             and not re.search(r"\d", _normalize_digits(name))
+            and not _phone_digit_fragment(name)
             and folded_name not in {"name", "my name", "phone", "address"}
             and not re.search(
                 r"\b(?:combo|box|boxes|kyat|buy|order|purchase|phone|address|delivery)\b|"
@@ -371,6 +401,7 @@ def _is_valid_customer_name(name: str) -> bool:
         2 <= len(cleaned) <= 80
         and re.search(r"[A-Za-zÀ-ỹ\u1000-\u109F]", cleaned)
         and not re.search(r"\d", _normalize_digits(cleaned))
+        and not _phone_digit_fragment(cleaned)
         and folded_name not in {"name", "my name", "phone", "address"}
         and not re.search(
             r"\b(?:combo|box|boxes|kyat|buy|order|purchase|phone|address|delivery|"
@@ -412,6 +443,12 @@ def _extract_customer_name_from_transcript(transcript: list[dict[str, Any]]) -> 
         if item.get("speaker") != "customer":
             continue
         candidate = _clean(item.get("text", ""))
+        candidate = re.sub(
+            r"^(?:(?:အာ|အင်း|ဟုတ်ကဲ့|အိုကေ|ok)\s+)+",
+            "",
+            candidate,
+            flags=re.IGNORECASE,
+        ).strip()
         if not _is_valid_customer_name(candidate):
             continue
         raw_context = _agent_context_before(transcript, index)

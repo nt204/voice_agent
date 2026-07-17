@@ -1,4 +1,4 @@
-from app.call_history import CallHistoryStore, extract_customer_info
+from app.call_history import CallHistoryStore, SQLiteCallHistoryStore, extract_customer_info
 import sqlite3
 
 
@@ -13,7 +13,7 @@ def test_outbound_status_creates_call_when_stream_never_started(tmp_path):
     store.update_outbound_request_by_call_sid(
         "call-sid-1",
         "completed",
-        customer_phone="+95961695448",
+        dialed_phone="+95961695448",
         started_at="2026-07-13T04:57:20.389461Z",
         ended_at="2026-07-13T04:57:21.029432Z",
     )
@@ -22,7 +22,8 @@ def test_outbound_status_creates_call_when_stream_never_started(tmp_path):
     assert len(calls) == 1
     assert calls[0]["id"] == "call-sid-1"
     assert calls[0]["status"] == "completed"
-    assert calls[0]["customer"]["phone"] == "+95961695448"
+    assert calls[0]["dialed_phone"] == "+95961695448"
+    assert calls[0]["customer"]["phone"] == ""
     assert calls[0]["started_at"] == "2026-07-13T04:57:20.389461Z"
     assert calls[0]["ended_at"] == "2026-07-13T04:57:21.029432Z"
 
@@ -34,14 +35,20 @@ def test_outbound_status_does_not_overwrite_stream_call_phone_with_empty_value(t
         from_number="+19482194502",
     )
     store.mark_outbound_request_started(request["id"], "call-sid-1")
-    store.start_call("call-sid-1", "outbound", "telnyx", "+95961695448")
+    store.start_call(
+        "call-sid-1",
+        "outbound",
+        "telnyx",
+        dialed_phone="+95961695448",
+    )
 
     store.update_outbound_request_by_call_sid("call-sid-1", "completed")
 
     call = store.get_call("call-sid-1")
     assert call is not None
     assert call["status"] == "completed"
-    assert call["customer"]["phone"] == "+95961695448"
+    assert call["dialed_phone"] == "+95961695448"
+    assert call["customer"]["phone"] == ""
 
 
 def test_started_outbound_request_is_visible_before_callbacks_arrive(tmp_path):
@@ -57,7 +64,8 @@ def test_started_outbound_request_is_visible_before_callbacks_arrive(tmp_path):
     assert call is not None
     assert call["direction"] == "outbound"
     assert call["status"] == "active"
-    assert call["customer"]["phone"] == "+95961695448"
+    assert call["dialed_phone"] == "+95961695448"
+    assert call["customer"]["phone"] == ""
 
 
 def test_startup_backfills_existing_outbound_requests_without_call_rows(tmp_path):
@@ -187,6 +195,120 @@ def test_finish_call_prefers_sales_parser_name_over_legacy_regex(tmp_path, monke
     assert call["customer"]["name"] == "Aung"
     assert call["customer"]["need"] == "1 ဘူး Venus BigOne ဝယ်မည်"
     assert call["order"]["customer_name"] == "Aung"
+
+
+def test_outbound_dialed_phone_is_kept_separate_from_customer_provided_phone(
+    tmp_path, monkeypatch
+):
+    store = CallHistoryStore(tmp_path / "call_history.db")
+    store.start_call(
+        "separate-phone-call",
+        "outbound",
+        "telnyx",
+        dialed_phone="+959793905153",
+    )
+    store.add_transcript(
+        "separate-phone-call",
+        "customer",
+        "ဖုန်းနံပါတ် သုည ကိုး ကိုး ကိုး ရှစ် သုည ကိုး ကိုး ခုနစ် လေး",
+    )
+
+    def fake_analyze_call(transcript, fallback_phone=""):
+        assert fallback_phone == ""
+        return {
+            "customer": {
+                "name": "မီမီ",
+                "phone": "0999809974",
+                "address": "အမှတ် ၉၈ ဟံသာဝတီလမ်း",
+                "need": "Combo 2 ဝယ်မည်",
+            },
+            "analysis": {
+                "intent_status": "ready_to_order",
+                "sentiment": "neutral",
+                "urgency": "high",
+                "objection": "unknown",
+                "summary": "Customer ordered Combo 2.",
+                "next_action": "Confirm order.",
+                "confidence": 0.9,
+            },
+            "order": {
+                "customer_phone": "0999809974",
+                "customer_name": "မီမီ",
+                "shipping_address": "အမှတ် ၉၈ ဟံသာဝတီလမ်း",
+                "product_name": "Venus BigOne Combo 2",
+                "quantity": 2,
+                "unit_price": 105000,
+                "total_price": 210000,
+                "status": "ready_to_confirm",
+                "missing_fields": [],
+                "confidence": 0.9,
+            },
+        }
+
+    monkeypatch.setattr(
+        "app.sql_call_history.analyze_call_with_gemini",
+        fake_analyze_call,
+    )
+
+    store.finish_call("separate-phone-call")
+
+    call = store.get_call("separate-phone-call")
+    assert call is not None
+    assert call["dialed_phone"] == "+959793905153"
+    assert call["customer"]["phone"] == "0999809974"
+    assert call["order"]["customer_phone"] == "0999809974"
+
+
+def test_legacy_sqlite_store_serializes_dialed_phone_separately(tmp_path):
+    store = SQLiteCallHistoryStore(tmp_path / "legacy-call-history.db")
+    store.start_call(
+        "legacy-separate-phone",
+        "outbound",
+        "telnyx",
+        dialed_phone="+959793905153",
+    )
+
+    call = store.get_call("legacy-separate-phone")
+
+    assert call is not None
+    assert call["dialed_phone"] == "+959793905153"
+    assert call["customer"]["phone"] == ""
+
+
+def test_startup_repairs_legacy_conflated_phone_from_latest_order(tmp_path):
+    db_path = tmp_path / "legacy-conflated-phone.db"
+    store = CallHistoryStore(db_path)
+    store.start_call(
+        "legacy-conflated-phone",
+        "outbound",
+        "telnyx",
+        customer_phone="+959793905153",
+        dialed_phone="+959793905153",
+    )
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO orders (
+                call_id, customer_phone, customer_name, shipping_address,
+                product_name, quantity, unit_price, total_price, status,
+                missing_fields, confidence, created_at, updated_at
+            )
+            VALUES (?, ?, '', '', 'Venus BigOne Combo 2', 2, 105000, 210000,
+                    'ready_to_confirm', '', 0.9, ?, ?)
+            """,
+            (
+                "legacy-conflated-phone",
+                "0999809974",
+                "2026-07-16T09:23:09+00:00",
+                "2026-07-16T09:23:09+00:00",
+            ),
+        )
+
+    repaired = CallHistoryStore(db_path).get_call("legacy-conflated-phone")
+
+    assert repaired is not None
+    assert repaired["dialed_phone"] == "+959793905153"
+    assert repaired["customer"]["phone"] == "0999809974"
 
 
 def test_finish_call_defaults_missing_demographic_fields(tmp_path, monkeypatch):
