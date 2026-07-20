@@ -13,6 +13,10 @@ RECORDING_FILE_KINDS = {"inbound", "outbound", "mixed", "log"}
 AUDIO_FILE_KINDS = {"inbound", "outbound", "mixed"}
 
 
+class RecordingInUseError(RuntimeError):
+    pass
+
+
 def recordings_root() -> Path:
     return _recording_root()
 
@@ -20,7 +24,9 @@ def recordings_root() -> Path:
 def list_recordings() -> list[dict]:
     with db_session() as session:
         rows = session.scalars(
-            select(CallRecordingRow).order_by(desc(CallRecordingRow.started_at))
+            select(CallRecordingRow)
+            .where(CallRecordingRow.status != "deleted")
+            .order_by(desc(CallRecordingRow.started_at))
         ).all()
         intents = {
             intent.recording_id: intent
@@ -34,6 +40,7 @@ def latest_recording_for_call(call_id: str) -> dict | None:
         row = session.scalars(
             select(CallRecordingRow)
             .where(CallRecordingRow.call_id == call_id)
+            .where(CallRecordingRow.status != "deleted")
             .order_by(desc(CallRecordingRow.started_at))
             .limit(1)
         ).first()
@@ -78,55 +85,112 @@ def recording_path_for_call(call_id: str, file_kind: str) -> Path:
     return recording_path(recording_id, file_kind)
 
 
-def delete_recording(recording_id: str) -> int:
-    deleted_files = 0
-    row_found = False
+def delete_recording(recording_id: str) -> dict[str, int]:
     with db_session() as session:
         row = session.get(CallRecordingRow, Path(recording_id).name)
-        if row:
-            row_found = True
-            for raw_path in (row.inbound_path, row.outbound_path, row.mixed_path, row.log_path):
-                path = Path(raw_path)
-                if path.exists():
-                    path.unlink()
-                    deleted_files += 1
-            _remove_empty_call_dir(row)
-            session.delete(row)
-    return deleted_files if deleted_files else int(row_found)
+        if not row or row.status == "deleted":
+            return _deletion_result()
+        if row.status == "active":
+            raise RecordingInUseError("Cannot delete an active recording")
+        return _delete_recording_files(row)
 
 
 def cleanup_recordings(days: int) -> dict[str, int]:
-    cutoff = datetime.utcnow() - timedelta(days=max(0, days))
+    if days < 0:
+        raise ValueError("Retention days cannot be negative")
+    cutoff = datetime.utcnow() - timedelta(days=days)
     deleted_recordings = 0
     deleted_files = 0
+    freed_bytes = 0
     with db_session() as session:
         rows = session.scalars(
-            select(CallRecordingRow).where(CallRecordingRow.started_at < cutoff)
+            select(CallRecordingRow)
+            .where(CallRecordingRow.started_at < cutoff)
+            .where(CallRecordingRow.status.not_in(("active", "deleted")))
         ).all()
         for row in rows:
-            for raw_path in (row.inbound_path, row.outbound_path, row.mixed_path, row.log_path):
-                path = Path(raw_path)
-                if path.exists():
-                    path.unlink()
-                    deleted_files += 1
-            _remove_empty_call_dir(row)
-            session.delete(row)
-            deleted_recordings += 1
-    return {"deleted_recordings": deleted_recordings, "deleted_files": deleted_files}
+            result = _delete_recording_files(row)
+            deleted_recordings += result["deleted_recordings"]
+            deleted_files += result["deleted_files"]
+            freed_bytes += result["freed_bytes"]
+    return _deletion_result(deleted_recordings, deleted_files, freed_bytes)
 
 
 def storage_summary() -> dict:
     with db_session() as session:
-        count = session.scalar(select(func.count()).select_from(CallRecordingRow)) or 0
-        inbound = session.scalar(select(func.coalesce(func.sum(CallRecordingRow.inbound_bytes), 0))) or 0
-        outbound = session.scalar(select(func.coalesce(func.sum(CallRecordingRow.outbound_bytes), 0))) or 0
-        mixed = session.scalar(select(func.coalesce(func.sum(CallRecordingRow.mixed_bytes), 0))) or 0
-        logs = session.scalar(select(func.coalesce(func.sum(CallRecordingRow.log_bytes), 0))) or 0
+        active_recordings = CallRecordingRow.status != "deleted"
+        count = session.scalar(
+            select(func.count()).select_from(CallRecordingRow).where(active_recordings)
+        ) or 0
+        inbound = session.scalar(
+            select(func.coalesce(func.sum(CallRecordingRow.inbound_bytes), 0)).where(active_recordings)
+        ) or 0
+        outbound = session.scalar(
+            select(func.coalesce(func.sum(CallRecordingRow.outbound_bytes), 0)).where(active_recordings)
+        ) or 0
+        mixed = session.scalar(
+            select(func.coalesce(func.sum(CallRecordingRow.mixed_bytes), 0)).where(active_recordings)
+        ) or 0
+        logs = session.scalar(
+            select(func.coalesce(func.sum(CallRecordingRow.log_bytes), 0)).where(active_recordings)
+        ) or 0
     total_bytes = int(inbound + outbound + mixed + logs)
     return {
         "count": int(count),
         "total_bytes": total_bytes,
         "total_mb": round(total_bytes / 1024 / 1024, 2),
+    }
+
+
+def _delete_recording_files(row: CallRecordingRow) -> dict[str, int]:
+    deleted_files = 0
+    freed_bytes = 0
+    for path in _safe_recording_files(row):
+        if not path.exists() or not path.is_file():
+            continue
+        freed_bytes += path.stat().st_size
+        path.unlink()
+        deleted_files += 1
+    _remove_empty_call_dir(row)
+    row.status = "deleted"
+    row.inbound_path = ""
+    row.outbound_path = ""
+    row.mixed_path = ""
+    row.log_path = ""
+    row.inbound_bytes = 0
+    row.outbound_bytes = 0
+    row.mixed_bytes = 0
+    row.log_bytes = 0
+    return _deletion_result(1, deleted_files, freed_bytes)
+
+
+def _safe_recording_files(row: CallRecordingRow) -> list[Path]:
+    root = recordings_root().resolve()
+    safe_paths = []
+    seen = set()
+    for raw_path in (row.inbound_path, row.outbound_path, row.mixed_path, row.log_path):
+        if not raw_path:
+            continue
+        try:
+            path = Path(raw_path).resolve()
+        except OSError:
+            continue
+        if path in seen or not path.is_relative_to(root):
+            continue
+        seen.add(path)
+        safe_paths.append(path)
+    return safe_paths
+
+
+def _deletion_result(
+    deleted_recordings: int = 0,
+    deleted_files: int = 0,
+    freed_bytes: int = 0,
+) -> dict[str, int]:
+    return {
+        "deleted_recordings": deleted_recordings,
+        "deleted_files": deleted_files,
+        "freed_bytes": freed_bytes,
     }
 
 

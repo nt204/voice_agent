@@ -6,6 +6,7 @@ from app.logging_utils import log
 
 from sqlalchemy import create_engine, func, inspect, select, text
 from sqlalchemy.engine import Connection
+from sqlalchemy.exc import IntegrityError
 
 from app.call_history import (
     INTEREST_STATUSES,
@@ -19,10 +20,14 @@ from app.call_history import (
     interest_status_from_intent,
     metadata,
     orders_table,
+    product_offers_table,
+    products_table,
     outbound_requests_table,
     transcripts_table,
 )
 from app.order_extraction import analyze_call_with_gemini
+from app.phone_numbers import normalize_phone_number
+from app.products import default_product_payload, validate_product_payload
 
 
 class SqlAlchemyCallHistoryStore:
@@ -49,7 +54,8 @@ class SqlAlchemyCallHistoryStore:
     def _initialize(self) -> None:
         metadata.create_all(self.engine)
         with self.engine.begin() as connection:
-            columns = {column["name"] for column in inspect(connection).get_columns("calls")}
+            inspector = inspect(connection)
+            columns = {column["name"] for column in inspector.get_columns("calls")}
             if "dialed_phone" not in columns:
                 connection.execute(
                     text(
@@ -57,6 +63,25 @@ class SqlAlchemyCallHistoryStore:
                         "ADD COLUMN dialed_phone TEXT NOT NULL DEFAULT ''"
                     )
                 )
+            for table_name in ("calls", "orders", "outbound_call_requests"):
+                table_columns = {
+                    column["name"] for column in inspect(connection).get_columns(table_name)
+                }
+                if "product_id" not in table_columns:
+                    connection.execute(
+                        text(
+                            f"ALTER TABLE {table_name} "
+                            "ADD COLUMN product_id INTEGER REFERENCES products(id)"
+                        )
+                    )
+            for index_sql in (
+                "CREATE INDEX IF NOT EXISTS idx_calls_product_id ON calls(product_id)",
+                "CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders(product_id)",
+                "CREATE INDEX IF NOT EXISTS idx_outbound_requests_product_id "
+                "ON outbound_call_requests(product_id)",
+            ):
+                connection.execute(text(index_sql))
+            self._seed_default_product(connection)
             self._backfill_outbound_request_calls(connection)
             connection.execute(
                 text(
@@ -101,13 +126,31 @@ class SqlAlchemyCallHistoryStore:
                 )
             )
 
+    def _seed_default_product(self, connection: Connection) -> None:
+        if connection.scalar(select(func.count()).select_from(products_table)):
+            return
+        payload = validate_product_payload(
+            default_product_payload(),
+            allow_empty_phone=True,
+        )
+        now = _now()
+        product_id = connection.execute(
+            products_table.insert().values(
+                **{key: value for key, value in payload.items() if key != "offers"},
+                is_default=True,
+                created_at=now,
+                updated_at=now,
+            )
+        ).inserted_primary_key[0]
+        self._replace_product_offers(connection, int(product_id), payload["offers"], now)
+
     def _backfill_outbound_request_calls(self, connection: Connection) -> None:
         connection.execute(
             text(
                 """
                 INSERT INTO calls (
                     id, direction, provider, status, customer_phone, dialed_phone,
-                    started_at, ended_at
+                    product_id, started_at, ended_at
                 )
                 SELECT
                     call_sid,
@@ -118,9 +161,10 @@ class SqlAlchemyCallHistoryStore:
                         WHEN status = 'completed' THEN 'completed'
                         ELSE 'failed'
                     END,
-                    '',
-                    to_number,
-                    created_at,
+                '',
+                to_number,
+                product_id,
+                created_at,
                     CASE
                         WHEN status IN ('completed', 'no_answer', 'busy', 'canceled', 'failed')
                         THEN updated_at
@@ -135,6 +179,7 @@ class SqlAlchemyCallHistoryStore:
                         WHEN excluded.dialed_phone <> '' THEN excluded.dialed_phone
                         ELSE calls.dialed_phone
                     END,
+                    product_id=COALESCE(excluded.product_id, calls.product_id),
                     ended_at=CASE
                         WHEN excluded.ended_at IS NOT NULL THEN excluded.ended_at
                         ELSE calls.ended_at
@@ -175,10 +220,188 @@ class SqlAlchemyCallHistoryStore:
                     counts[table.name] = len(rows)
             return counts
 
+    def list_products(self, *, active_only: bool = False) -> list[dict[str, Any]]:
+        statement = select(products_table)
+        if active_only:
+            statement = statement.where(products_table.c.active.is_(True))
+        statement = statement.order_by(
+            products_table.c.is_default.desc(),
+            products_table.c.name.asc(),
+        )
+        with self.engine.connect() as connection:
+            rows = connection.execute(statement).mappings().all()
+            return self._products_with_offers(connection, rows)
+
+    def get_product(self, product_id: int) -> dict[str, Any] | None:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(products_table).where(products_table.c.id == product_id)
+            ).mappings().first()
+            if not row:
+                return None
+            return self._products_with_offers(connection, [row])[0]
+
+    def get_default_product(self) -> dict[str, Any] | None:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(products_table)
+                .where(products_table.c.active.is_(True))
+                .order_by(products_table.c.is_default.desc(), products_table.c.id.asc())
+                .limit(1)
+            ).mappings().first()
+            if not row:
+                return None
+            return self._products_with_offers(connection, [row])[0]
+
+    def resolve_product_by_phone(self, phone_number: str) -> dict[str, Any] | None:
+        normalized = normalize_phone_number(phone_number)
+        if not normalized:
+            return None
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(products_table).where(
+                    products_table.c.phone_number == normalized,
+                    products_table.c.active.is_(True),
+                )
+            ).mappings().first()
+            if not row:
+                return None
+            return self._products_with_offers(connection, [row])[0]
+
+    def create_product(self, raw_payload: dict[str, Any]) -> dict[str, Any]:
+        payload = validate_product_payload(raw_payload)
+        now = _now()
+        try:
+            with self._lock, self.engine.begin() as connection:
+                product_id = connection.execute(
+                    products_table.insert().values(
+                        **{key: value for key, value in payload.items() if key != "offers"},
+                        is_default=False,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                ).inserted_primary_key[0]
+                self._replace_product_offers(
+                    connection,
+                    int(product_id),
+                    payload["offers"],
+                    now,
+                )
+        except IntegrityError as exc:
+            raise self._product_integrity_error(exc) from exc
+        return self.get_product(int(product_id)) or {}
+
+    def update_product(
+        self, product_id: int, raw_payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        current = self.get_product(product_id)
+        if not current:
+            raise LookupError("Product not found")
+        payload = validate_product_payload(
+            raw_payload,
+            allow_empty_phone=bool(current["is_default"]),
+        )
+        if current["is_default"] and not payload["active"]:
+            raise ValueError("Set another default product before disabling the default product")
+        now = _now()
+        try:
+            with self._lock, self.engine.begin() as connection:
+                connection.execute(
+                    products_table.update()
+                    .where(products_table.c.id == product_id)
+                    .values(
+                        **{key: value for key, value in payload.items() if key != "offers"},
+                        updated_at=now,
+                    )
+                )
+                self._replace_product_offers(connection, product_id, payload["offers"], now)
+        except IntegrityError as exc:
+            raise self._product_integrity_error(exc) from exc
+        return self.get_product(product_id) or {}
+
+    def set_default_product(self, product_id: int) -> dict[str, Any]:
+        product = self.get_product(product_id)
+        if not product:
+            raise LookupError("Product not found")
+        if not product["active"]:
+            raise ValueError("Only an active product can be the default product")
+        with self._lock, self.engine.begin() as connection:
+            connection.execute(products_table.update().values(is_default=False))
+            connection.execute(
+                products_table.update()
+                .where(products_table.c.id == product_id)
+                .values(is_default=True, updated_at=_now())
+            )
+        return self.get_product(product_id) or {}
+
+    @staticmethod
+    def _replace_product_offers(
+        connection: Connection,
+        product_id: int,
+        offers: list[dict[str, Any]],
+        now: str,
+    ) -> None:
+        connection.execute(
+            product_offers_table.delete().where(
+                product_offers_table.c.product_id == product_id
+            )
+        )
+        if offers:
+            connection.execute(
+                product_offers_table.insert(),
+                [
+                    {
+                        **offer,
+                        "product_id": product_id,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                    for offer in offers
+                ],
+            )
+
+    @staticmethod
+    def _products_with_offers(
+        connection: Connection, rows: list[Any]
+    ) -> list[dict[str, Any]]:
+        if not rows:
+            return []
+        product_ids = [int(row["id"]) for row in rows]
+        offer_rows = connection.execute(
+            select(product_offers_table)
+            .where(product_offers_table.c.product_id.in_(product_ids))
+            .order_by(product_offers_table.c.product_id, product_offers_table.c.quantity)
+        ).mappings().all()
+        offers_by_product: dict[int, list[dict[str, Any]]] = {
+            product_id: [] for product_id in product_ids
+        }
+        for offer in offer_rows:
+            summary = dict(offer)
+            summary["active"] = bool(summary["active"])
+            offers_by_product[int(offer["product_id"])].append(summary)
+        products = []
+        for row in rows:
+            summary = dict(row)
+            summary["active"] = bool(summary["active"])
+            summary["is_default"] = bool(summary["is_default"])
+            summary["offers"] = offers_by_product[int(summary["id"])]
+            products.append(summary)
+        return products
+
+    @staticmethod
+    def _product_integrity_error(exc: IntegrityError) -> ValueError:
+        detail = str(exc.orig).casefold()
+        if "phone" in detail:
+            return ValueError("Another product already uses this phone number")
+        if "slug" in detail:
+            return ValueError("Another product already uses this slug")
+        return ValueError("Product data conflicts with an existing product")
+
     def create_outbound_request(
         self,
         to_number: str,
         from_number: str = "",
+        product_id: int | None = None,
     ) -> dict[str, Any]:
         now = _now()
         with self._lock, self.engine.begin() as connection:
@@ -186,6 +409,7 @@ class SqlAlchemyCallHistoryStore:
                 outbound_requests_table.insert().values(
                     to_number=to_number.strip(),
                     from_number=from_number.strip(),
+                    product_id=product_id,
                     status="queued",
                     created_at=now,
                     updated_at=now,
@@ -203,6 +427,7 @@ class SqlAlchemyCallHistoryStore:
                 "started",
                 dialed_phone=request["to_number"],
                 started_at=request["created_at"],
+                product_id=request.get("product_id"),
             )
 
     def mark_outbound_request_failed(self, request_id: int, error: str) -> None:
@@ -216,6 +441,7 @@ class SqlAlchemyCallHistoryStore:
         dialed_phone: str = "",
         started_at: str = "",
         ended_at: str = "",
+        product_id: int | None = None,
     ) -> None:
         normalized_status = status.replace("-", "_")
         if normalized_status not in OUTBOUND_REQUEST_STATUSES:
@@ -238,10 +464,15 @@ class SqlAlchemyCallHistoryStore:
                         """
                         INSERT INTO calls (
                             id, direction, provider, status, customer_phone, dialed_phone,
-                            started_at, ended_at
+                            product_id, started_at, ended_at
                         )
                         VALUES (
                             :call_sid, 'outbound', 'telnyx', :status, '', :dialed_phone,
+                            COALESCE(
+                                :product_id,
+                                (SELECT product_id FROM outbound_call_requests
+                                 WHERE call_sid = :call_sid ORDER BY id DESC LIMIT 1)
+                            ),
                             :started_at, :ended_at
                         )
                         ON CONFLICT(id) DO UPDATE SET
@@ -254,6 +485,7 @@ class SqlAlchemyCallHistoryStore:
                                 WHEN excluded.dialed_phone <> '' THEN excluded.dialed_phone
                                 ELSE calls.dialed_phone
                             END,
+                            product_id=COALESCE(excluded.product_id, calls.product_id),
                             ended_at=CASE
                                 WHEN excluded.ended_at IS NOT NULL THEN excluded.ended_at
                                 ELSE calls.ended_at
@@ -267,6 +499,7 @@ class SqlAlchemyCallHistoryStore:
                         "started_at": started_at.strip() or _now(),
                         "replace_started_at": bool(started_at.strip()),
                         "ended_at": ended_at.strip() or None,
+                        "product_id": product_id,
                     },
                 )
 
@@ -319,6 +552,7 @@ class SqlAlchemyCallHistoryStore:
         provider: str,
         customer_phone: str = "",
         dialed_phone: str = "",
+        product_id: int | None = None,
     ) -> None:
         normalized_direction = direction if direction in {"inbound", "outbound"} else "inbound"
         with self._lock, self.engine.begin() as connection:
@@ -326,11 +560,12 @@ class SqlAlchemyCallHistoryStore:
                 text(
                     """
                     INSERT INTO calls (
-                        id, direction, provider, status, customer_phone, dialed_phone, started_at
+                        id, direction, provider, status, customer_phone, dialed_phone,
+                        product_id, started_at
                     )
                     VALUES (
                         :id, :direction, :provider, 'active', :customer_phone,
-                        :dialed_phone, :started_at
+                        :dialed_phone, :product_id, :started_at
                     )
                     ON CONFLICT(id) DO UPDATE SET
                         direction=excluded.direction,
@@ -343,7 +578,8 @@ class SqlAlchemyCallHistoryStore:
                         dialed_phone=CASE
                             WHEN excluded.dialed_phone <> '' THEN excluded.dialed_phone
                             ELSE calls.dialed_phone
-                        END
+                        END,
+                        product_id=COALESCE(excluded.product_id, calls.product_id)
                     """
                 ),
                 {
@@ -352,6 +588,7 @@ class SqlAlchemyCallHistoryStore:
                     "provider": provider,
                     "customer_phone": customer_phone,
                     "dialed_phone": dialed_phone,
+                    "product_id": product_id,
                     "started_at": _now(),
                 },
             )
@@ -408,9 +645,12 @@ class SqlAlchemyCallHistoryStore:
             return
         extracted = extract_customer_info(call["transcript"])
         fallback_phone = call["customer"]["phone"]
+        extraction_options: dict[str, Any] = {"fallback_phone": fallback_phone}
+        if call.get("product"):
+            extraction_options["product"] = call["product"]
         sales_result = analyze_call_with_gemini(
             call["transcript"],
-            fallback_phone=fallback_phone,
+            **extraction_options,
         )
         interest_status = interest_status_from_intent(
             sales_result["analysis"]["intent_status"]
@@ -442,13 +682,19 @@ class SqlAlchemyCallHistoryStore:
                     interest_status=interest_status,
                 )
             )
-            self._save_analysis(connection, call_id, sales_result)
+            self._save_analysis(
+                connection,
+                call_id,
+                sales_result,
+                product_id=call.get("product_id"),
+            )
 
     def list_calls(
         self,
         direction: str | None = None,
         query: str = "",
         interest_status: str | None = None,
+        product_id: int | None = None,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         statement = select(calls_table)
@@ -456,6 +702,8 @@ class SqlAlchemyCallHistoryStore:
             statement = statement.where(calls_table.c.direction == direction)
         if interest_status in INTEREST_STATUSES:
             statement = statement.where(calls_table.c.interest_status == interest_status)
+        if product_id is not None:
+            statement = statement.where(calls_table.c.product_id == product_id)
         if query.strip():
             needle = f"%{query.strip()}%"
             statement = statement.where(
@@ -469,7 +717,9 @@ class SqlAlchemyCallHistoryStore:
         statement = statement.order_by(calls_table.c.started_at.desc()).limit(max(1, min(limit, 500)))
         with self.engine.connect() as connection:
             rows = connection.execute(statement).mappings().all()
-        return [self._call_summary(row) for row in rows]
+        results = [self._call_summary(row) for row in rows]
+        self._attach_product_briefs(results)
+        return results
 
     def get_call(self, call_id: str) -> dict[str, Any] | None:
         with self.engine.connect() as connection:
@@ -497,12 +747,16 @@ class SqlAlchemyCallHistoryStore:
                 .limit(1)
             ).mappings().first()
         result = self._call_summary(row)
+        product = self.get_product(result.get("product_id")) if result.get("product_id") else None
+        result["product"] = self._product_brief(product)
         result["transcript"] = [dict(item) for item in transcript_rows]
         result["analysis"] = self._analysis_summary(analysis_row) if analysis_row else None
         result["order"] = self._order_summary(order_row) if order_row else None
         return result
 
-    def list_orders(self, limit: int = 100) -> list[dict[str, Any]]:
+    def list_orders(
+        self, limit: int = 100, product_id: int | None = None
+    ) -> list[dict[str, Any]]:
         statement = (
             select(
                 orders_table,
@@ -512,18 +766,25 @@ class SqlAlchemyCallHistoryStore:
                 calls_table.c.started_at.label("call_started_at"),
             )
             .join(calls_table, calls_table.c.id == orders_table.c.call_id)
-            .order_by(orders_table.c.created_at.desc(), orders_table.c.id.desc())
+        )
+        if product_id is not None:
+            statement = statement.where(orders_table.c.product_id == product_id)
+        statement = (
+            statement.order_by(orders_table.c.created_at.desc(), orders_table.c.id.desc())
             .limit(max(1, min(limit, 500)))
         )
         with self.engine.connect() as connection:
             rows = connection.execute(statement).mappings().all()
-        return [self._order_summary(row) for row in rows]
+        results = [self._order_summary(row) for row in rows]
+        self._attach_product_briefs(results)
+        return results
 
     def _save_analysis(
         self,
         connection: Connection,
         call_id: str,
         result: dict[str, Any],
+        product_id: int | None = None,
     ) -> None:
         now = _now()
         analysis = result["analysis"]
@@ -578,6 +839,7 @@ class SqlAlchemyCallHistoryStore:
         connection.execute(
             orders_table.insert().values(
                 call_id=call_id,
+                product_id=product_id,
                 customer_phone=order["customer_phone"],
                 customer_name=order["customer_name"],
                 shipping_address=order["shipping_address"],
@@ -593,15 +855,42 @@ class SqlAlchemyCallHistoryStore:
             )
         )
 
-    def sales_statistics(self) -> dict[str, Any]:
+    def _attach_product_briefs(self, records: list[dict[str, Any]]) -> None:
+        products = {
+            product["id"]: self._product_brief(product)
+            for product in self.list_products()
+        }
+        for record in records:
+            record["product"] = products.get(record.get("product_id"))
+
+    @staticmethod
+    def _product_brief(product: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not product:
+            return None
+        return {
+            "id": product["id"],
+            "name": product["name"],
+            "slug": product["slug"],
+            "phone_number": product["phone_number"],
+            "active": product["active"],
+        }
+
+    def sales_statistics(self, product_id: int | None = None) -> dict[str, Any]:
         with self.engine.connect() as connection:
-            rows = connection.execute(select(calls_table)).mappings().all()
-            transcript_rows = connection.execute(
-                select(
+            calls_statement = select(calls_table)
+            transcript_statement = select(
                     transcripts_table.c.call_id,
                     func.count().label("message_count"),
                 ).group_by(transcripts_table.c.call_id)
-            ).mappings().all()
+            if product_id is not None:
+                calls_statement = calls_statement.where(calls_table.c.product_id == product_id)
+                transcript_statement = (
+                    transcript_statement.join(
+                        calls_table, calls_table.c.id == transcripts_table.c.call_id
+                    ).where(calls_table.c.product_id == product_id)
+                )
+            rows = connection.execute(calls_statement).mappings().all()
+            transcript_rows = connection.execute(transcript_statement).mappings().all()
         calls = [self._call_summary(row) for row in rows]
         transcript_counts = {
             row["call_id"]: int(row["message_count"]) for row in transcript_rows

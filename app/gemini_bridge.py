@@ -32,12 +32,15 @@ def _automatic_activity_detection(explicit_vad: bool) -> types.AutomaticActivity
     )
 
 
-def _speech_config() -> types.SpeechConfig:
+def _speech_config(
+    language_code: str | None = None,
+    voice_name: str | None = None,
+) -> types.SpeechConfig:
     return types.SpeechConfig(
-        language_code=config.gemini.language_code,
+        language_code=language_code or config.gemini.language_code,
         voice_config=types.VoiceConfig(
             prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                voice_name=config.gemini.voice_name,
+                voice_name=voice_name or config.gemini.voice_name,
             )
         ),
     )
@@ -59,6 +62,8 @@ class GeminiCallBridge:
         clear_audio: Callable[[], Awaitable[None]] | None = None,
         system_instruction: str | None = None,
         initial_greeting: str | None = None,
+        language_code: str | None = None,
+        voice_name: str | None = None,
         on_transcript: TranscriptHandler | None = None,
         on_audio_turn: Callable[[bytes, int, int, str], Awaitable[str]] | None = None,
     ):
@@ -71,6 +76,8 @@ class GeminiCallBridge:
         self.send_initial_greeting = send_initial_greeting
         self.system_instruction = system_instruction
         self.initial_greeting = initial_greeting
+        self.language_code = language_code
+        self.voice_name = voice_name
         self.on_transcript = on_transcript
         self.on_audio_turn = on_audio_turn
         self.current_turn_audio = bytearray()
@@ -108,7 +115,7 @@ class GeminiCallBridge:
                 temperature=config.gemini.temperature,
                 top_p=config.gemini.top_p,
                 max_output_tokens=config.gemini.max_output_tokens,
-                speech_config=_speech_config(),
+                speech_config=_speech_config(self.language_code, self.voice_name),
                 system_instruction=types.Content(
                     parts=[types.Part(text=self.system_instruction or gemini_system_instruction())]
                 ),

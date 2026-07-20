@@ -1,11 +1,12 @@
 from html import escape
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 
 from app.config import config
 from app.intent_extraction import extract_call_intent_for_recording
 from app.recording_manager import (
+    RecordingInUseError,
     cleanup_recordings,
     delete_recording,
     list_recordings,
@@ -66,10 +67,13 @@ async def api_outbound_call(payload: dict) -> dict:
 
 @router.delete("/api/recordings/{recording_id}")
 async def api_delete_recording(recording_id: str) -> dict:
-    deleted = delete_recording(recording_id)
-    if deleted == 0:
+    try:
+        result = delete_recording(recording_id)
+    except RecordingInUseError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if result["deleted_recordings"] == 0:
         raise HTTPException(status_code=404, detail="Recording not found")
-    return {"ok": True, "deleted_files": deleted}
+    return {"ok": True, **result}
 
 
 @router.post("/api/recordings/{recording_id}/extract")
@@ -81,7 +85,7 @@ async def api_extract_recording(recording_id: str) -> dict:
 
 
 @router.post("/api/cleanup")
-async def api_cleanup(days: int = 14) -> dict:
+async def api_cleanup(days: int = Query(default=30, ge=0, le=3650)) -> dict:
     return {"ok": True, **cleanup_recordings(days)}
 
 

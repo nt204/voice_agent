@@ -229,11 +229,21 @@ async def admin_dashboard() -> FileResponse:
     return FileResponse(BASE_DIR / "app" / "static" / "index.html")
 
 
+@app.get("/admin/products")
+async def admin_products() -> FileResponse:
+    return FileResponse(BASE_DIR / "app" / "static" / "products.html")
+
+
+@app.get("/admin/recordings")
+async def admin_recordings() -> FileResponse:
+    return FileResponse(BASE_DIR / "app" / "static" / "recordings.html")
+
+
 app.include_router(admin_router)
 
 
-def _call_counts() -> dict[str, int]:
-    calls = call_history.list_calls(limit=500)
+def _call_counts(product_id: int | None = None) -> dict[str, int]:
+    calls = call_history.list_calls(limit=500, product_id=product_id)
     return {
         "all": len(calls),
         "inbound": sum(1 for call in calls if call["direction"] == "inbound"),
@@ -241,8 +251,8 @@ def _call_counts() -> dict[str, int]:
     }
 
 
-def _interest_counts() -> dict[str, int]:
-    stats = call_history.sales_statistics()
+def _interest_counts(product_id: int | None = None) -> dict[str, int]:
+    stats = call_history.sales_statistics(product_id=product_id)
     return stats["interest_counts"]
 
 
@@ -305,6 +315,7 @@ async def api_calls(
     direction: str | None = None,
     q: str = "",
     interest_status: str | None = None,
+    product_id: int | None = None,
     limit: int = 100,
 ) -> dict[str, object]:
     return {
@@ -312,11 +323,48 @@ async def api_calls(
             direction=direction,
             query=q,
             interest_status=interest_status,
+            product_id=product_id,
             limit=limit,
         ),
-        "counts": _call_counts(),
-        "interest_counts": _interest_counts(),
+        "counts": _call_counts(product_id),
+        "interest_counts": _interest_counts(product_id),
     }
+
+
+@app.get("/api/products")
+async def api_products(active_only: bool = False) -> dict[str, object]:
+    return {"products": call_history.list_products(active_only=active_only)}
+
+
+@app.post("/api/products", status_code=201)
+async def api_create_product(payload: dict) -> dict[str, object]:
+    try:
+        product = call_history.create_product(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"product": product}
+
+
+@app.put("/api/products/{product_id}")
+async def api_update_product(product_id: int, payload: dict) -> dict[str, object]:
+    try:
+        product = call_history.update_product(product_id, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"product": product}
+
+
+@app.post("/api/products/{product_id}/default")
+async def api_set_default_product(product_id: int) -> dict[str, object]:
+    try:
+        product = call_history.set_default_product(product_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"product": product}
 
 
 @app.get("/api/calls/{call_id}")
@@ -368,22 +416,25 @@ def _call_recording_summary(call_id: str) -> dict[str, object] | None:
 
 
 @app.get("/api/admin/summary")
-async def api_admin_summary() -> dict[str, object]:
+async def api_admin_summary(product_id: int | None = None) -> dict[str, object]:
     recent_leads = call_history.list_calls(
         interest_status="needs_consultation",
+        product_id=product_id,
         limit=12,
     )
-    recent_calls = call_history.list_calls(limit=12)
+    recent_calls = call_history.list_calls(limit=12, product_id=product_id)
     return {
-        "stats": call_history.sales_statistics(),
+        "stats": call_history.sales_statistics(product_id=product_id),
         "recent_leads": recent_leads,
         "recent_calls": recent_calls,
     }
 
 
 @app.get("/api/orders")
-async def api_orders(limit: int = 100) -> dict[str, object]:
-    return {"orders": call_history.list_orders(limit=limit)}
+async def api_orders(
+    limit: int = 100, product_id: int | None = None
+) -> dict[str, object]:
+    return {"orders": call_history.list_orders(limit=limit, product_id=product_id)}
 
 
 @app.get("/api/outbound/requests")
@@ -442,6 +493,10 @@ async def telnyx_outbound_stream_status(request: Request) -> dict[str, bool]:
     call_sid = str(payload.get("CallSid") or payload.get("call_sid") or "").strip()
     call_status = str(payload.get("CallStatus") or payload.get("call_status") or "").strip()
     if call_sid and call_status:
+        try:
+            product_id = int(payload.get("product_id")) if payload.get("product_id") else None
+        except (TypeError, ValueError):
+            product_id = None
         call_history.update_outbound_request_by_call_sid(
             call_sid,
             call_status,
@@ -459,18 +514,37 @@ async def telnyx_outbound_stream_status(request: Request) -> dict[str, bool]:
                 or payload.get("end_time")
                 or ""
             ).strip(),
+            product_id=product_id,
         )
     return {"ok": True}
 
 
 @app.api_route("/telnyx/answer", methods=["GET", "POST"])
-async def telnyx_answer() -> Response:
-    stream_url = _public_ws_url("/telnyx/ws")
+async def telnyx_answer(request: Request) -> Response:
+    payload = await _request_payload(request)
+    requested_product = None
+    if payload.get("product_id"):
+        try:
+            requested_product = call_history.get_product(int(payload["product_id"]))
+        except (TypeError, ValueError):
+            requested_product = None
+    product = (
+        requested_product
+        or call_history.resolve_product_by_phone(str(payload.get("To") or payload.get("to") or ""))
+        or call_history.get_default_product()
+    )
+    stream_params = {}
+    if product:
+        stream_params["product_id"] = product["id"]
+    stream_url = _public_ws_url(
+        f"/telnyx/ws?{urlencode(stream_params)}" if stream_params else "/telnyx/ws"
+    )
     status_url = _public_http_url("/telnyx/status")
     stream_track = getattr(config.telnyx, "stream_track", "inbound_track")
     pause_length_seconds = getattr(config.telnyx, "pause_length_seconds", 600)
     if config.telnyx.stream_token:
-        stream_url = f"{stream_url}?{urlencode({'token': config.telnyx.stream_token})}"
+        separator = "&" if "?" in stream_url else "?"
+        stream_url = f"{stream_url}{separator}{urlencode({'token': config.telnyx.stream_token})}"
 
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -484,9 +558,21 @@ async def telnyx_answer() -> Response:
 
 
 @app.api_route("/telnyx/outbound/answer", methods=["GET", "POST"])
-async def telnyx_outbound_answer() -> Response:
-    stream_url = _public_ws_url("/telnyx/outbound/ws")
-    status_url = _public_http_url("/telnyx/outbound/status")
+async def telnyx_outbound_answer(request: Request) -> Response:
+    payload = await _request_payload(request)
+    try:
+        product_id = int(payload.get("product_id")) if payload.get("product_id") else None
+    except (TypeError, ValueError):
+        product_id = None
+    product = call_history.get_product(product_id) if product_id is not None else None
+    product = product or call_history.get_default_product()
+    product_query = urlencode({"product_id": product["id"]}) if product else ""
+    stream_url = _public_ws_url(
+        f"/telnyx/outbound/ws?{product_query}" if product_query else "/telnyx/outbound/ws"
+    )
+    status_url = _public_http_url(
+        f"/telnyx/outbound/status?{product_query}" if product_query else "/telnyx/outbound/status"
+    )
     stream_track = getattr(config.telnyx, "stream_track", "inbound_track")
     pause_length_seconds = getattr(config.telnyx, "pause_length_seconds", 600)
     greeting_delay_seconds = max(
@@ -494,7 +580,8 @@ async def telnyx_outbound_answer() -> Response:
         int(getattr(config.telnyx, "outbound_greeting_delay_seconds", 2)),
     )
     if config.telnyx.stream_token:
-        stream_url = f"{stream_url}?{urlencode({'token': config.telnyx.stream_token})}"
+        separator = "&" if "?" in stream_url else "?"
+        stream_url = f"{stream_url}{separator}{urlencode({'token': config.telnyx.stream_token})}"
 
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -511,14 +598,32 @@ async def telnyx_outbound_answer() -> Response:
 @app.post("/telnyx/outbound/call")
 async def telnyx_outbound_call(request: Request) -> dict[str, object]:
     payload = await request.json()
+    raw_product_id = payload.get("product_id")
+    try:
+        product_id = int(raw_product_id) if raw_product_id not in (None, "") else None
+    except (TypeError, ValueError):
+        product_id = None
+    product = (
+        call_history.get_product(product_id)
+        if product_id is not None
+        else call_history.get_default_product()
+    )
+    if not product or not product["active"]:
+        raise HTTPException(status_code=400, detail="Select an active product")
     to_number = _normalize_phone_number(str(payload.get("to_number") or ""))
     from_number = _normalize_phone_number(str(
-        payload.get("from_number") or config.telnyx.outbound_from_number or ""
+        product.get("phone_number")
+        or payload.get("from_number")
+        or config.telnyx.outbound_from_number
+        or ""
     ))
     if not to_number:
         raise HTTPException(status_code=400, detail="Missing to_number")
     if not from_number:
-        outbound_request = call_history.create_outbound_request(to_number=to_number)
+        outbound_request = call_history.create_outbound_request(
+            to_number=to_number,
+            product_id=product["id"],
+        )
         call_history.mark_outbound_request_failed(
             outbound_request["id"],
             "Missing from_number or TELNYX_OUTBOUND_FROM_NUMBER",
@@ -528,6 +633,7 @@ async def telnyx_outbound_call(request: Request) -> dict[str, object]:
     outbound_request = call_history.create_outbound_request(
         to_number=to_number,
         from_number=from_number,
+        product_id=product["id"],
     )
 
     missing = [
@@ -535,7 +641,7 @@ async def telnyx_outbound_call(request: Request) -> dict[str, object]:
         for name, value in {
             "TELNYX_API_KEY": config.telnyx.api_key,
             "TELNYX_ACCOUNT_SID": config.telnyx.account_sid,
-            "TELNYX_TEXML_APP_ID": config.telnyx.texml_app_id,
+            "TELNYX_TEXML_APP_ID": product.get("texml_app_id") or config.telnyx.texml_app_id,
             "PUBLIC_BASE_URL": config.public_base_url,
         }.items()
         if not value
@@ -546,10 +652,11 @@ async def telnyx_outbound_call(request: Request) -> dict[str, object]:
         raise HTTPException(status_code=500, detail=detail)
 
     url = f"https://api.telnyx.com/v2/texml/Accounts/{config.telnyx.account_sid}/Calls"
-    texml_url = _public_http_url("/telnyx/outbound/answer")
-    status_callback = _public_http_url("/telnyx/outbound/status")
+    product_query = urlencode({"product_id": product["id"]})
+    texml_url = _public_http_url(f"/telnyx/outbound/answer?{product_query}")
+    status_callback = _public_http_url(f"/telnyx/outbound/status?{product_query}")
     body = {
-        "ApplicationSid": config.telnyx.texml_app_id,
+        "ApplicationSid": product.get("texml_app_id") or config.telnyx.texml_app_id,
         "To": to_number,
         "From": from_number,
         "Url": texml_url,
@@ -584,8 +691,48 @@ async def telnyx_outbound_call(request: Request) -> dict[str, object]:
         "ok": True,
         "call_sid": call_sid,
         "request": call_history.get_outbound_request(outbound_request["id"]),
+        "product": {
+            "id": product["id"],
+            "name": product["name"],
+        },
         "telnyx": data,
     }
+
+
+@app.post("/telnyx/outbound/call/{call_sid}/hangup")
+async def telnyx_hangup_outbound_call(call_sid: str) -> dict[str, object]:
+    missing = [
+        name
+        for name, value in {
+            "TELNYX_API_KEY": config.telnyx.api_key,
+            "TELNYX_ACCOUNT_SID": config.telnyx.account_sid,
+        }.items()
+        if not value
+    ]
+    if missing:
+        raise HTTPException(status_code=500, detail=f"Missing config: {', '.join(missing)}")
+
+    url = (
+        f"https://api.telnyx.com/v2/texml/Accounts/{config.telnyx.account_sid}"
+        f"/Calls/{quote(call_sid, safe='')}"
+    )
+    headers = {
+        "Authorization": f"Bearer {config.telnyx.api_key}",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=config.telnyx.outbound_call_timeout_seconds) as client:
+            response = await client.post(url, data={"Status": "completed"}, headers=headers)
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=502, detail=_telnyx_error_detail(exc.response)) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"Telnyx request failed: {exc}") from exc
+
+    data = response.json()
+    log(f"Telnyx outbound call hangup requested: sid={call_sid}")
+    return {"ok": True, "call_sid": call_sid, "telnyx": data}
 
 
 @app.get("/telnyx/greeting.wav")
@@ -603,13 +750,15 @@ async def telnyx_ws(websocket: WebSocket) -> None:
     await _telnyx_ws(websocket, mode="inbound")
 
 
-def _telnyx_bridge_options(mode: str) -> dict[str, object]:
+def _telnyx_bridge_options(
+    mode: str, product: dict[str, object] | None = None
+) -> dict[str, object]:
     return {
         "send_initial_greeting": True,
-        "initial_greeting": gemini_initial_greeting(mode),
-        "system_instruction": (
-            gemini_system_instruction("outbound") if mode == "outbound" else None
-        ),
+        "initial_greeting": gemini_initial_greeting(mode, product=product),
+        "system_instruction": gemini_system_instruction(mode, product=product),
+        "language_code": product.get("language_code") if product else None,
+        "voice_name": product.get("voice_name") if product else None,
     }
 
 
@@ -634,6 +783,13 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
     if expected_token and token != expected_token:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
+
+    try:
+        product_id = int(websocket.query_params.get("product_id") or 0) or None
+    except ValueError:
+        product_id = None
+    product = call_history.get_product(product_id) if product_id is not None else None
+    product = product or call_history.get_default_product()
 
     await websocket.accept()
 
@@ -707,6 +863,7 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     provider="telnyx",
                     customer_phone=cust_phone if mode != "outbound" else "",
                     dialed_phone=cust_phone if mode == "outbound" else "",
+                    product_id=product["id"] if product else None,
                 )
                 sample_rate = int(media_format.get("sample_rate") or sample_rate)
                 codec = media_format.get("encoding") or codec
@@ -756,7 +913,7 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     )
                     log(f"[{call_id}] Sent Telnyx clear event")
 
-                bridge_options = _telnyx_bridge_options(mode)
+                bridge_options = _telnyx_bridge_options(mode, product)
                 bridge = GeminiCallBridge(
                     call_id=call_id,
                     call_sample_rate=sample_rate,
@@ -767,6 +924,8 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     initial_greeting=bridge_options["initial_greeting"],
                     realtime_input=True,
                     system_instruction=bridge_options["system_instruction"],
+                    language_code=bridge_options["language_code"],
+                    voice_name=bridge_options["voice_name"],
                     on_transcript=_store_transcript(call_id),
                     on_audio_turn=_telnyx_audio_turn_handler(call_id),
                 )

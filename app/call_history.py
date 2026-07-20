@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     Column,
     Float,
@@ -38,6 +39,39 @@ OUTBOUND_REQUEST_STATUSES = (
 )
 
 metadata = MetaData()
+products_table = Table(
+    "products",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("name", String(160), nullable=False),
+    Column("slug", String(100), nullable=False, unique=True),
+    Column("phone_number", Text, nullable=False, server_default="", unique=True),
+    Column("texml_app_id", Text, nullable=False, server_default=""),
+    Column("inbound_greeting", Text, nullable=False),
+    Column("outbound_greeting", Text, nullable=False),
+    Column("system_prompt", Text, nullable=False),
+    Column("knowledge", Text, nullable=False),
+    Column("language_code", String(20), nullable=False, server_default="my-MM"),
+    Column("voice_name", String(80), nullable=False, server_default="Aoede"),
+    Column("active", Boolean, nullable=False, server_default=sql_text("true")),
+    Column("is_default", Boolean, nullable=False, server_default=sql_text("false")),
+    Column("created_at", Text, nullable=False),
+    Column("updated_at", Text, nullable=False),
+)
+product_offers_table = Table(
+    "product_offers",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("product_id", Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False),
+    Column("name", String(200), nullable=False),
+    Column("quantity", Integer, nullable=False),
+    Column("unit_price", Integer, nullable=False),
+    Column("total_price", Integer, nullable=False),
+    Column("shipping_policy", Text, nullable=False, server_default=""),
+    Column("active", Boolean, nullable=False, server_default=sql_text("true")),
+    Column("created_at", Text, nullable=False),
+    Column("updated_at", Text, nullable=False),
+)
 calls_table = Table(
     "calls",
     metadata,
@@ -47,6 +81,7 @@ calls_table = Table(
     Column("status", String(30), nullable=False),
     Column("customer_phone", Text, nullable=False, server_default=""),
     Column("dialed_phone", Text, nullable=False, server_default=""),
+    Column("product_id", Integer, ForeignKey("products.id", ondelete="SET NULL")),
     Column("started_at", Text, nullable=False),
     Column("ended_at", Text),
     Column("customer_name", Text, nullable=False, server_default=""),
@@ -76,6 +111,7 @@ outbound_requests_table = Table(
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("to_number", Text, nullable=False),
     Column("from_number", Text, nullable=False, server_default=""),
+    Column("product_id", Integer, ForeignKey("products.id", ondelete="SET NULL")),
     Column("status", String(30), nullable=False, server_default="queued"),
     Column("call_sid", Text, nullable=False, server_default=""),
     Column("error", Text, nullable=False, server_default=""),
@@ -105,6 +141,7 @@ orders_table = Table(
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("call_id", Text, ForeignKey("calls.id", ondelete="CASCADE"), nullable=False),
+    Column("product_id", Integer, ForeignKey("products.id", ondelete="SET NULL")),
     Column("customer_phone", Text, nullable=False, server_default=""),
     Column("customer_name", Text, nullable=False, server_default=""),
     Column("shipping_address", Text, nullable=False, server_default=""),
@@ -119,9 +156,13 @@ orders_table = Table(
     Column("updated_at", Text, nullable=False),
 )
 Index("idx_calls_started_at", calls_table.c.started_at)
+Index("idx_calls_product_id", calls_table.c.product_id)
 Index("idx_transcripts_call_id", transcripts_table.c.call_id, transcripts_table.c.id)
 Index("idx_outbound_requests_created_at", outbound_requests_table.c.created_at)
+Index("idx_outbound_requests_product_id", outbound_requests_table.c.product_id)
 Index("idx_orders_call_id", orders_table.c.call_id)
+Index("idx_orders_product_id", orders_table.c.product_id)
+Index("idx_product_offers_product_id", product_offers_table.c.product_id)
 
 
 def _now() -> str:
@@ -947,7 +988,7 @@ class SQLiteCallHistoryStore:
             started = _parse_iso_datetime(row["started_at"])
             ended = _parse_iso_datetime(ended_at)
             duration_seconds = max(0, int((ended - started).total_seconds()))
-        return {
+        result = {
             "id": row["id"],
             "direction": row["direction"],
             "provider": row["provider"],
@@ -965,10 +1006,13 @@ class SQLiteCallHistoryStore:
                 "notes": row["customer_notes"],
             },
         }
+        if "product_id" in set(row.keys()):
+            result["product_id"] = row["product_id"]
+        return result
 
     @staticmethod
     def _outbound_request_summary(row: sqlite3.Row) -> dict[str, Any]:
-        return {
+        result = {
             "id": row["id"],
             "to_number": row["to_number"],
             "from_number": row["from_number"],
@@ -978,6 +1022,9 @@ class SQLiteCallHistoryStore:
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
         }
+        if "product_id" in set(row.keys()):
+            result["product_id"] = row["product_id"]
+        return result
 
     @staticmethod
     def _analysis_summary(row: sqlite3.Row) -> dict[str, Any]:
@@ -1019,6 +1066,8 @@ class SQLiteCallHistoryStore:
             "updated_at": row["updated_at"],
         }
         keys = set(row.keys())
+        if "product_id" in keys:
+            result["product_id"] = row["product_id"]
         if "direction" in keys:
             result["call"] = {
                 "direction": row["direction"],

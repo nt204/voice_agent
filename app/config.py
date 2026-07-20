@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from math import ceil
 from pathlib import Path
+from typing import Any, Mapping
 
 from dotenv import load_dotenv
 
@@ -187,7 +188,7 @@ PHONE_NUMBER_LISTENING_GUIDE = """Phone number listening guide:
 - If any digit is unclear or the number is incomplete, do not guess. Ask the customer to repeat the phone number one digit at a time."""
 
 
-def _mode_rules(mode: str) -> str:
+def _mode_rules(mode: str, product_name: str = "Venus BigOne") -> str:
     if mode == "inbound":
         return ""
 
@@ -198,7 +199,7 @@ def _mode_rules(mode: str) -> str:
         "\n\nOutbound call rules:\n"
         "- This is a proactive outbound call to a Myanmar customer.\n"
         "- Greet only once at the start. Do not greet or introduce yourself again later.\n"
-        "- The first greeting must briefly say Venus BigOne is calling.\n"
+        f"- The first greeting must briefly say {product_name} is calling.\n"
         "- If the customer answers the availability question with \"ဟုတ်ကဲ့\", \"အင်း\", \"ရပါတယ်\", \"ok\", or a similar short acknowledgement, treat it as permission to continue unless they clearly say they are busy.\n"
         "- Do not start with a long advertisement.\n"
         "- After the first greeting, respond directly to the customer's latest point.\n"
@@ -210,10 +211,16 @@ def _mode_rules(mode: str) -> str:
     )
 
 
-def gemini_initial_greeting(mode: str = "inbound") -> str:
+def gemini_initial_greeting(
+    mode: str = "inbound", product: Mapping[str, Any] | None = None
+) -> str:
     if mode == "inbound":
+        if product and str(product.get("inbound_greeting") or "").strip():
+            return str(product["inbound_greeting"]).strip()
         return config.gemini.inbound_initial_greeting.strip()
     if mode == "outbound":
+        if product and str(product.get("outbound_greeting") or "").strip():
+            return str(product["outbound_greeting"]).strip()
         return config.gemini.outbound_initial_greeting.strip()
     raise ValueError(
         f"Unsupported call mode: {mode!r}. "
@@ -221,29 +228,55 @@ def gemini_initial_greeting(mode: str = "inbound") -> str:
     )
 
 
-def gemini_system_instruction(mode: str = "inbound") -> str:
+def gemini_system_instruction(
+    mode: str = "inbound", product: Mapping[str, Any] | None = None
+) -> str:
     if mode not in {"inbound", "outbound"}:
         raise ValueError(
             f"Unsupported call mode: {mode!r}. "
             "Expected 'inbound' or 'outbound'."
         )
 
+    active_product_name = (
+        str(product.get("name") or "Product") if product else "Venus BigOne"
+    )
+    english_examples = (
+        active_product_name if product else f"{active_product_name} and Combo 2"
+    )
+    price_rules = (
+        """Price and offer consultation rules:
+- Use only the active product offers in product knowledge. Never mention offers from another product.
+- If the customer asks a general price question, answer the lowest-quantity active offer first; do not ask to close the order immediately.
+- If the customer asks what offers are available, briefly list only the active offers and their exact total prices.
+- If the customer has already mentioned or chosen one offer and asks its price, answer only that offer unless they ask for comparison.
+- If the customer asks which offer is suitable, compare the active offers by quantity and stated policy only. Do not invent benefits for a larger offer.
+- If the customer says something ambiguous, ask a short clarification question."""
+        if product
+        else """Price and combo consultation rules:
+- If the customer asks a general price question before naming a combo, answer the 1-box price and usage duration; do not ask to close the order immediately. You may gently ask whether they want to hear combo prices.
+- If the customer asks what combos are available, briefly list Combo 2, Combo 3, Combo 5, and free delivery from 2 boxes; do not say you will create an order when they are only asking.
+- If the customer has already mentioned or chosen one combo and asks its price, answer only that combo's price unless they ask for comparison.
+- If the customer asks which combo is suitable, advise by need: Combo 2 for trial, Combo 3 for gift/savings, Combo 5 for larger purchase. Ask which combo they prefer; do not claim an order is created before they choose.
+- If the customer says something ambiguous, ask a short clarification question."""
+    )
     sections = [
-        config.gemini.system_instruction.strip(),
-        """Voice call rules:
-- Always answer in natural Burmese. English product names such as Venus BigOne and Combo 2 may stay in English.
+        (
+            str(product.get("system_prompt") or "").strip()
+            if product
+            else config.gemini.system_instruction.strip()
+        ),
+        f"""Voice call rules:
+- Always answer in natural Burmese. English product names such as {english_examples} may stay in English.
 - Each turn should be only 1 to 2 short sentences and ask at most 1 next question.
 - Answer exactly what the customer asked. If audio is unclear, do not guess intent, product, quantity, phone, or address; ask the customer to repeat.
 - Short acknowledgements such as "ဟုတ်ကဲ့", "အင်း", "ရပါတယ်", "ok" usually mean confirmation or permission to continue, not rejection or being busy unless the customer clearly says so.
 - Do not invent prices, benefits, policies, or promises outside the product knowledge.
 - Do not use pressure selling. Do not guarantee health or beauty results.""",
-        _mode_rules(mode).strip(),
-        """Price and combo consultation rules:
-- If the customer asks a general price question before naming a combo, answer the 1-box price and usage duration; do not ask to close the order immediately. You may gently ask whether they want to hear combo prices.
-- If the customer asks what combos are available, briefly list Combo 2, Combo 3, Combo 5, and free delivery from 2 boxes; do not say you will create an order when they are only asking.
-- If the customer has already mentioned or chosen one combo and asks its price, answer only that combo's price unless they ask for comparison.
-- If the customer asks which combo is suitable, advise by need: Combo 2 for trial, Combo 3 for gift/savings, Combo 5 for larger purchase. Ask which combo they prefer; do not claim an order is created before they choose.
-- If the customer says something ambiguous, ask a short clarification question.""",
+        _mode_rules(
+            mode,
+            active_product_name,
+        ).strip(),
+        price_rules,
         """Order workflow:
 - Interest, price questions, or combo comparison are not order confirmation.
 - Start collecting order details only after the customer clearly chooses a product or combo and quantity.
@@ -255,7 +288,12 @@ def gemini_system_instruction(mode: str = "inbound") -> str:
         ORDER_CONFIRMATION_TEMPLATE_RULES,
     ]
 
-    knowledge = product_knowledge()
+    if product:
+        from app.products import product_knowledge_text
+
+        knowledge = product_knowledge_text(product)
+    else:
+        knowledge = product_knowledge()
     if knowledge:
         sections.append(f"Product knowledge for Myanmar market:\n{knowledge}")
     return "\n\n".join(section for section in sections if section).strip()

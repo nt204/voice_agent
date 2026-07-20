@@ -11,6 +11,7 @@ from google.genai import types
 
 from app.config import config, product_knowledge
 from app.logging_utils import log
+from app.products import product_knowledge_text
 from app.sales_analysis import (
     COMBO_CATALOG,
     MISSING_ORDER_FIELDS,
@@ -142,16 +143,33 @@ def analyze_call_with_gemini(
     transcript: list[dict[str, Any]],
     *,
     fallback_phone: str = "",
+    product: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if not config.gemini.order_extraction_enabled:
-        return analyze_call(transcript, fallback_phone=fallback_phone)
+        return _safe_fallback(
+            transcript,
+            fallback_phone=fallback_phone,
+            product=product,
+        )
     if not config.gemini.api_key:
         log("[order-extraction] GEMINI_API_KEY missing; using rule extraction")
-        return analyze_call(transcript, fallback_phone=fallback_phone)
+        return _safe_fallback(
+            transcript,
+            fallback_phone=fallback_phone,
+            product=product,
+        )
 
-    prompt = _build_prompt(transcript, fallback_phone=fallback_phone)
+    prompt = _build_prompt(
+        transcript,
+        fallback_phone=fallback_phone,
+        product=product,
+    )
     if not prompt:
-        return analyze_call(transcript, fallback_phone=fallback_phone)
+        return _safe_fallback(
+            transcript,
+            fallback_phone=fallback_phone,
+            product=product,
+        )
 
     # One final extraction runs at a time; ASR calls finish before entering this section.
     with _extraction_lock:
@@ -174,17 +192,51 @@ def analyze_call_with_gemini(
             log(f"[order-extraction] Gemini extraction failed after 4 attempts: {type(last_error).__name__}: {last_error}")
         else:
             log("[order-extraction] Gemini returned unparseable JSON on all attempts")
-        return analyze_call(transcript, fallback_phone=fallback_phone)
+        return _safe_fallback(
+            transcript,
+            fallback_phone=fallback_phone,
+            product=product,
+        )
 
     return _merge_payload(
         payload,
         transcript,
         fallback_phone=fallback_phone,
         fallback={},
+        product=product,
     )
 
 
-def _build_prompt(transcript: list[dict[str, Any]], *, fallback_phone: str) -> str:
+def _safe_fallback(
+    transcript: list[dict[str, Any]],
+    *,
+    fallback_phone: str,
+    product: dict[str, Any] | None,
+) -> dict[str, Any]:
+    result = analyze_call(transcript, fallback_phone=fallback_phone)
+    if not product or product.get("slug") == "venus-bigone":
+        return result
+
+    product_name = str(product.get("name") or "Product").strip()
+    result["order"] = None
+    if result["analysis"]["intent_status"] == "ready_to_order":
+        result["analysis"]["intent_status"] = "needs_consultation"
+        result["analysis"]["urgency"] = "medium"
+        result["analysis"]["next_action"] = (
+            "Verify the selected product, offer, price and delivery details manually."
+        )
+    result["customer"]["need"] = (
+        f"{product_name}: order details need verification"
+    )
+    return result
+
+
+def _build_prompt(
+    transcript: list[dict[str, Any]],
+    *,
+    fallback_phone: str,
+    product: dict[str, Any] | None = None,
+) -> str:
     lines = []
     for item in transcript:
         speaker = str(item.get("speaker") or "").strip()
@@ -199,7 +251,7 @@ def _build_prompt(transcript: list[dict[str, Any]], *, fallback_phone: str) -> s
         # Keep the tail: recent turns matter most for current intent/order state.
         transcript_text = "...[earlier turns truncated]...\n" + transcript_text[-MAX_TRANSCRIPT_CHARS:]
 
-    knowledge = product_knowledge()
+    knowledge = product_knowledge_text(product) if product else product_knowledge()
     if len(knowledge) > MAX_KNOWLEDGE_CHARS:
         knowledge = knowledge[:MAX_KNOWLEDGE_CHARS]
 
@@ -232,10 +284,12 @@ def _merge_payload(
     *,
     fallback_phone: str,
     fallback: dict[str, Any],
+    product: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     customer_text = _customer_text(transcript)
     customer_facts = extract_customer_facts(transcript, fallback_phone=fallback_phone)
-    order_selection = extract_order_selection(transcript)
+    is_default_catalog = not product or product.get("slug") == "venus-bigone"
+    order_selection = extract_order_selection(transcript) if is_default_catalog else None
     fallback_customer = fallback.get("customer") or {}
     fallback_analysis = fallback.get("analysis") or {}
     fallback_order = fallback.get("order") or {}
@@ -246,7 +300,13 @@ def _merge_payload(
 
     intent_status = _intent(payload, fallback_analysis.get("intent_status", "unknown"))
     intent_downgraded = False
-    if intent_status == "ready_to_order" and not order_selection:
+    payload_has_order = bool(
+        _string(payload.get("product_name"))
+        and _positive_int(payload.get("quantity"))
+    )
+    if intent_status == "ready_to_order" and not order_selection and not (
+        product and payload_has_order
+    ):
         fallback_intent = str(fallback_analysis.get("intent_status") or "")
         intent_status = (
             fallback_intent
@@ -300,7 +360,11 @@ def _merge_payload(
     unit_price = _int_or_none(payload.get("unit_price")) or fallback_unit_price or 0
     total_price = _int_or_none(payload.get("total_price")) or fallback_total_price or 0
 
-    combo_catalog_entry = _combo_catalog_entry(product_name, combo)
+    combo_catalog_entry = (
+        _combo_catalog_entry(product_name, combo)
+        if is_default_catalog
+        else _product_offer_entry(product, product_name, combo, quantity)
+    )
     if combo_catalog_entry:
         product_name = combo_catalog_entry["name"]
         quantity = int(combo_catalog_entry["quantity"])
@@ -457,6 +521,27 @@ def _combo_catalog_entry(product_name: str, combo: str) -> dict[str, Any] | None
     if not match:
         return None
     return COMBO_CATALOG.get(int(match.group(1)))
+
+
+def _product_offer_entry(
+    product: dict[str, Any] | None,
+    product_name: str,
+    combo: str,
+    quantity: int | None,
+) -> dict[str, Any] | None:
+    if not product:
+        return None
+    requested = f"{product_name} {combo}".strip().casefold()
+    offers = [offer for offer in product.get("offers") or [] if offer.get("active", True)]
+    for offer in offers:
+        offer_name = str(offer.get("name") or "").strip().casefold()
+        if offer_name and (offer_name in requested or requested in offer_name):
+            return offer
+    if quantity:
+        matches = [offer for offer in offers if int(offer.get("quantity") or 0) == quantity]
+        if len(matches) == 1:
+            return matches[0]
+    return None
 
 
 def _parse_json_response(text: str, *, log_errors: bool = True) -> dict[str, Any] | None:

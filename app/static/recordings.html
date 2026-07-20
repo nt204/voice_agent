@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quản lý bản ghi âm</title>
+  <link rel="stylesheet" href="/static/dashboard.css?v=recordings-1">
+</head>
+<body class="recordings-page-body">
+  <header class="navigation-bar">
+    <a class="navigation-brand" href="/admin">Quản lý bán hàng</a>
+    <nav class="app-nav" aria-label="Điều hướng chính">
+      <a href="/admin">Cuộc gọi &amp; đơn hàng</a>
+      <a href="/admin/products">Sản phẩm</a>
+      <a class="active" href="/admin/recordings" aria-current="page">Bản ghi âm</a>
+    </nav>
+  </header>
+
+  <main class="recordings-page-shell">
+    <header class="page-heading recordings-page-heading">
+      <div>
+        <h1>Quản lý bản ghi âm</h1>
+        <p>Theo dõi dung lượng, nghe lại và xóa các bản ghi không còn cần thiết.</p>
+      </div>
+      <button id="refreshRecordingsButton" class="secondary-button" type="button">Làm mới</button>
+    </header>
+
+    <section class="recording-summary-grid" aria-label="Tổng quan lưu trữ">
+      <article class="recording-metric">
+        <span>Tổng bản ghi</span>
+        <strong id="recordingCount">0</strong>
+      </article>
+      <article class="recording-metric">
+        <span>Dung lượng đang dùng</span>
+        <strong id="recordingStorage">0 B</strong>
+      </article>
+      <article class="recording-metric">
+        <span>Cũ hơn thời hạn</span>
+        <strong id="expiredRecordingCount">0</strong>
+      </article>
+    </section>
+
+    <section class="recording-management-panel">
+      <div class="recording-toolbar">
+        <label class="recording-search-field">
+          <span>Tìm bản ghi</span>
+          <input id="recordingSearch" type="search" placeholder="Số điện thoại hoặc mã cuộc gọi">
+        </label>
+        <label class="retention-field">
+          <span>Giữ bản ghi trong</span>
+          <span class="retention-input-wrap">
+            <input id="retentionDays" type="number" min="0" max="3650" value="30">
+            <small>ngày</small>
+          </span>
+        </label>
+        <button id="cleanupRecordingsButton" class="danger-button" type="button">Dọn bản ghi cũ</button>
+      </div>
+
+      <p id="recordingStatus" class="form-status recording-page-status" role="status"></p>
+
+      <div class="recording-table-wrap">
+        <div class="recording-table-head" aria-hidden="true">
+          <span>Cuộc gọi</span>
+          <span>Thời gian</span>
+          <span>Nghe lại</span>
+          <span>Dung lượng</span>
+          <span>Thao tác</span>
+        </div>
+        <div id="recordingList" class="recording-list" aria-live="polite">
+          <div class="recording-list-state">Đang tải bản ghi...</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/recordings.js?v=recordings-1" defer></script>
+</body>
+</html>

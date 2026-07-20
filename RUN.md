@@ -14,4 +14,6 @@ http://localhost:3000/admin
 
 Compose maps host port `3000` to app port `3000` in the container.
 
-Call-history data is stored in the Docker volume `voice_app_data`.
+PostgreSQL data is stored in the Docker volume `voice_postgres_data`.
+Use **Manage products** in the dashboard to configure product phone numbers,
+greetings, knowledge, and offers without restarting the application.
