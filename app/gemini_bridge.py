@@ -1,6 +1,8 @@
 import asyncio
 import audioop
 import base64
+import re
+import wave
 from contextlib import suppress
 from typing import Awaitable, Callable
 
@@ -15,9 +17,21 @@ from app.live_order_state import (
     delivery_state_tool,
 )
 from app.logging_utils import log
+from app.phone_readback import phone_readback_frames
+from app.sales_analysis import (
+    _extract_phone_precise,
+    _phone_comparison_digits,
+    _turn_confirms_phone,
+    _turn_rejects_latest_phone,
+)
 
 SendAudio = Callable[[bytes], Awaitable[None]]
 TranscriptHandler = Callable[[str, str], Awaitable[None] | None]
+PHONE_REPLACEMENT_RE = re.compile(
+    r"(?:ဖုန်းနံပါတ်အသစ်|နံပါတ်အသစ်|ဖုန်းအသစ်|အသစ်ပေး|အသစ်ပြော|"
+    r"new\s+(?:phone|number)|different\s+(?:phone|number)|another\s+(?:phone|number))",
+    flags=re.IGNORECASE,
+)
 
 
 def _automatic_activity_detection(explicit_vad: bool) -> types.AutomaticActivityDetection:
@@ -30,6 +44,12 @@ def _automatic_activity_detection(explicit_vad: bool) -> types.AutomaticActivity
         prefix_padding_ms=200,
         silence_duration_ms=350,
     )
+
+
+def _activity_handling(allow_barge_in: bool) -> types.ActivityHandling:
+    if allow_barge_in:
+        return types.ActivityHandling.START_OF_ACTIVITY_INTERRUPTS
+    return types.ActivityHandling.NO_INTERRUPTION
 
 
 def _speech_config() -> types.SpeechConfig:
@@ -96,9 +116,17 @@ class GeminiCallBridge:
         self.output_muted = False
         self.completed_turn_count = 0
         self.last_output_at = 0.0
+        self.last_model_activity_at = 0.0
         self.delivery_state = LiveDeliveryState()
         self.dtmf_digits = ""
         self.recorded_confirmed_facts: set[tuple[str, str]] = set()
+        self.collection_focus = ""
+        self.collection_focus_until = 0.0
+        self.authoritative_phone = ""
+        self.authoritative_phone_source = ""
+        self.last_phone_capture_conflicted = False
+        self.pending_authoritative_phone_readback = ""
+        self.suppress_model_output_for_phone_readback = False
 
     async def start(self) -> None:
         live = self.client.aio.live.connect(
@@ -117,7 +145,7 @@ class GeminiCallBridge:
                 output_audio_transcription=_audio_transcription_config(),
                 realtime_input_config=types.RealtimeInputConfig(
                     automatic_activity_detection=_automatic_activity_detection(self.explicit_vad),
-                    activity_handling=types.ActivityHandling.NO_INTERRUPTION,
+                    activity_handling=_activity_handling(False),
                     turn_coverage=types.TurnCoverage.TURN_INCLUDES_ONLY_ACTIVITY,
                 ),
             ),
@@ -179,7 +207,7 @@ class GeminiCallBridge:
             live_candidate
         ))
         
-        if self.on_audio_turn and audio:
+        if self.on_audio_turn and audio and self._needs_in_call_phone_asr(live_candidate):
             task = asyncio.create_task(
                 self._process_audio_turn_correction(turn_no, audio, live_candidate)
             )
@@ -211,25 +239,35 @@ class GeminiCallBridge:
             return
         self.output_muted = muted
         if muted:
-            self.output_frames.clear()
-            while not self.audio_queue.empty():
-                try:
-                    self.audio_queue.get_nowait()
-                    self.audio_queue.task_done()
-                except asyncio.QueueEmpty:
-                    break
-            if self.clear_audio:
-                await self.clear_audio()
+            await self._clear_pending_output_audio()
         log(f"[{self.call_id}] Gemini output {'muted' if muted else 'unmuted'}")
+
+    async def _clear_pending_output_audio(self) -> None:
+        self.output_frames.clear()
+        while not self.audio_queue.empty():
+            try:
+                self.audio_queue.get_nowait()
+                self.audio_queue.task_done()
+            except asyncio.QueueEmpty:
+                break
+        if self.clear_audio:
+            await self.clear_audio()
 
     def output_recent(self, seconds: float = 1.0) -> bool:
         if not self.last_output_at:
             return False
         return asyncio.get_running_loop().time() - self.last_output_at < seconds
 
+    def collection_focus_recent(self, focus: str, seconds: float = 20.0) -> bool:
+        if self.collection_focus != focus or not self.collection_focus_until:
+            return False
+        now = asyncio.get_running_loop().time()
+        return now <= self.collection_focus_until + seconds
+
     async def start_input_activity(self) -> None:
         if not self.session or not self.explicit_vad or self.input_activity_active:
             return
+        self.suppress_model_output_for_phone_readback = False
         self.current_turn_audio.clear()
         self.realtime_live_transcript_parts.clear()
         self.turn_complete.clear()
@@ -247,6 +285,11 @@ class GeminiCallBridge:
         
         audio_bytes = bytes(self.current_turn_audio)
         live_candidate = " ".join(self.realtime_live_transcript_parts).strip()
+        self._capture_authoritative_phone(
+            live_candidate,
+            source="Gemini Live transcript",
+        )
+        await self._flush_authoritative_phone_readback()
         if audio_bytes:
             turn_no = len(self.completed_turns_audio)
             self.completed_turns_audio.append((
@@ -255,11 +298,14 @@ class GeminiCallBridge:
                 live_candidate
             ))
             
-            if self.on_audio_turn:
-                task = asyncio.create_task(
-                    self._process_audio_turn_correction(turn_no, audio_bytes, live_candidate)
+            if self.on_audio_turn and self._needs_in_call_phone_asr(live_candidate):
+                # Phone ASR must finish before the call accepts the next customer
+                # turn, otherwise a late Gemini correction can overlap later audio.
+                await self._process_audio_turn_correction(
+                    turn_no,
+                    audio_bytes,
+                    live_candidate,
                 )
-                self.asr_tasks.append(task)
                 
         self.current_turn_audio.clear()
         self.realtime_live_transcript_parts.clear()
@@ -361,18 +407,42 @@ class GeminiCallBridge:
                     content = response.server_content
                     if content:
                         if content.input_transcription and content.input_transcription.text:
-                            log(f"[{self.call_id}] User: {content.input_transcription.text}")
-                            self.realtime_live_transcript_parts.append(content.input_transcription.text)
-                            await self._record_transcript(
-                                "customer",
-                                content.input_transcription.text,
+                            input_text = content.input_transcription.text
+                            log(f"[{self.call_id}] User: {input_text}")
+                            self.realtime_live_transcript_parts.append(input_text)
+                            if (
+                                self.on_audio_turn
+                                and not self.delivery_state.phone_confirmed
+                                and re.search(
+                                    r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|mobile)",
+                                    input_text,
+                                    flags=re.IGNORECASE,
+                                )
+                            ):
+                                self.suppress_model_output_for_phone_readback = True
+                            await self._record_transcript("customer", input_text)
+                            live_customer_text = " ".join(
+                                self.realtime_live_transcript_parts
+                            ).strip()
+                            phone_changed = self._capture_authoritative_phone(
+                                live_customer_text,
+                                source="Gemini Live transcript",
                             )
+                            if not self.last_phone_capture_conflicted:
+                                await self._confirm_authoritative_phone_from_text(
+                                    live_customer_text
+                                )
+                            if phone_changed and not self.input_activity_active:
+                                await self._flush_authoritative_phone_readback()
                         if content.output_transcription and content.output_transcription.text:
+                            self.last_model_activity_at = asyncio.get_running_loop().time()
                             log(f"[{self.call_id}] Gemini: {content.output_transcription.text}")
-                            await self._record_transcript(
-                                "agent",
-                                content.output_transcription.text,
-                            )
+                            self._track_collection_focus(content.output_transcription.text)
+                            if not self.suppress_model_output_for_phone_readback:
+                                await self._record_transcript(
+                                    "agent",
+                                    content.output_transcription.text,
+                                )
 
                          # model_turn = content.model_turn (note: keep standard block)
                         model_turn = content.model_turn
@@ -382,12 +452,17 @@ class GeminiCallBridge:
                                 if not inline or not inline.data:
                                     continue
 
+                                self.last_model_activity_at = asyncio.get_running_loop().time()
+
                                 gemini_rate = extract_sample_rate(inline.mime_type, 24000)
                                 pcm = _inline_bytes(inline.data)
                                 call_pcm = self._resample_output(pcm, gemini_rate)
 
                                 for frame in self.output_frames.push(call_pcm):
-                                    if not self.output_muted:
+                                    if (
+                                        not self.output_muted
+                                        and not self.suppress_model_output_for_phone_readback
+                                    ):
                                         self.audio_queue.put_nowait(frame)
 
                         if content.turn_complete:
@@ -421,11 +496,50 @@ class GeminiCallBridge:
                 args = dict(function_call.args or {})
                 field = str(args.get("field") or "")
                 action = str(args.get("action") or "")
-                result = self.delivery_state.apply(
-                    field=field,
-                    action=action,
-                    value=str(args.get("value") or ""),
+                value = str(args.get("value") or "")
+                model_phone = (
+                    _phone_comparison_digits(_extract_phone_precise(value))
+                    if field == "phone"
+                    else ""
                 )
+                authoritative_phone = _phone_comparison_digits(self.authoritative_phone)
+                if (
+                    field == "phone"
+                    and action == "set"
+                    and self.authoritative_phone
+                    and model_phone != authoritative_phone
+                ):
+                    result = self.delivery_state.status_response(
+                        ok=True,
+                        message=(
+                            "Ignored the model-heard phone number. The server ASR phone "
+                            f"{self.authoritative_phone} is authoritative."
+                        ),
+                    )
+                    log(
+                        f"[{self.call_id}] Ignored model phone '{model_phone or value}'; "
+                        f"server ASR phone is '{self.authoritative_phone}'"
+                    )
+                elif (
+                    field == "phone"
+                    and action == "set"
+                    and self.authoritative_phone
+                    and self.delivery_state.phone_confirmed
+                ):
+                    result = self.delivery_state.status_response(
+                        ok=True,
+                        message="The authoritative phone is already confirmed.",
+                    )
+                else:
+                    if field == "phone" and action == "reject":
+                        self.authoritative_phone = ""
+                        self.authoritative_phone_source = ""
+                        self.pending_authoritative_phone_readback = ""
+                    result = self.delivery_state.apply(
+                        field=field,
+                        action=action,
+                        value=value,
+                    )
                 if result["ok"] and action == "confirm":
                     await self._record_confirmed_fact(field)
 
@@ -442,6 +556,33 @@ class GeminiCallBridge:
                 function_responses=function_responses,
             )
 
+    def _track_collection_focus(self, text: str) -> None:
+        clean_text = str(text or "").strip()
+        if not clean_text:
+            return
+        now = asyncio.get_running_loop().time()
+        if re.search(r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|mobile|keypad|ခလုတ်|#|hash)", clean_text, flags=re.IGNORECASE):
+            self.collection_focus = "phone"
+            self.collection_focus_until = now + 20.0
+            return
+        if re.search(r"(?:လိပ်စာ|ပို့ရမယ့်|ပို့ရန်|address|delivery|ship)", clean_text, flags=re.IGNORECASE):
+            self.collection_focus = "address"
+            self.collection_focus_until = now + 20.0
+
+    def _needs_in_call_phone_asr(self, live_candidate: str) -> bool:
+        if self.authoritative_phone and not self.delivery_state.phone_confirmed:
+            return True
+        if self.collection_focus_recent("phone"):
+            return True
+        return bool(
+            _extract_phone_precise(live_candidate)
+            or re.search(
+                r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|mobile)",
+                live_candidate,
+                flags=re.IGNORECASE,
+            )
+        )
+
     async def _record_confirmed_fact(self, field: str) -> None:
         facts = self.delivery_state.confirmed_facts()
         value = facts.get(field, "")
@@ -450,7 +591,7 @@ class GeminiCallBridge:
             return
         self.recorded_confirmed_facts.add(marker)
         label = "ဖုန်းနံပါတ်" if field == "phone" else "လိပ်စာ"
-        await self._record_transcript("customer", f"{label} {value}")
+        await self._record_transcript("customer", f"{label} {value} မှန်ပါတယ်")
 
     async def handle_dtmf(self, digit: str) -> None:
         digit = str(digit or "").strip()
@@ -473,24 +614,13 @@ class GeminiCallBridge:
         )
         if not result["ok"]:
             return
+        self.authoritative_phone = self.delivery_state.phone
+        self.authoritative_phone_source = "keypad"
+        self.pending_authoritative_phone_readback = self.authoritative_phone
 
         text = f"ဖုန်းနံပါတ် {self.delivery_state.phone}"
         await self._record_transcript("customer", text)
-        if self.session:
-            await self.session.send_client_content(
-                turns=types.Content(
-                    role="user",
-                    parts=[
-                        types.Part(
-                            text=(
-                                f"{text}။ Customer entered this number by keypad. "
-                                "Read it back digit by digit and ask for confirmation."
-                            )
-                        )
-                    ],
-                ),
-                turn_complete=True,
-            )
+        await self._flush_authoritative_phone_readback()
 
     async def _process_audio_turn_correction(
         self,
@@ -506,6 +636,36 @@ class GeminiCallBridge:
                 live_candidate
             )
             self.secondary_asr_results[turn_no] = corrected_text
+            if corrected_text:
+                was_confirmed = self.delivery_state.phone_confirmed
+                phone_synced = await self._sync_phone_from_customer_text(corrected_text)
+                phone_confirmed = False
+                if not self.last_phone_capture_conflicted:
+                    phone_confirmed = await self._confirm_authoritative_phone_from_text(
+                        corrected_text
+                    )
+                if phone_confirmed and not was_confirmed:
+                    if self.clear_audio:
+                        await self.clear_audio()
+                    if self.session:
+                        await self.session.send_client_content(
+                            turns=types.Content(
+                                role="user",
+                                parts=[
+                                    types.Part(
+                                        text=(
+                                            "Server ASR confirms that the previously played phone "
+                                            "number is correct. Never speak any phone digits. "
+                                            "Acknowledge briefly and ask only for the shipping address."
+                                        )
+                                    )
+                                ],
+                            ),
+                            turn_complete=True,
+                        )
+                    return
+                if phone_synced:
+                    return
             if corrected_text and corrected_text != live_candidate:
                 log(f"[{self.call_id}] In-call corrected turn {turn_no}: '{live_candidate}' -> '{corrected_text}'")
                 if self.clear_audio:
@@ -520,6 +680,149 @@ class GeminiCallBridge:
                     )
         except Exception as e:
             log(f"[{self.call_id}] In-call turn ASR error: {e}")
+
+    async def _sync_phone_from_customer_text(self, text: str) -> bool:
+        phone = self._capture_authoritative_phone(
+            text,
+            source="secondary ASR",
+        )
+        if not phone:
+            return False
+        await self._flush_authoritative_phone_readback()
+        return True
+
+    async def _confirm_authoritative_phone_from_text(self, text: str) -> bool:
+        if (
+            not self.authoritative_phone
+            or self.delivery_state.phone_confirmed
+            or _turn_rejects_latest_phone(text)
+            or not _turn_confirms_phone(text)
+        ):
+            return False
+        has_phone_context = bool(
+            re.search(r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|mobile)", text, flags=re.IGNORECASE)
+            or _extract_phone_precise(text)
+            or self.collection_focus_recent("phone", seconds=10.0)
+        )
+        if not has_phone_context:
+            return False
+
+        result = self.delivery_state.apply(field="phone", action="confirm")
+        if not result["ok"]:
+            return False
+        await self._record_confirmed_fact("phone")
+        self.suppress_model_output_for_phone_readback = False
+        log(
+            f"[{self.call_id}] Customer transcript confirmed authoritative phone "
+            f"'{self.authoritative_phone}'"
+        )
+        return True
+
+    def _capture_authoritative_phone(self, text: str, *, source: str) -> str:
+        self.last_phone_capture_conflicted = False
+        phone = _extract_phone_precise(text)
+        if not phone:
+            return ""
+
+        comparison_phone = _phone_comparison_digits(phone)
+        authoritative_phone = _phone_comparison_digits(self.authoritative_phone)
+        if (
+            authoritative_phone
+            and comparison_phone != authoritative_phone
+            and source == "Gemini Live transcript"
+            and self.authoritative_phone_source in {"secondary ASR", "keypad"}
+        ):
+            self.last_phone_capture_conflicted = bool(
+                _turn_rejects_latest_phone(text)
+                or PHONE_REPLACEMENT_RE.search(text)
+            )
+            log(
+                f"[{self.call_id}] Ignored lower-priority {source} phone "
+                f"'{comparison_phone}'; {self.authoritative_phone_source} phone remains "
+                f"'{self.authoritative_phone}'"
+            )
+            return self.authoritative_phone
+        if (
+            authoritative_phone
+            and comparison_phone != authoritative_phone
+            and not _turn_rejects_latest_phone(text)
+            and not PHONE_REPLACEMENT_RE.search(text)
+        ):
+            self.last_phone_capture_conflicted = True
+            log(
+                f"[{self.call_id}] Ignored unconfirmed {source} phone "
+                f"'{comparison_phone}'; authoritative phone remains "
+                f"'{self.authoritative_phone}'"
+            )
+            return self.authoritative_phone
+        if (
+            comparison_phone == authoritative_phone
+            and comparison_phone == _phone_comparison_digits(self.delivery_state.phone)
+        ):
+            if source == "secondary ASR":
+                self.authoritative_phone_source = source
+            return self.authoritative_phone
+
+        result = self.delivery_state.apply(
+            field="phone",
+            action="set",
+            value=phone,
+        )
+        if not result["ok"] or not self.delivery_state.phone:
+            return ""
+
+        self.authoritative_phone = self.delivery_state.phone
+        self.authoritative_phone_source = source
+        self.pending_authoritative_phone_readback = self.authoritative_phone
+        log(
+            f"[{self.call_id}] {source} set authoritative phone "
+            f"'{self.authoritative_phone}'"
+        )
+        return self.authoritative_phone
+
+    async def _flush_authoritative_phone_readback(self) -> None:
+        phone = self.pending_authoritative_phone_readback
+        if not phone:
+            return
+        self.pending_authoritative_phone_readback = ""
+        digits = " ".join(phone)
+        await self._clear_pending_output_audio()
+        frames = []
+        try:
+            frames = phone_readback_frames(phone, self.call_sample_rate)
+        except (FileNotFoundError, ValueError, wave.Error) as exc:
+            log(f"[{self.call_id}] Deterministic phone readback unavailable: {exc}")
+        self.suppress_model_output_for_phone_readback = bool(frames)
+        if self.session and not frames:
+            await self.session.send_client_content(
+                turns=types.Content(
+                    role="user",
+                    parts=[
+                        types.Part(
+                            text=(
+                                "System correction for the customer's latest speech: "
+                                f"server ASR extracted the complete phone as {phone}. "
+                                "This server value is authoritative. Discard every different phone "
+                                "number inferred from audio or conversation memory. Call "
+                                f"{DELIVERY_STATE_FUNCTION} with field=phone, action=set, and "
+                                f"value={phone}. "
+                                + (
+                                    f"Then read exactly these digits one by one: {digits}. "
+                                    "Ask only whether this exact number is correct."
+                                )
+                            )
+                        )
+                    ],
+                ),
+                turn_complete=True,
+            )
+        if frames:
+            await self._record_transcript(
+                "agent",
+                f"ဖုန်းနံပါတ် {phone} မှန်ပါသလားရှင်။",
+            )
+            for frame in frames:
+                await self.send_audio(frame)
 
     async def wait_for_audio_turns(self) -> None:
         if self.asr_tasks:

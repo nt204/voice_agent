@@ -125,6 +125,20 @@ def test_long_completed_details_are_not_an_order_after_customer_cancels() -> Non
     assert result["order"] is None
 
 
+def test_common_asr_combo_alias_with_myanmar_word_number_is_an_order() -> None:
+    transcript = [
+        turn("customer", "ကွန်ဂိုသုံးကို မှာယူမယ်။"),
+        turn("customer", "ဖုန်းနံပါတ် 09780771433 မှန်ပါတယ်။"),
+        turn("customer", "လိပ်စာက No. 123 Bogyoke Road, Yangon ပါ။"),
+    ]
+
+    result = analyze_call(transcript)
+
+    assert result["order"]["product_name"] == "Venus BigOne Combo 3"
+    assert result["order"]["quantity"] == 3
+    assert result["order"]["customer_phone"] == "09780771433"
+
+
 def test_long_price_comparison_never_becomes_an_order_without_selection() -> None:
     transcript = [
         turn("customer", "တစ်ဘူးစျေးဘယ်လောက်လဲ။"),

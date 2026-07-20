@@ -22,6 +22,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-voice}:${POSTGRES_PASSWORD:-voice_local}@postgres:5432/${POSTGRES_DB:-voice}
       CALL_RECORDINGS_DIR: /app/recordings
       GEMINI_ORDER_EXTRACTION_ENABLED: "true"
+      GEMINI_IN_CALL_SECONDARY_ASR_ENABLED: "true"
     depends_on:
       postgres:
         condition: service_healthy

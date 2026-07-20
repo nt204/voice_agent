@@ -54,6 +54,8 @@ class RealtimeInputGate:
         speech_threshold: int = 900,
         speech_start_frames: int = 10,
         speech_end_silence_frames: int = 50,
+        phone_speech_end_silence_frames: int | None = None,
+        address_speech_end_silence_frames: int | None = None,
         prebuffer_frames: int = 10,
         require_initial_turn: bool = True,
         wait_for_turn_before_commit: bool = True,
@@ -61,6 +63,7 @@ class RealtimeInputGate:
         noise_multiplier: float = 3.0,
         noise_margin: int = 80,
         barge_in_threshold: int | None = None,
+        allow_barge_in: bool = False,
         echo_suppression_ms: int = 700,
     ):
         self.bridge = bridge
@@ -68,12 +71,19 @@ class RealtimeInputGate:
         self.speech_threshold = speech_threshold
         self.speech_start_frames = speech_start_frames
         self.speech_end_silence_frames = speech_end_silence_frames
+        self.phone_speech_end_silence_frames = (
+            phone_speech_end_silence_frames or speech_end_silence_frames
+        )
+        self.address_speech_end_silence_frames = (
+            address_speech_end_silence_frames or speech_end_silence_frames
+        )
         self.require_initial_turn = require_initial_turn
         self.wait_for_turn_before_commit = wait_for_turn_before_commit
         self.adaptive_threshold = adaptive_threshold
         self.noise_multiplier = noise_multiplier
         self.noise_margin = noise_margin
         self.barge_in_threshold = barge_in_threshold or speech_threshold
+        self.allow_barge_in = allow_barge_in
         self.echo_suppression_seconds = echo_suppression_ms / 1000
         self.noise_floor = 0.0
         self.prebuffer: deque[bytes] = deque(maxlen=prebuffer_frames)
@@ -92,17 +102,23 @@ class RealtimeInputGate:
             else:
                 self.silence_frames += 1
 
-            if self.silence_frames >= self.speech_end_silence_frames:
+            if self.silence_frames >= self._speech_end_silence_frames():
                 await self.force_end(timestamp_ms, flush_silence=False)
             return
 
         if self.waiting_for_response:
             if self.bridge.turn_complete.is_set():
                 self.waiting_for_response = False
-            else:
+            elif not self.allow_barge_in:
                 self.speech_frames = 0
                 self.prebuffer.clear()
                 return
+            elif rms < self.barge_in_threshold:
+                self.speech_frames = 0
+                self.prebuffer.clear()
+                return
+            else:
+                self.waiting_for_response = False
 
         # If configured, wait for the initial AI greeting to finish before
         # listening. After that, strong caller speech is treated as barge-in.
@@ -160,7 +176,7 @@ class RealtimeInputGate:
         self.prebuffer.clear()
         if flush_silence and self.last_frame_bytes:
             silence = b"\x00" * self.last_frame_bytes
-            for _ in range(self.speech_end_silence_frames):
+            for _ in range(self._speech_end_silence_frames()):
                 await self.bridge.send_input_audio(silence)
         await self.bridge.end_input_activity()
         self.waiting_for_response = not self.bridge.turn_complete.is_set()
@@ -185,6 +201,18 @@ class RealtimeInputGate:
         if output_recent:
             threshold = max(threshold, self.barge_in_threshold)
         return threshold
+
+    def _speech_end_silence_frames(self) -> int:
+        collection_focus_recent = getattr(
+            self.bridge,
+            "collection_focus_recent",
+            lambda *_args, **_kwargs: False,
+        )
+        if collection_focus_recent("phone"):
+            return max(self.speech_end_silence_frames, self.phone_speech_end_silence_frames)
+        if collection_focus_recent("address"):
+            return max(self.speech_end_silence_frames, self.address_speech_end_silence_frames)
+        return self.speech_end_silence_frames
 
     def _update_noise_floor(self, rms: int, *, output_recent: bool) -> None:
         if not self.adaptive_threshold or output_recent:
@@ -618,6 +646,16 @@ def _telnyx_input_gate_options(mode: str) -> dict[str, object]:
         "speech_threshold": config.telnyx.speech_threshold,
         "speech_start_frames": getattr(config.telnyx, "speech_start_frames", 2),
         "speech_end_silence_frames": getattr(config.telnyx, "speech_end_silence_frames", 30),
+        "phone_speech_end_silence_frames": getattr(
+            config.telnyx,
+            "phone_speech_end_silence_frames",
+            getattr(config.telnyx, "speech_end_silence_frames", 30),
+        ),
+        "address_speech_end_silence_frames": getattr(
+            config.telnyx,
+            "address_speech_end_silence_frames",
+            getattr(config.telnyx, "speech_end_silence_frames", 30),
+        ),
         "require_initial_turn": mode == "outbound",
         "wait_for_turn_before_commit": False,
         "adaptive_threshold": getattr(config.telnyx, "adaptive_threshold", True),
@@ -776,6 +814,8 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     speech_threshold=input_gate_options["speech_threshold"],
                     speech_start_frames=speech_start_frames,
                     speech_end_silence_frames=speech_end_silence_frames,
+                    phone_speech_end_silence_frames=input_gate_options["phone_speech_end_silence_frames"],
+                    address_speech_end_silence_frames=input_gate_options["address_speech_end_silence_frames"],
                     require_initial_turn=input_gate_options["require_initial_turn"],
                     wait_for_turn_before_commit=input_gate_options["wait_for_turn_before_commit"],
                     adaptive_threshold=input_gate_options["adaptive_threshold"],

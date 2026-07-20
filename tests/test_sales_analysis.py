@@ -104,6 +104,22 @@ def test_contextual_name_and_address_answers_are_extracted() -> None:
     assert result["order"]["missing_fields"] == []
 
 
+def test_agent_address_readback_can_restore_full_delivery_address() -> None:
+    transcript = [
+        _customer_turn("Venus BigOne ၂ ဘူး ဝယ်မယ်"),
+        _customer_turn("ဖုန်း သုည ကိုး ခုနစ် ရှစ် သုည ခုနစ် ခုနစ် တစ် လေး သုံး သုံး"),
+        _agent_turn("ပို့ရမယ့်လိပ်စာလေး ပြောပေးပါရှင်။"),
+        _customer_turn("အမှတ် ၄၈ သာကေတမြို့နယ်ပါ"),
+        _agent_turn("ပို့ရမယ့်လိပ်စာက အမှတ် (၄၈)၊ ဟံသာဝတီလမ်း၊ အရှေ့ဒဂုံမြို့နယ်၊ ရန်ကုန် ဟုတ်ပါသလားရှင်။"),
+        _customer_turn("၁၈ မဟုတ်ဘူးနော် အမှတ် ၄၈ ပါ"),
+    ]
+
+    result = analyze_call(transcript, fallback_phone="")
+
+    assert result["customer"]["address"] == "အမှတ် (၄၈)၊ ဟံသာဝတီလမ်း၊ အရှေ့ဒဂုံမြို့နယ်၊ ရန်ကုန်"
+    assert result["order"]["shipping_address"] == "အမှတ် (၄၈)၊ ဟံသာဝတီလမ်း၊ အရှေ့ဒဂုံမြို့နယ်၊ ရန်ကုန်"
+
+
 def test_confirmation_after_readback_does_not_replace_customer_name() -> None:
     transcript = [
         _customer_turn("Venus BigOne ၂ ဘူး ဝယ်မယ်"),
@@ -235,3 +251,102 @@ def test_final_batch_transcript_uses_delivery_place_and_latest_combo() -> None:
     assert result["order"]["product_name"] == "Venus BigOne Combo 3"
     assert result["order"]["quantity"] == 3
     assert result["order"]["total_price"] == 390000
+
+
+def test_common_audio_asr_confusion_still_creates_combo_two_order() -> None:
+    transcript = [
+        _customer_turn("ပြန်နှိပ်ဖူးပြီနော် အော်ဒါတင်ပေးပါနော်"),
+        _customer_turn("သုည ကိုး"),
+        _customer_turn("သုည ကိုး ၇၈ သုည ၇၇ ၁ ၄၉၄ ပါ"),
+        _customer_turn("သုည ကိုး ၇၇"),
+        _customer_turn(
+            "သုည ကိုး ၇၈ သုည ပါနော် ၈၈ သုည မဟုတ်ဘူးနော် သုည ကိုး ၇၈ သုည ၇၇ ၁ ၄၉၄ ပါ"
+        ),
+        _agent_turn("ပို့ရမယ့် လိပ်စာလေး ပြောပေးပါရှင်။"),
+        _customer_turn("လိပ်စာပို့ လိပ်စာပြောပေးမယ်နော်"),
+        _customer_turn("အမှတ် ၂၈ မဟုတ်ဘူးနော် အမှတ် ၄၈ ပါ"),
+        _agent_turn("လမ်းနာမည်နဲ့ မြို့နယ်လေး ပါ ပြောပေးပါဦးရှင်။"),
+        _customer_turn("အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ် ၂ ရပ်ကွက်ပါ"),
+    ]
+
+    result = analyze_call(transcript, fallback_phone="")
+
+    assert result["analysis"]["intent_status"] == "ready_to_order"
+    assert result["order"]["product_name"] == "Venus BigOne Combo 2"
+    assert result["order"]["quantity"] == 2
+    assert result["customer"]["phone"] == "09780771494"
+    assert result["customer"]["address"] == "အမှတ် ၄၈ အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ် ၂ ရပ်ကွက်"
+    assert result["customer"]["name"] == ""
+    assert result["order"]["status"] == "ready_to_confirm"
+    assert result["order"]["missing_fields"] == []
+
+
+def test_corrected_phone_with_only_partial_latest_attempt_stays_missing() -> None:
+    transcript = [
+        _customer_turn("နှစ်ဘူးယူမယ် အော်ဒါတင်ပေးပါနော်"),
+        _customer_turn(
+            "သုည ကိုး ခုနစ် ရှစ် သုည ခုနစ် ခုနစ် တစ် လေး သုံး သုံး "
+            "သုည ကိုး ခုနစ် ရှစ် သုည ခုနစ် ခုနစ် တစ် လေး သုံး သုံးပါ "
+            "အာ မဟုတ်ဘူးနော် ဖုန်းနံပါတ်မှားနေတယ်နော် ပြန်ပြောပေးမယ်နော် "
+            "သုည ကိုး ခုနစ် ရှစ် သုည ခုနစ် ခုနစ်"
+        ),
+        _customer_turn("လိပ်စာက အမှတ် ၄၈ အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ်"),
+    ]
+
+    result = analyze_call(transcript, fallback_phone="")
+
+    assert result["analysis"]["intent_status"] == "ready_to_order"
+    assert result["customer"]["phone"] == ""
+    assert result["order"]["status"] == "missing_info"
+    assert "customer_phone" in result["order"]["missing_fields"]
+
+
+def test_phone_rejected_after_latest_full_candidate_stays_missing() -> None:
+    transcript = [
+        _customer_turn("Venus BigOne နှစ်ဘူး ယူမယ်"),
+        _customer_turn("သုည ကိုး ကိုး ကိုး သုံး ကိုး သုည ငါး တစ် ငါး သုံး ပါ"),
+        _agent_turn("ဖုန်းနံပါတ် ၀ ၉ ၉ ၉ ၃ ၉ ၀ ၅ ၁ ၅ ၃ မှန်ပါသလားရှင်။"),
+        _customer_turn("အော် ရီရတယ်နော် အကုန်လုံး မှားနေတယ်"),
+        _customer_turn("လိပ်စာက အမှတ် ၄၈ အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ်"),
+    ]
+
+    result = analyze_call(transcript, fallback_phone="")
+
+    assert result["analysis"]["intent_status"] == "ready_to_order"
+    assert result["customer"]["phone"] == ""
+    assert result["order"]["customer_phone"] == ""
+    assert result["order"]["status"] == "missing_info"
+    assert "customer_phone" in result["order"]["missing_fields"]
+
+
+def test_phone_readback_without_clear_confirmation_stays_missing() -> None:
+    transcript = [
+        _customer_turn("Venus BigOne နှစ်ဘူး ယူမယ်"),
+        _customer_turn("ဖုန်း 0961695448 ပါ"),
+        _agent_turn("ဖုန်းနံပါတ် ၀ ۹ ۶ ۱ ۶ ۹ ۵ ۴ ۴ ۸ မှန်ပါသလားရှင်။"),
+        _customer_turn("လိပ်စာက အမှတ် ၄۸ အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ်"),
+    ]
+
+    result = analyze_call(transcript, fallback_phone="")
+
+    assert result["customer"]["phone"] == ""
+    assert result["order"]["customer_phone"] == ""
+    assert result["order"]["status"] == "missing_info"
+    assert "customer_phone" in result["order"]["missing_fields"]
+
+
+def test_final_all_details_confirmation_keeps_confirmed_phone() -> None:
+    transcript = [
+        _customer_turn("ကွန်ဂိုသုံးကို မှာယူမယ်"),
+        _agent_turn("ဖုန်းနံပါတ် 09780771433 မှန်ပါသလားရှင်။"),
+        _customer_turn("ဟုတ်ကဲ့ ဖုန်းနံပါတ် 0970771433 က မှန်ပါတယ်ရှင်"),
+        _customer_turn("ဖုန်းနံပါတ် 09780771433 မှန်ပါတယ်"),
+        _customer_turn("လိပ်စာက No. 123 Bogyoke Road, Yangon ပါ"),
+        _customer_turn("ဖုန်းနံပါတ်နဲ့ လိပ်စာ အားလုံးမှန်ပါတယ်"),
+    ]
+
+    result = analyze_call(transcript, fallback_phone="")
+
+    assert result["customer"]["phone"] == "09780771433"
+    assert result["order"]["customer_phone"] == "09780771433"
+    assert result["order"]["status"] == "ready_to_confirm"

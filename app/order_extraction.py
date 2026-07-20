@@ -10,6 +10,7 @@ from google import genai
 from google.genai import types
 
 from app.config import config, product_knowledge
+from app.gemini_retry import gemini_retry_delay_seconds, is_gemini_rate_limit_error
 from app.logging_utils import log
 from app.sales_analysis import (
     COMBO_CATALOG,
@@ -20,6 +21,8 @@ from app.sales_analysis import (
     _is_clearly_non_myanmar_address,
     _is_myanmar_phone_digits,
     _normalize_digits,
+    _phone_candidate_uncertain,
+    _phone_confirmed_after_readback,
     extract_customer_facts,
     extract_order_selection,
 )
@@ -51,6 +54,9 @@ Field policy:
   attempt to provide a different number.
 - Accept customer phone numbers only when they are Myanmar numbers: local 09... format or
   international +959... format.
+- If the customer says the latest phone readback/candidate is wrong, not correct, or all wrong,
+  keep customer_phone null and include customer_phone in missing_fields. Do not use a phone
+  number that appears before a later rejection.
 - Shipping address must be a Myanmar delivery address. If it is clearly outside Myanmar,
   keep shipping_address null and include shipping_address in missing_fields.
 - Shipping address contains delivery-location text only; exclude demographic and unrelated details.
@@ -157,21 +163,49 @@ def analyze_call_with_gemini(
     with _extraction_lock:
         payload = None
         last_error: Exception | None = None
+        normal_failures = 0
         backoff = 2.0
-        for attempt in range(4):
+        max_retry_delay = max(1, config.gemini.rate_limit_retry_max_delay_seconds)
+        attempt = 0
+        while normal_failures < 4:
+            attempt += 1
             try:
                 payload = _extract_json_once(prompt)
                 if payload is not None:
                     break
+                last_error = None
             except Exception as exc:
                 last_error = exc
-                log(f"[order-extraction] Attempt {attempt + 1} failed: {type(exc).__name__}: {exc}")
-            if attempt < 3:
+                if is_gemini_rate_limit_error(exc):
+                    delay = gemini_retry_delay_seconds(
+                        exc,
+                        fallback_seconds=backoff,
+                        max_delay_seconds=max_retry_delay,
+                    )
+                    log(
+                        "[order-extraction] Gemini rate limited on "
+                        f"attempt {attempt}; retrying with Gemini in {delay:.1f}s"
+                    )
+                    time.sleep(delay)
+                    backoff = min(
+                        max(backoff * 2, delay * 1.5),
+                        max_retry_delay,
+                    )
+                    continue
+                normal_failures += 1
+                log(f"[order-extraction] Attempt {attempt} failed: {type(exc).__name__}: {exc}")
+            else:
+                normal_failures += 1
+
+            if normal_failures < 4:
                 time.sleep(backoff)
-                backoff *= 2
+                backoff = min(
+                    backoff * 2,
+                    max_retry_delay,
+                )
     if payload is None:
         if last_error:
-            log(f"[order-extraction] Gemini extraction failed after 4 attempts: {type(last_error).__name__}: {last_error}")
+            log(f"[order-extraction] Gemini extraction failed after 4 non-rate-limit attempts: {type(last_error).__name__}: {last_error}")
         else:
             log("[order-extraction] Gemini returned unparseable JSON on all attempts")
         return analyze_call(transcript, fallback_phone=fallback_phone)
@@ -261,6 +295,11 @@ def _merge_payload(
         fallback_phone=fallback_phone,
         customer_text=customer_text,
     )
+    if phone and (
+        _phone_candidate_uncertain(transcript, phone)
+        or not _phone_confirmed_after_readback(transcript, phone)
+    ):
+        phone = ""
     customer_name = (
         _string(customer_facts.get("name"))
         or _string(payload.get("customer_name"))

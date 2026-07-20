@@ -133,6 +133,61 @@ def test_myanmar_combo_buy_intent_creates_missing_info_order(tmp_path):
     assert call["order"]["missing_fields"] == ["shipping_address"]
 
 
+def test_finish_call_does_not_restore_fallback_phone_when_order_blocks_phone(
+    tmp_path, monkeypatch
+):
+    store = CallHistoryStore(tmp_path / "call_history.db")
+    store.start_call("rejected-phone", "inbound", "telnyx", customer_phone="09993905153")
+    store.add_transcript("rejected-phone", "customer", "Venus BigOne နှစ်ဘူး ယူမယ်")
+    store.add_transcript("rejected-phone", "customer", "အကုန်လုံး မှားနေတယ်")
+
+    def fake_analyze_call(transcript, fallback_phone=""):
+        assert fallback_phone == "09993905153"
+        return {
+            "customer": {
+                "name": "",
+                "phone": "",
+                "address": "အမှတ် ၄၈ အင်းတော်ကြီးလမ်း",
+                "need": "Combo 2 ဝယ်မည်",
+            },
+            "analysis": {
+                "intent_status": "ready_to_order",
+                "sentiment": "negative",
+                "urgency": "high",
+                "objection": "unknown",
+                "summary": "Customer ordered but rejected the phone number.",
+                "next_action": "Collect customer phone.",
+                "confidence": 0.65,
+            },
+            "order": {
+                "customer_phone": "",
+                "customer_name": "",
+                "shipping_address": "အမှတ် ၄၈ အင်းတော်ကြီးလမ်း",
+                "product_name": "Venus BigOne Combo 2",
+                "quantity": 2,
+                "unit_price": 105000,
+                "total_price": 210000,
+                "status": "missing_info",
+                "missing_fields": ["customer_phone"],
+                "blocking_reasons": ["customer_phone"],
+                "confidence": 0.65,
+            },
+        }
+
+    monkeypatch.setattr(
+        "app.sql_call_history.analyze_call_with_gemini",
+        fake_analyze_call,
+    )
+
+    store.finish_call("rejected-phone")
+
+    call = store.get_call("rejected-phone")
+    assert call is not None
+    assert call["customer"]["phone"] == ""
+    assert call["order"]["customer_phone"] == ""
+    assert call["order"]["status"] == "missing_info"
+
+
 def test_legacy_customer_parser_rejects_phone_as_name() -> None:
     extracted = extract_customer_info(
         [

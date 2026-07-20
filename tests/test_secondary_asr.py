@@ -101,6 +101,9 @@ def test_secondary_asr_prompts_recognize_burmese_phone_digit_words() -> None:
         assert "9 = ကိုး" in prompt
         assert "one digit at a time" in prompt
         assert "Pauses between digits do not mean the phone number has ended" in prompt
+        assert "Burmese order words" in prompt
+        assert "နှစ်ဘူး" in prompt
+        assert "နှစ်ပုဒ်" in prompt
 
 
 class _FakeLiveSession:
@@ -159,6 +162,7 @@ def test_bridge_records_and_replays_secondary_asr_transcript(monkeypatch) -> Non
         )
         session = _FakeLiveSession()
         bridge.session = session
+        bridge._track_collection_focus("ဖုန်းနံပါတ် ပြောပေးပါရှင်။")
         await bridge.start_input_activity()
         await bridge.send_input_audio(b"\x01\x00" * 320)
         bridge.realtime_live_transcript_parts.append("지금 몇 시예요?")
@@ -210,6 +214,7 @@ def test_bridge_does_not_replay_when_secondary_asr_matches_live_transcript(monke
         )
         session = _FakeLiveSession()
         bridge.session = session
+        bridge._track_collection_focus("ဖုန်းနံပါတ် ပြောပေးပါရှင်။")
         await bridge.start_input_activity()
         await bridge.send_input_audio(b"\x01\x00" * 320)
         bridge.realtime_live_transcript_parts.append("ကွန်ဘိုတစ်ခု ဝယ်ချင်တယ်။")
@@ -337,6 +342,59 @@ def test_secondary_asr_batches_all_completed_turns_in_one_request() -> None:
     assert client.models.calls[0]["model"] == "batch-asr-model"
     request_config = client.models.calls[0]["config"]
     assert request_config.thinking_config.thinking_budget == 0
+
+
+class _RateLimitOnceModels:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def generate_content(self, **kwargs):
+        self.calls += 1
+        if self.calls == 1:
+            error = Exception("429 RESOURCE_EXHAUSTED {'retryDelay': '0.01s'}")
+            setattr(error, "code", 429)
+            raise error
+        return type(
+            "Response",
+            (),
+            {"text": '{"turns":[{"index":0,"text":"ဖုန်း 0961695448"}]}'},
+        )()
+
+
+class _RateLimitOnceClient:
+    def __init__(self) -> None:
+        self.models = _RateLimitOnceModels()
+        self.aio = type("Aio", (), {"models": self.models})()
+
+
+def test_secondary_asr_retries_gemini_429(monkeypatch) -> None:
+    original_max_delay = main.config.gemini.rate_limit_retry_max_delay_seconds
+    object.__setattr__(main.config.gemini, "rate_limit_retry_max_delay_seconds", 1)
+    sleeps = []
+
+    async def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    monkeypatch.setattr("app.secondary_asr.asyncio.sleep", fake_sleep)
+    client = _RateLimitOnceClient()
+    transcriber = SecondaryAsrTranscriber(client=client, model="batch-asr-model")
+
+    try:
+        result = asyncio.run(
+            transcriber.transcribe_many(
+                [(0, b"\x01\x00" * 3200, 16000, "wrong")]
+            )
+        )
+    finally:
+        object.__setattr__(
+            main.config.gemini,
+            "rate_limit_retry_max_delay_seconds",
+            original_max_delay,
+        )
+
+    assert result == {0: "ဖုန်း 0961695448"}
+    assert client.models.calls == 2
+    assert sleeps == [1.0]
 
 
 def test_post_call_asr_reuses_in_call_results(monkeypatch) -> None:

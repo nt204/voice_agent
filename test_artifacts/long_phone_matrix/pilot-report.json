@@ -1,0 +1,626 @@
+{
+  "created_at": "2026-07-17T08:26:15.979583+00:00",
+  "scenario_count": 1,
+  "passed_count": 0,
+  "all_passed": false,
+  "results": [
+    {
+      "scenario_id": "confusable-correction-09780771433",
+      "expected_phone": "09780771433",
+      "secondary_asr_text": "ဖုန်းနံပါတ် သုည ကိုးကိုးရှစ်သုည ကိုးကိုးတစ်လေးသုံးသုံး မဟုတ်ပါဘူးရှင့် နံပါတ်အမှန်က သုညကိုးခုနစ်ရှစ် သုည ခုနစ်ခုနစ်တစ်လေးသုံးသုံး ပါရှင့်",
+      "secondary_asr_phone": "09780771433",
+      "server_phone": "09780771433",
+      "phone_confirmed": true,
+      "agent_readback_phone": "09780771433",
+      "order": {
+        "customer_phone": "",
+        "customer_name": "မေးလ်",
+        "shipping_address": "အမှတ် ၁၂၃ ဗိုလ်ချုပ်လမ်း လသာမြို့နယ် ရန်ကုန်",
+        "product_name": "Venus BigOne Combo 3",
+        "purchase_type": "combo",
+        "combo": "Venus BigOne Combo 3",
+        "quantity": 3,
+        "unit_price": 130000,
+        "total_price": 390000,
+        "status": "missing_info",
+        "missing_fields": [
+          "customer_phone"
+        ],
+        "blocking_reasons": [
+          "customer_phone"
+        ],
+        "confidence": 1.0
+      },
+      "checks": {
+        "secondary_asr_phone": true,
+        "server_phone": true,
+        "phone_confirmed": true,
+        "agent_readback_phone": true,
+        "order_phone": false,
+        "order_product": true,
+        "order_quantity": true,
+        "order_total": true,
+        "order_status": false
+      },
+      "passed": false,
+      "transcript": [
+        {
+          "speaker": "customer",
+          "text": "Venus Begonia က ဘာအတွက်ကောင်းလဲ၊ ဘယ်လိုသောက်ရမလဲ၊ တစ်ဘူးနဲ့ ကွန်ဘိုဆေးတွေကိုလည်း ရှင်းပြပေးပါရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus BigOne"
+        },
+        {
+          "speaker": "agent",
+          "text": "နို့မှုန့်က"
+        },
+        {
+          "speaker": "agent",
+          "text": "အမျိုးသမီးတွေ"
+        },
+        {
+          "speaker": "agent",
+          "text": "အလှအပနဲ့"
+        },
+        {
+          "speaker": "agent",
+          "text": "ခန္ဓာကိုယ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ထိန်းသိမ်းမှုကို"
+        },
+        {
+          "speaker": "agent",
+          "text": "အထောက်အကူပြုပါတယ်ရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်နေ့"
+        },
+        {
+          "speaker": "agent",
+          "text": "နှစ်ခွက်၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "မနက်တစ်ခွက်နဲ့"
+        },
+        {
+          "speaker": "agent",
+          "text": "ညတစ်ခွက်"
+        },
+        {
+          "speaker": "agent",
+          "text": "သောက်ပေးရပါမယ်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁ ဘူးကို"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁ သိန်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "၂ သောင်းကျပ်ပါရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "Combo"
+        },
+        {
+          "speaker": "agent",
+          "text": "တွေကတော့"
+        },
+        {
+          "speaker": "agent",
+          "text": "Combo"
+        },
+        {
+          "speaker": "agent",
+          "text": "2"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဆိုရင်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၂ သိန်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁ သောင်း၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "Combo"
+        },
+        {
+          "speaker": "agent",
+          "text": "3"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဆိုရင်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၃ သိန်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "၉ သောင်း၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "Combo"
+        },
+        {
+          "speaker": "agent",
+          "text": "5"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဆိုရင်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၆ သိန်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "၃ သောင်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကျပ်ပါရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "၂ ဘူးနဲ့အထက်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဝယ်ရင်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ခ"
+        },
+        {
+          "speaker": "agent",
+          "text": "အခမဲ့ပါရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဘယ် combo"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကို စိတ်ဝင်စားပါသလဲရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ကွန်ဂိုနှစ်နဲ့ကွန်ဂိုသုံးကိုစဉ်းစားနေတဲ့လက်ဆောင်နဲ့ပို့ခကိုပါပြောပေးပါ။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ Combo"
+        },
+        {
+          "speaker": "agent",
+          "text": "2"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကတော့"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus"
+        },
+        {
+          "speaker": "agent",
+          "text": "၂ ဘူးကို"
+        },
+        {
+          "speaker": "agent",
+          "text": "၂ သိန်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁ သောင်းကျပ်ပါ၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "လက်ဆောင်မပါပါဘူး။"
+        },
+        {
+          "speaker": "agent",
+          "text": "Combo"
+        },
+        {
+          "speaker": "agent",
+          "text": "3"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကတော့"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus"
+        },
+        {
+          "speaker": "agent",
+          "text": "၃ ဘူးဝယ်ရင်"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus"
+        },
+        {
+          "speaker": "agent",
+          "text": "နို့မှုန့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁ ဘူးနဲ့"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus"
+        },
+        {
+          "speaker": "agent",
+          "text": "effervescent"
+        },
+        {
+          "speaker": "agent",
+          "text": "tablets"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁ ဘူး"
+        },
+        {
+          "speaker": "agent",
+          "text": "လက်ဆောင်ရမှာပါ၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "၃ သိန်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "၉ သောင်းကျပ်ပါရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "Combo"
+        },
+        {
+          "speaker": "agent",
+          "text": "၂ ခုလုံးက"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ခ"
+        },
+        {
+          "speaker": "agent",
+          "text": "အခမဲ့ပါရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဘယ် combo"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကို ပိုပြီး"
+        },
+        {
+          "speaker": "agent",
+          "text": "စိတ်ဝင်စားပါသလဲရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ကောင်းပါပြီ။ ကွန်ဂိုသုံးကို မှာယူမယ်။ လက်ခံမယ့်နာမည်က May Thinzar ပါရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ Combo"
+        },
+        {
+          "speaker": "agent",
+          "text": "3"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှာယူတာ"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှတ်သားထားပါတယ်ရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "လက်ခံမယ့်သူ"
+        },
+        {
+          "speaker": "agent",
+          "text": "နာမည်က"
+        },
+        {
+          "speaker": "agent",
+          "text": "May"
+        },
+        {
+          "speaker": "agent",
+          "text": "Thinzar"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပါနော်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ်လေးကို"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်လုံးချင်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖြည်းဖြည်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပြောပေးပါရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဖုန်းနံပါတ် 0998399433 မဟုတ်ပါဘူးရှင် ၊ နံပါတ်အမှန်က 0978077133 ပါရှင် ။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ် 0978077133 မှန်ပါသလားရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ် 09780771433 မှန်ပါသလားရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဟုတ်ကဲ့၊ ဖုန်းနံပါတ် 0970771433 က မှန်ပါ တယ် ရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဖုန်းနံပါတ် 09780771433 မှန်ပါတယ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ ဖုန်းနံပါတ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "အတည်ပြုပြီးပါပြီ။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ရမယ့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "လိပ်စာလေးကို"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပြောပေးပါဦးရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ပိုရမဲ့လိပ်စာက အမှတ် ၁၂၃ ဗိုလ်ချုပ်လမ်း လသာမြို့နယ် ရန်ကုန်ပါရှင်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ ပို့ရမယ့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "လိပ်စာက"
+        },
+        {
+          "speaker": "agent",
+          "text": "အမှတ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁၂၃၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဗိုလ်ချုပ်လမ်း၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "လသာမြို့နယ်၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရန်ကုန်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပါနော်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "အချက်အလက်တွေ"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှန်ပါသလားရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဟုတ်ကဲ့ အမှတ် ၁၂၃ ဗိုလ်ချုပ်လမ်း လသာမြို့နယ် ရန်ကုန်လိပ်စာက မှန်ပါတယ်ရှင်।"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ အော်ဒါလေး"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပြန်ပြောပြပါမယ်ရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus"
+        },
+        {
+          "speaker": "agent",
+          "text": "နို့မှုန့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၃"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဘူး၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "လက်ခံမယ့်သူ"
+        },
+        {
+          "speaker": "agent",
+          "text": "နာမည်"
+        },
+        {
+          "speaker": "agent",
+          "text": "May"
+        },
+        {
+          "speaker": "agent",
+          "text": "Thinzar၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၀၉၇၈၀၇၇၁၄၃၃၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ရန်လိပ်စာ"
+        },
+        {
+          "speaker": "agent",
+          "text": "အမှတ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁၂၃၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဗိုလ်ချုပ်လမ်း၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "လသာမြို့နယ်၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရန်ကုန်၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "စုစုပေါင်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "၃ သိန်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "၉ သောင်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကျပ် ဖြစ်ပါတယ်ရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "အချက်အလက်တွေ"
+        },
+        {
+          "speaker": "agent",
+          "text": "အားလုံး"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှန်ပါသလားရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ကွန်ပျူတာ နာမည် ၊ မေးလ်လိပ်စာ ၊ ဖုန်းနံပါတ် နဲ့ လိပ်စာ အားလုံး မှန် ပါ တယ် ။ အော်ဒါ အတည်ပြုပေးပါရှင် ။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ အော်ဒါ"
+        },
+        {
+          "speaker": "agent",
+          "text": "အတည်ပြုလိုက်ပါပြီရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus"
+        },
+        {
+          "speaker": "agent",
+          "text": "BigOne"
+        },
+        {
+          "speaker": "agent",
+          "text": "နို့မှုန့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၃"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဘူးနဲ့"
+        },
+        {
+          "speaker": "agent",
+          "text": "လက်ဆောင်ပစ္စည်းတွေကို"
+        },
+        {
+          "speaker": "agent",
+          "text": "မကြာခင်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ပေးပါမယ်ရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကျေးဇူးတင်ပါတယ်ရှင်။"
+        }
+      ]
+    }
+  ]
+}

@@ -49,8 +49,10 @@ def test_live_prompt_has_dedicated_order_confirmation_template() -> None:
     assert "{product_name}" in prompt
     assert "{quantity}" in prompt
     assert "{customer_name}" in prompt
-    assert "{customer_phone}" in prompt
     assert "{shipping_address}" in prompt
+    assert "Never repeat phone digits in the final order summary" in prompt
+    assert "ဖုန်းနံပါတ် အတည်ပြုပြီး" in prompt
+    assert "Do not repeat or recalculate the total price" in prompt
     assert "latest correction" in prompt
 
 
@@ -73,7 +75,8 @@ def test_live_prompt_guides_customer_to_read_phone_digits_in_burmese() -> None:
     assert "တစ်လုံးချင်း ဖြည်းဖြည်း" in prompt
     assert "0 = သုည or ဝ" in prompt
     assert "9 = ကိုး" in prompt
-    assert "read the number back digit by digit" in prompt
+    assert "Never speak phone digits" in prompt
+    assert "fixed digit-by-digit readback" in prompt
 
 
 def test_runtime_configuration_prioritizes_myanmar() -> None:

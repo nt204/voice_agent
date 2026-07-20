@@ -1,4 +1,5 @@
-from app.order_extraction import _merge_payload
+from app.config import config
+from app.order_extraction import _merge_payload, analyze_call_with_gemini
 
 
 def test_combo_payload_uses_catalog_prices_when_gemini_mixes_unit_price() -> None:
@@ -136,6 +137,150 @@ def test_spoken_burmese_phone_from_transcript_overrides_empty_payload() -> None:
     assert result["customer"]["phone"] == "0961695448"
     assert result["order"]["customer_phone"] == "0961695448"
     assert result["order"]["missing_fields"] == []
+
+
+def test_corrected_phone_after_final_full_statement_is_accepted() -> None:
+    payload = {
+        "intent_status": "ready_to_order",
+        "customer_name": None,
+        "customer_phone": "09780771494",
+        "shipping_address": "အမှတ် ၄၈ အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ် ၂ ရပ်ကွက်",
+        "product_name": "Venus BigOne Combo 2",
+        "quantity": 2,
+        "unit_price": 105000,
+        "total_price": 210000,
+        "combo": "Combo 2",
+        "confidence": 0.9,
+    }
+    transcript = [
+        {"speaker": "customer", "text": "ပြန်နှိပ်ဖူးပြီနော် အော်ဒါတင်ပေးပါနော်"},
+        {"speaker": "customer", "text": "သုည ကိုး"},
+        {"speaker": "customer", "text": "သုည ကိုး ၇၈ သုည ၇၇ ၁ ၄၉၄ ပါ"},
+        {"speaker": "customer", "text": "သုည ကိုး ၇၇"},
+        {
+            "speaker": "customer",
+            "text": "သုည ကိုး ၇၈ သုည ပါနော် ၈၈ သုည မဟုတ်ဘူးနော် သုည ကိုး ၇၈ သုည ၇၇ ၁ ၄၉၄ ပါ",
+        },
+        {
+            "speaker": "customer",
+            "text": "အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ် ၂ ရပ်ကွက်ပါ",
+        },
+    ]
+
+    result = _merge_payload(payload, transcript, fallback_phone="", fallback={})
+
+    assert result["customer"]["phone"] == "09780771494"
+    assert result["order"]["customer_phone"] == "09780771494"
+    assert result["order"]["status"] == "ready_to_confirm"
+    assert result["order"]["blocking_reasons"] == []
+
+
+def test_payload_phone_is_not_promoted_when_latest_correction_is_partial() -> None:
+    payload = {
+        "intent_status": "ready_to_order",
+        "customer_name": None,
+        "customer_phone": "09780771433",
+        "shipping_address": "အမှတ် ၄၈ အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ် ၂ ရပ်ကွက်",
+        "product_name": "Venus BigOne Combo 2",
+        "quantity": 2,
+        "unit_price": 105000,
+        "total_price": 210000,
+        "combo": "Combo 2",
+        "confidence": 0.9,
+    }
+    transcript = [
+        {"speaker": "customer", "text": "နှစ်ဘူးယူမယ် အော်ဒါတင်ပေးပါနော်"},
+        {"speaker": "customer", "text": "သုည ကိုး ခုနစ် ရှစ် သုည ခုနစ် ခုနစ် တစ် လေး သုံး သုံး ပါ"},
+        {
+            "speaker": "customer",
+            "text": "မဟုတ်ဘူးနော် ဖုန်းနံပါတ်မှားနေတယ်နော် ပြန်ပြောပေးမယ်နော် သုည ကိုး ခုနစ် ရှစ် သုည ခုနစ် ခုနစ်",
+        },
+        {
+            "speaker": "customer",
+            "text": "အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ် ၂ ရပ်ကွက်ပါ",
+        },
+    ]
+
+    result = _merge_payload(payload, transcript, fallback_phone="", fallback={})
+
+    assert result["customer"]["phone"] == ""
+    assert result["order"]["customer_phone"] == ""
+    assert result["order"]["status"] == "missing_info"
+    assert "customer_phone" in result["order"]["blocking_reasons"]
+
+
+def test_payload_phone_rejected_after_latest_full_candidate_stays_missing() -> None:
+    payload = {
+        "intent_status": "ready_to_order",
+        "customer_name": None,
+        "customer_phone": "09993905153",
+        "shipping_address": "အမှတ် ၄၈ အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ်",
+        "product_name": "Venus BigOne Combo 2",
+        "quantity": 2,
+        "unit_price": 105000,
+        "total_price": 210000,
+        "combo": "Combo 2",
+        "confidence": 0.9,
+    }
+    transcript = [
+        {"speaker": "customer", "text": "Venus BigOne နှစ်ဘူး ယူမယ်"},
+        {
+            "speaker": "customer",
+            "text": "သုည ကိုး ကိုး ကိုး သုံး ကိုး သုည ငါး တစ် ငါး သုံး ပါ",
+        },
+        {
+            "speaker": "agent",
+            "text": "ဖုန်းနံပါတ် ၀ ၉ ၉ ۹ ၃ ۹ ၀ ۵ ۱ ۵ ۳ မှန်ပါသလားရှင်။",
+        },
+        {"speaker": "customer", "text": "အော် ရီရတယ်နော် အကုန်လုံး မှားနေတယ်"},
+        {
+            "speaker": "customer",
+            "text": "လိပ်စာက အမှတ် ۴۸ အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ်",
+        },
+    ]
+
+    result = _merge_payload(payload, transcript, fallback_phone="", fallback={})
+
+    assert result["customer"]["phone"] == ""
+    assert result["order"]["customer_phone"] == ""
+    assert result["order"]["status"] == "missing_info"
+    assert "customer_phone" in result["order"]["missing_fields"]
+    assert "customer_phone" in result["order"]["blocking_reasons"]
+
+
+def test_payload_phone_readback_without_clear_confirmation_stays_missing() -> None:
+    payload = {
+        "intent_status": "ready_to_order",
+        "customer_name": None,
+        "customer_phone": "0961695448",
+        "shipping_address": "အမှတ် ၄၈ အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ်",
+        "product_name": "Venus BigOne Combo 2",
+        "quantity": 2,
+        "unit_price": 105000,
+        "total_price": 210000,
+        "combo": "Combo 2",
+        "confidence": 0.9,
+    }
+    transcript = [
+        {"speaker": "customer", "text": "Venus BigOne နှစ်ဘူး ယူမယ်"},
+        {"speaker": "customer", "text": "ဖုန်း 0961695448 ပါ"},
+        {
+            "speaker": "agent",
+            "text": "ဖုန်းနံပါတ် ၀ ۹ ۶ ۱ ۶ ۹ ۵ ۴ ۴ ۸ မှန်ပါသလားရှင်။",
+        },
+        {
+            "speaker": "customer",
+            "text": "လိပ်စာက အမှတ် ۴۸ အင်းတော်ကြီးလမ်း အရှေ့ဒဂုံမြို့နယ်",
+        },
+    ]
+
+    result = _merge_payload(payload, transcript, fallback_phone="", fallback={})
+
+    assert result["customer"]["phone"] == ""
+    assert result["order"]["customer_phone"] == ""
+    assert result["order"]["status"] == "missing_info"
+    assert "customer_phone" in result["order"]["missing_fields"]
+    assert "customer_phone" in result["order"]["blocking_reasons"]
 
 
 def test_split_burmese_phone_turns_are_joined_without_using_digit_as_name() -> None:
@@ -280,3 +425,71 @@ def test_model_ready_intent_is_rejected_without_concrete_customer_selection() ->
     assert result["analysis"]["confidence"] == 0.6
     assert result["customer"]["address"] == "Yangon Hlaing"
     assert result["order"] is None
+
+
+class _FakeGeminiRateLimit(Exception):
+    code = 429
+
+
+def test_order_extraction_retries_gemini_429_without_rule_fallback(monkeypatch) -> None:
+    original_enabled = config.gemini.order_extraction_enabled
+    original_api_key = config.gemini.api_key
+    original_max_delay = config.gemini.rate_limit_retry_max_delay_seconds
+    object.__setattr__(config.gemini, "order_extraction_enabled", True)
+    object.__setattr__(config.gemini, "api_key", "test-key")
+    object.__setattr__(config.gemini, "rate_limit_retry_max_delay_seconds", 1)
+
+    calls = []
+    sleeps = []
+    payload = {
+        "intent_status": "ready_to_order",
+        "customer_name": None,
+        "customer_phone": "0961695448",
+        "shipping_address": "Yangon Hlaing",
+        "product_name": "Venus BigOne Combo 2",
+        "combo": "Combo 2",
+        "quantity": 2,
+        "unit_price": 105000,
+        "total_price": 210000,
+        "objection": "none",
+        "summary": "Gemini extracted an order.",
+        "missing_fields": [],
+        "confidence": 0.9,
+    }
+
+    def fake_extract_json_once(prompt: str) -> dict:
+        calls.append(prompt)
+        if len(calls) == 1:
+            raise _FakeGeminiRateLimit(
+                "429 RESOURCE_EXHAUSTED {'retryDelay': '0.01s'}"
+            )
+        return payload
+
+    monkeypatch.setattr(
+        "app.order_extraction._extract_json_once",
+        fake_extract_json_once,
+    )
+    monkeypatch.setattr("app.order_extraction.time.sleep", sleeps.append)
+
+    try:
+        result = analyze_call_with_gemini(
+            [
+                {"speaker": "customer", "text": "ကွန်ဘို ၂ မှာယူမယ်"},
+                {"speaker": "customer", "text": "ဖုန်း 0961695448"},
+                {"speaker": "customer", "text": "လိပ်စာက Yangon Hlaing"},
+            ],
+            fallback_phone="",
+        )
+    finally:
+        object.__setattr__(config.gemini, "order_extraction_enabled", original_enabled)
+        object.__setattr__(config.gemini, "api_key", original_api_key)
+        object.__setattr__(
+            config.gemini,
+            "rate_limit_retry_max_delay_seconds",
+            original_max_delay,
+        )
+
+    assert len(calls) == 2
+    assert sleeps == [1.0]
+    assert result["analysis"]["summary"] == "Gemini extracted an order."
+    assert result["order"]["status"] == "ready_to_confirm"

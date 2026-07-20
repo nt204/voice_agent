@@ -87,6 +87,14 @@ class TelnyxConfig:
         "TELNYX_SPEECH_END_SILENCE_FRAMES",
         _frames_from_ms(_int_env("TELNYX_SILENCE_MS", 1200)),
     )
+    phone_speech_end_silence_frames: int = _int_env(
+        "TELNYX_PHONE_SPEECH_END_SILENCE_FRAMES",
+        _frames_from_ms(_int_env("TELNYX_PHONE_SILENCE_MS", 2200)),
+    )
+    address_speech_end_silence_frames: int = _int_env(
+        "TELNYX_ADDRESS_SPEECH_END_SILENCE_FRAMES",
+        _frames_from_ms(_int_env("TELNYX_ADDRESS_SILENCE_MS", 1800)),
+    )
     adaptive_threshold: bool = _bool_env("TELNYX_ADAPTIVE_THRESHOLD", True)
     noise_multiplier: float = _float_env("TELNYX_NOISE_MULTIPLIER", 3.0)
     noise_margin: int = _int_env("TELNYX_NOISE_MARGIN", 80)
@@ -111,6 +119,7 @@ class GeminiConfig:
     extraction_model: str = os.getenv("GEMINI_EXTRACTION_MODEL", "gemini-2.5-flash")
     order_extraction_enabled: bool = _bool_env("GEMINI_ORDER_EXTRACTION_ENABLED", False)
     order_extraction_timeout_seconds: int = _int_env("GEMINI_ORDER_EXTRACTION_TIMEOUT_SECONDS", 12)
+    rate_limit_retry_max_delay_seconds: int = _int_env("GEMINI_RATE_LIMIT_RETRY_MAX_DELAY_SECONDS", 60)
     voice_name: str = os.getenv("GEMINI_VOICE_NAME", "Aoede")
     language_code: str = os.getenv("GEMINI_LANGUAGE_CODE", "my-MM")
     input_sample_rate: int = _int_env("GEMINI_INPUT_SAMPLE_RATE", 16000)
@@ -172,8 +181,10 @@ def product_knowledge() -> str:
 ORDER_CONFIRMATION_TEMPLATE_RULES = """Order confirmation template:
 - Use this template only when product/combo, quantity, phone number, and shipping address are clear. Recipient name is optional but should be included when the customer provides it.
 - If the recipient name is missing, do not invent it and do not block order confirmation.
-- Read back in this order: product/combo -> quantity -> recipient name when available -> phone number -> shipping address -> total price when certain.
-- Burmese sample: "{product_name} {quantity} ဘူး၊ [လက်ခံမယ့်နာမည် {customer_name}၊] ဖုန်းနံပါတ် {customer_phone}၊ ပို့ရန်လိပ်စာ {shipping_address}၊ စုစုပေါင်း {total_price} ကျပ် ဖြစ်ပါတယ်။ အချက်အလက်တွေ မှန်ပါသလားရှင်။"
+- Read back in this order: product/combo -> quantity -> recipient name when available -> say the phone is confirmed without speaking its digits -> shipping address.
+- Never repeat phone digits in the final order summary. The server already played and confirmed the exact number using fixed audio.
+- Do not repeat or recalculate the total price in the final summary. The order backend computes it from the selected product and quantity.
+- Burmese sample: "{product_name} {quantity} ဘူး၊ [လက်ခံမယ့်နာမည် {customer_name}၊] ဖုန်းနံပါတ် အတည်ပြုပြီး၊ ပို့ရန်လိပ်စာ {shipping_address} ဖြစ်ပါတယ်။ အချက်အလက်တွေ မှန်ပါသလားရှင်။"
 - Say the order is confirmed only after the customer clearly says the information is correct or explicitly agrees.
 - If the customer corrects any field, use the latest correction and read back the full template again.
 - If any required field is still missing, do not read the template; ask for only one missing field at a time."""
@@ -183,7 +194,11 @@ PHONE_NUMBER_LISTENING_GUIDE = """Phone number listening guide:
 - When asking for a phone number, politely ask in Burmese: "ဖုန်းနံပါတ်ကို တစ်လုံးချင်း ဖြည်းဖြည်း ပြောပေးပါရှင်။"
 - Listen for one digit at a time. Burmese digit words are: 0 = သုည or ဝ; 1 = တစ်; 2 = နှစ်; 3 = သုံး; 4 = လေး; 5 = ငါး; 6 = ခြောက်; 7 = ခုနစ် or ခုနှစ်; 8 = ရှစ်; 9 = ကိုး.
 - Keep every digit in the exact order spoken. Never interpret a phone-number sequence as a quantity, price, age, or combo number.
-- After receiving a complete number, read the number back digit by digit and ask the customer to confirm it.
+- Use the delivery-state tool as the source of truth for phone digits. Never reconstruct or remember phone digits yourself.
+- Never speak phone digits. After a complete number is stored, the server automatically plays a fixed digit-by-digit readback and asks the customer to confirm it. Stay silent while that fixed readback plays.
+- After the phone is confirmed, do not repeat its digits in later summaries; say only that the phone number is confirmed.
+- If the customer says the readback is wrong, reject the phone in the tool and do not reuse the old digits.
+- If the tool next_action is collect_phone_by_keypad, ask the customer to enter the complete phone number on the keypad and press #.
 - If any digit is unclear or the number is incomplete, do not guess. Ask the customer to repeat the phone number one digit at a time."""
 
 

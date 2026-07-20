@@ -16,6 +16,7 @@ from app.call_history import (
     calls_table,
     extract_customer_info,
     _customer_name_from_sales_result,
+    _phone_from_sales_result,
     interest_status_from_intent,
     metadata,
     orders_table,
@@ -423,7 +424,11 @@ class SqlAlchemyCallHistoryStore:
             f"intent={sales_result.get('analysis', {}).get('intent_status', '?')} "
             f"order={sales_result.get('order') is not None}"
         )
-        phone = sales_customer["phone"] or extracted["phone"] or call["customer"]["phone"]
+        phone = _phone_from_sales_result(
+            sales_result,
+            extracted,
+            call["customer"]["phone"],
+        )
         address = sales_customer["address"] or extracted["address"]
         name = _customer_name_from_sales_result(sales_result, extracted)
         need = sales_customer["need"] or extracted["need"]

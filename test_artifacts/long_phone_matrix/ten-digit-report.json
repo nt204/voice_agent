@@ -1,0 +1,303 @@
+{
+  "created_at": "2026-07-17T09:01:23.548823+00:00",
+  "scenario_count": 1,
+  "passed_count": 1,
+  "all_passed": true,
+  "results": [
+    {
+      "scenario_id": "ten-digit-repeated-0961695448",
+      "expected_phone": "0961695448",
+      "secondary_asr_text": "ပို့ဆောင်ရန် ဖုန်းနံပါတ်ကို တစ်လုံးချင်းပြောမယ်နော် သုည ကိုး ခြောက် တစ် ခြောက် ကိုး ငါး လေး လေး ရှစ် ပါရှင့်",
+      "secondary_asr_phone": "0961695448",
+      "post_call_asr": {
+        "0": "ဒီနို့မှုန့်မှာ ဘာတွေပါလဲ အသက်သုံးဆယ်ကျော် အမျိုးသမီးတွေ သောက်လို့ရလား ဈေးနှုန်းလည်း ပြောပြပေးပါရှင့်",
+        "1": "နှစ်ဘူးယူရင် ပို့ခအခမဲ့လား စုစုပေါင်း နှစ်သိန်းတစ်သောင်းပဲလား",
+        "2": "ဟုတ်ကဲ့ ကိုကိုးနှစ်ဘူး မှာယူမယ် လက်ခံမယ့်နာမည်က ဆပ်စုပါရှင့်",
+        "3": "ပို့ဆောင်ရန် ဖုန်းနံပါတ်ကို တစ်လုံးချင်းပြောမယ်နော် သုည ကိုး ခြောက် တစ် ခြောက် ကိုး ငါး လေး လေး ရှစ် ပါရှင့်",
+        "4": "ဟုတ်ကဲ့ သုည ကိုး ခြောက် တစ် ခြောက် ကိုး ငါး လေး လေး ရှစ် အဲ့ဒီဖုန်းနံပါတ် မှန်ပါတယ်ရှင့်",
+        "5": "လိပ်စာက အမှတ်လေးဆယ့်ရှစ် ဟံသာဝတီလမ်း အရှေ့ဒဂုံမြို့နယ် ရန်ကုန်ပါရှင့်",
+        "6": "ဟုတ်ကဲ့ အဲ့ဒီလိပ်စာအတိုင်း ပို့ပေးပါ လိပ်စာမှန်ပါတယ်ရှင့်",
+        "7": "ကိုကိုးနှစ်ဘူး စီစီ ဖုန်းနံပါတ်နဲ့ လိပ်စာအားလုံးမှန်ပါတယ် အော်ဒါတင်ပေးပါရှင့်"
+      },
+      "server_phone": "0961695448",
+      "phone_confirmed": true,
+      "agent_readback_phone": "0961695448",
+      "order": {
+        "customer_phone": "0961695448",
+        "customer_name": "ဆပ်စုပါရှင့်",
+        "shipping_address": "အမှတ် ၄၈၊ ဟံသာဝတီလမ်း၊ အရှေ့ဒဂုံမြို့နယ်၊ ရန်ကုန် ပါနော်။ လိပ်စာ",
+        "product_name": "Venus BigOne Combo 2",
+        "purchase_type": "combo",
+        "combo": "Venus BigOne Combo 2",
+        "quantity": 2,
+        "unit_price": 105000,
+        "total_price": 210000,
+        "status": "ready_to_confirm",
+        "missing_fields": [],
+        "confidence": 0.9
+      },
+      "checks": {
+        "secondary_asr_phone": true,
+        "server_phone": true,
+        "phone_confirmed": true,
+        "agent_readback_phone": true,
+        "order_phone": true,
+        "order_product": true,
+        "order_quantity": true,
+        "order_total": true,
+        "order_status": true
+      },
+      "passed": true,
+      "transcript": [
+        {
+          "speaker": "customer",
+          "text": "ဒီနို့မှုန့်မှာ ဘာတွေပါလဲ အသက်သုံးဆယ်ကျော် အမျိုးသမီးတွေ သောက်လို့ရလား ဈေးနှုန်းလည်း ပြောပြပေးပါရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့၊ Venus"
+        },
+        {
+          "speaker": "customer",
+          "text": "နှစ်ဘူးယူရင် ပို့ခအခမဲ့လား စုစုပေါင်း နှစ်သိန်းတစ်သောင်းပဲလား"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့၊ ၂"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဟုတ်ကဲ့ ကိုကိုးနှစ်ဘူး မှာယူမယ် လက်ခံမယ့်နာမည်က ဆပ်စုပါရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ Combo"
+        },
+        {
+          "speaker": "agent",
+          "text": "2"
+        },
+        {
+          "speaker": "agent",
+          "text": "နှစ်ဘူး"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှာယူတဲ့"
+        },
+        {
+          "speaker": "agent",
+          "text": "အတွက်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကျေးဇူးတင်ပါတယ်ရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "လက်ခံမယ့်သူက"
+        },
+        {
+          "speaker": "agent",
+          "text": "မစုစု"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပါနော်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ်လေးကို"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်လုံးချင်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖြည်းဖြည်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပြောပေးပါရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ပို့ဆောင်ရန် ဖုန်းနံပါတ်ကို တစ်လုံးချင်းပြောမယ်နော် သုည ကိုး ခြောက် တစ် ခြောက် ကိုး ငါး လေး လေး ရှစ် ပါရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ် 0961695448 မှန်ပါသလားရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဟုတ်ကဲ့ သုည ကိုး ခြောက် တစ် ခြောက် ကိုး ငါး လေး လေး ရှစ် အဲ့ဒီဖုန်းနံပါတ် မှန်ပါတယ်ရှင့်"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဖုန်းနံပါတ် 0961695448 မှန်ပါတယ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ ဖုန်းနံပါတ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "အတည်ပြုပြီးပါပြီ။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ပေးရမယ့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "လိပ်စာလေး"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပြောပေးပါဦးရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "လိပ်စာက အမှတ်လေးဆယ့်ရှစ် ဟံသာဝတီလမ်း အရှေ့ဒဂုံမြို့နယ် ရန်ကုန်ပါရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "အမှတ် ၄၈၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟံသာဝတီလမ်း၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "အရှေ့ဒဂုံမြို့နယ်၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရန်ကုန်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပါနော်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "လိပ်စာ"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှန်ပါသလားရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဟုတ်ကဲ့ အဲ့ဒီလိပ်စာအတိုင်း ပို့ပေးပါ လိပ်စာမှန်ပါတယ်ရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ Venus"
+        },
+        {
+          "speaker": "agent",
+          "text": "BigOne"
+        },
+        {
+          "speaker": "agent",
+          "text": "နို့မှုန့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၂ ဘူး၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "လက်ခံမယ့်သူ"
+        },
+        {
+          "speaker": "agent",
+          "text": "မစုစု၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "အတည်ပြုပြီး၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ရန်လိပ်စာ"
+        },
+        {
+          "speaker": "agent",
+          "text": "အမှတ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၄၈၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟံသာဝတီလမ်း၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "အရှေ့ဒဂုံမြို့နယ်၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရန်ကုန်၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "စုစုပေါင်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "၂ သိန်း ၁"
+        },
+        {
+          "speaker": "agent",
+          "text": "သောင်းကျပ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖြစ်ပါတယ်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "အချက်အလက်တွေ"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှန်ပါသလားရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ကိုကိုးနှစ်ဘူး စီစီ ဖုန်းနံပါတ်နဲ့ လိပ်စာအားလုံးမှန်ပါတယ် အော်ဒါတင်ပေးပါရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ အော်ဒါ"
+        },
+        {
+          "speaker": "agent",
+          "text": "တင်ပေးလိုက်ပါပြီ။"
+        },
+        {
+          "speaker": "agent",
+          "text": "၃ ရက်ကနေ"
+        },
+        {
+          "speaker": "agent",
+          "text": "၅ ရက်အတွင်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပစ္စည်းရောက်ပါမယ်ရှင်။"
+        }
+      ]
+    }
+  ]
+}
