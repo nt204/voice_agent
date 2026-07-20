@@ -67,6 +67,9 @@ NUMBER_WORDS = {
     "သုံး": 3,
     "လေး": 4,
     "ငါး": 5,
+    "နှိပ်ဖူး": 2,
+    "နိပ်ဖူး": 2,
+    "နှစ်ဖူး": 2,
 }
 PHONE_DIGIT_WORDS = {
     "zero": "0",
@@ -95,11 +98,27 @@ PHONE_DIGIT_WORDS = {
     "ရှစ်": "8",
     "nine": "9",
     "ကိုး": "9",
+    "ကို": "9",
+    "ကိုယ်": "9",
 }
 PHONE_DIGIT_WORD_ITEMS = sorted(
     PHONE_DIGIT_WORDS.items(),
     key=lambda item: len(item[0]),
     reverse=True,
+)
+PHONE_CORRECTION_RE = re.compile(
+    r"(?:မဟုတ်|မှား|မမှန်|ပြန်ပြော|ပြန်မှတ်|ပြန်မှား|မလုပ်တတ်|ဘာလို့|ခဏခဏ|ပြောပြီးပြီ|"
+    r"wrong|incorrect|not\s+correct|sai|không\s+đúng|khong\s+dung|không\s+phải|khong\s+phai)",
+    flags=re.IGNORECASE,
+)
+BROAD_PHONE_REJECTION_RE = re.compile(
+    r"(?:အကုန်လုံး|အားလုံး|တစ်ခုလုံး|အကုန်|all\s+wrong|everything\s+wrong|"
+    r"wrong\s+again|still\s+wrong|tất\s+cả\s+sai|tat\s+ca\s+sai|sai\s+hết|sai\s+het)",
+    flags=re.IGNORECASE,
+)
+PHONE_CONFIRMATION_RE = re.compile(
+    r"(?:မှန်|ဟုတ်|အိုကေ|ok|okay|correct|right|yes|đúng|dung)",
+    flags=re.IGNORECASE,
 )
 NON_MYANMAR_ADDRESS_PATTERNS = (
     r"\b(?:viet\s*nam|vietnam|ha\s*noi|hanoi|ho\s*chi\s*minh|hcmc?|tp\.?\s*hcm|"
@@ -215,6 +234,53 @@ def _spoken_phone_digits(value: str) -> str:
     return digits if len(digits) >= 8 else ""
 
 
+def _spoken_phone_candidates(value: str) -> list[str]:
+    text = _normalize_digits(value).casefold()
+    candidates: list[str] = []
+    digits: list[str] = []
+    index = 0
+
+    def flush() -> None:
+        if not digits:
+            return
+        candidate = _normalize_phone_candidate("".join(digits))
+        if candidate:
+            candidates.append(candidate)
+        digits.clear()
+
+    while index < len(text):
+        separator = re.match(r"[\s,.;:၊။\-_/()+]+", text[index:])
+        if separator:
+            index += separator.end()
+            continue
+
+        char = text[index]
+        if char.isdigit():
+            digits.append(char)
+            index += 1
+            continue
+
+        matched = False
+        for word, digit in PHONE_DIGIT_WORD_ITEMS:
+            end = index + len(word)
+            if not text.startswith(word, index):
+                continue
+            if word.isascii() and not _is_ascii_word_boundary(text, index, end):
+                continue
+            digits.append(digit)
+            index = end
+            matched = True
+            break
+        if matched:
+            continue
+
+        flush()
+        index += 1
+
+    flush()
+    return candidates
+
+
 def _spoken_phone_candidate(value: str) -> str:
     digits = _spoken_phone_digits(value)
     return _normalize_phone_candidate(digits) if digits else ""
@@ -236,7 +302,12 @@ def _spoken_phone_from_text(text: str) -> str:
 
     stripped = normalized.strip()
     if stripped:
-        return _spoken_phone_candidate(stripped)
+        candidate = _spoken_phone_candidate(stripped)
+        if candidate:
+            return candidate
+        candidates = _spoken_phone_candidates(stripped)
+        if candidates:
+            return candidates[-1]
     return ""
 
 
@@ -275,11 +346,13 @@ def _is_clearly_non_myanmar_address(value: str) -> bool:
 def _number_value(value: str | None) -> int | None:
     if not value:
         return None
-    normalized = _fold_text(value).strip()
+    normalized = _normalize_digits(value).strip()
     if normalized.isdigit():
         parsed = int(normalized)
         return parsed if parsed > 0 else None
-    return NUMBER_WORDS.get(normalized)
+    if normalized in NUMBER_WORDS:
+        return NUMBER_WORDS[normalized]
+    return NUMBER_WORDS.get(_fold_text(normalized).strip())
 
 
 def _extract_phone(text: str) -> str:
@@ -297,6 +370,10 @@ def _extract_phone(text: str) -> str:
 
 def _extract_phone_precise(text: str) -> str:
     normalized = _normalize_digits(text)
+    correction_matches = list(PHONE_CORRECTION_RE.finditer(normalized))
+    if correction_matches:
+        normalized = normalized[correction_matches[-1].end():]
+
     phone_label = (
         r"(?:phone|mobile|ဖုန်းနံပါတ်|ဖုန်း)"
     )
@@ -356,6 +433,139 @@ def _extract_phone_from_turns(turns: list[str]) -> str:
     return _extract_phone_precise(" ".join(turns))
 
 
+def _phone_comparison_digits(phone: str) -> str:
+    digits = re.sub(r"\D", "", _normalize_digits(phone))
+    if digits.startswith("959"):
+        return f"0{digits[2:]}"
+    return digits
+
+
+def _turn_rejects_latest_phone(turn: str) -> bool:
+    if not PHONE_CORRECTION_RE.search(turn):
+        return False
+    if _looks_like_address(turn):
+        return False
+    folded = _fold_text(turn)
+    return bool(
+        BROAD_PHONE_REJECTION_RE.search(turn)
+        or BROAD_PHONE_REJECTION_RE.search(folded)
+        or _customer_attempted_phone(turn)
+        or len(_phone_digit_fragment(turn)) >= 2
+    )
+
+
+def _turn_confirms_phone(turn: str) -> bool:
+    if PHONE_CORRECTION_RE.search(turn):
+        return False
+    folded = _fold_text(turn)
+    return bool(PHONE_CONFIRMATION_RE.search(turn) or PHONE_CONFIRMATION_RE.search(folded))
+
+
+def _agent_turn_reads_phone(turn: str, phone: str) -> bool:
+    target_digits = _phone_comparison_digits(phone)
+    if not target_digits:
+        return False
+    turn_phone = _extract_phone_precise(turn)
+    if turn_phone and _phone_comparison_digits(turn_phone) == target_digits:
+        return True
+    turn_digits = re.sub(r"\D", "", _normalize_digits(turn))
+    return bool(
+        target_digits in turn_digits
+        and re.search(
+            r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|mobile|မှန်|correct|right)",
+            turn,
+            flags=re.IGNORECASE,
+        )
+    )
+
+
+def _phone_readback_indices(transcript: list[dict[str, Any]], phone: str) -> list[int]:
+    return [
+        index
+        for index, item in enumerate(transcript)
+        if item.get("speaker") == "agent"
+        and _agent_turn_reads_phone(item.get("text", ""), phone)
+    ]
+
+
+def _phone_confirmed_after_readback(transcript: list[dict[str, Any]], phone: str) -> bool:
+    readback_indices = _phone_readback_indices(transcript, phone)
+    if not readback_indices:
+        return True
+    target_digits = _phone_comparison_digits(phone)
+    invalidated = False
+    for item in transcript[readback_indices[-1] + 1:]:
+        if item.get("speaker") != "customer":
+            continue
+        turn = item.get("text", "")
+        later_phone = _extract_phone_precise(turn)
+        if later_phone and _phone_comparison_digits(later_phone) != target_digits:
+            invalidated = True
+        if _turn_rejects_latest_phone(turn):
+            invalidated = True
+        if _turn_confirms_phone(turn):
+            if later_phone and _phone_comparison_digits(later_phone) == target_digits:
+                return True
+            if not invalidated:
+                return True
+        if _customer_attempted_phone(turn) or len(_phone_digit_fragment(turn)) >= 2:
+            invalidated = True
+    return False
+
+
+def _phone_candidate_uncertain(transcript: list[dict[str, Any]], phone: str) -> bool:
+    if not phone:
+        return False
+    digits = re.sub(r"\D", "", phone)
+    customer_turns = _customer_turns(transcript)
+    candidate_index: int | None = None
+    for index, turn in enumerate(customer_turns):
+        turn_digits = re.sub(r"\D", "", _normalize_digits(turn))
+        turn_phone = _extract_phone_precise(turn)
+        if turn_phone == phone or (
+            re.search(r"(?:ဖုန်းနံပါတ်|phone\s*number)", turn, flags=re.IGNORECASE)
+            and digits
+            and digits in turn_digits
+        ):
+            candidate_index = index
+
+    if candidate_index is not None:
+        for later in customer_turns[candidate_index + 1:]:
+            later_phone = _extract_phone_precise(later)
+            if later_phone and later_phone != phone:
+                return True
+            if _turn_rejects_latest_phone(later):
+                return True
+            if _turn_confirms_phone(later):
+                continue
+            if _customer_attempted_phone(later) or len(_phone_digit_fragment(later)) >= 2:
+                if PHONE_CORRECTION_RE.search(later) or not later_phone:
+                    return True
+        if not PHONE_CORRECTION_RE.search(customer_turns[candidate_index]):
+            return False
+        if _extract_phone_precise(customer_turns[candidate_index]) == phone:
+            return False
+
+    phone_turns = [
+        turn
+        for turn in customer_turns
+        if not _looks_like_address(turn)
+        and (
+            _customer_attempted_phone(turn)
+            or len(_phone_digit_fragment(turn)) >= 2
+            or bool(re.search(r"\+?\d{8,15}", _normalize_digits(turn)))
+            or bool(
+                re.search(r"(?:သုည|ကိုး|ကိုယ်|ရှစ်|ခုနစ်|ခုနှစ်|လေး|သုံး|နှစ်|တစ်|\d)", _normalize_digits(turn))
+                and re.search(r"(?:မဟုတ်|မှား|ပြန်ပြော)", turn)
+            )
+        )
+    ]
+    if len(phone_turns) < 2:
+        return False
+    joined = " ".join(phone_turns)
+    return bool(PHONE_CORRECTION_RE.search(joined))
+
+
 def _extract_name_from_turn(turn: str) -> str:
     patterns = (
         r"(?:recipient name|customer name|my name|name)\s*(?:is|:)?\s*(.+)",
@@ -382,11 +592,11 @@ def _extract_name_from_turn(turn: str) -> str:
             and folded_name not in {"name", "my name", "phone", "address"}
             and not re.search(
                 r"\b(?:combo|box|boxes|kyat|buy|order|purchase|phone|address|delivery)\b|"
-                r"(?:ကွန်ဘို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ)",
+                r"(?:ကွန်ဘို|ကွန်ဂို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ)",
                 folded_name,
             )
             and not re.search(
-                r"(?:ကွန်ဘို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|ဟုတ်|မှန်|မလို|အော်ဒါ)",
+                r"(?:ကွန်ဘို|ကွန်ဂို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|ဟုတ်|မှန်|မလို|အော်ဒါ)",
                 name,
             )
         ):
@@ -405,12 +615,12 @@ def _is_valid_customer_name(name: str) -> bool:
         and folded_name not in {"name", "my name", "phone", "address"}
         and not re.search(
             r"\b(?:combo|box|boxes|kyat|buy|order|purchase|phone|address|delivery|"
-            r"yes|ok|correct|confirm|no|need|street|road|township)\b|"
-            r"(?:ကွန်ဘို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|လမ်း|မြို့နယ်|ဟုတ်|မှန်|မလို)",
+            r"yes|ok|correct|confirm|no|need|street|road|township|why|ask|asked)\b|"
+            r"(?:ကွန်ဘို|ကွန်ဂို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|လမ်း|မြို့နယ်|ဟုတ်|မှန်|မလို|ဘာလို့|မေး|ပြောပြီး|ပြောပေး)",
             folded_name,
         )
         and not re.search(
-            r"(?:ကွန်ဘို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|လမ်း|မြို့နယ်|ဟုတ်|မှန်|မလို|အော်ဒါ)",
+            r"(?:ကွန်ဘို|ကွန်ဂို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|လမ်း|မြို့နယ်|ဟုတ်|မှန်|မလို|အော်ဒါ|ဘာလို့|မေး|ပြောပြီး|ပြောပေး)",
             cleaned,
         )
     )
@@ -503,13 +713,133 @@ def _extract_address(text: str) -> str:
         match = re.search(pattern, text, flags=re.IGNORECASE)
         if match:
             address = _clean(match.group(1))
-            return re.split(
+            address = re.split(
                 r"(?:\b(?:age|years?\s+old|female|male|woman|man)\b|အသက်|အမျိုးသမီး|အမျိုးသား)",
                 address,
                 maxsplit=1,
                 flags=re.IGNORECASE,
             )[0].strip(" \t\r\n,.;:-။၊")
+            return address if _looks_like_address(address) else ""
     return ""
+
+
+def _address_fragment_from_turn(turn: str) -> str:
+    candidate = _clean(turn)
+    if not candidate or not _looks_like_address(candidate):
+        return ""
+    house_matches = re.findall(
+        r"(?:အမှတ်|no\.?|number)\s*[\d۰-۹٠-٩۰-۹]+",
+        candidate,
+        flags=re.IGNORECASE,
+    )
+    if "မဟုတ်" in candidate and house_matches:
+        return _clean(house_matches[-1])
+    return candidate
+
+
+def _combine_address_fragments(fragments: list[str]) -> str:
+    if not fragments:
+        return ""
+    last_full = ""
+    last_house = ""
+    last_location = ""
+    for fragment in fragments:
+        folded = _fold_text(fragment)
+        has_house = bool(re.search(r"(?:အမှတ်|no\.?|number)\s*[\d۰-۹٠-٩۰-۹]+", fragment, flags=re.IGNORECASE))
+        has_location = bool(
+            _contains_any(
+                fragment,
+                ("လမ်း", "မြို့", "မြို့နယ်", "ရပ်ကွက်", "ရန်ကုန်", "မန္တလေး"),
+            )
+            or re.search(r"\b(?:road|street|township|ward|yangon|mandalay)\b", folded)
+        )
+        if has_house and has_location:
+            last_full = fragment
+        elif has_house:
+            last_house = fragment
+        elif has_location:
+            last_location = fragment
+    if last_full:
+        return last_full
+    if last_house and last_location and last_house not in last_location:
+        return f"{last_house} {last_location}"
+    return fragments[-1]
+
+
+def _address_house_number(value: str) -> str:
+    normalized = _normalize_digits(value)
+    matches = re.findall(
+        r"(?:အမှတ်|no\.?|number)\s*\(?\s*([0-9]+)\s*\)?",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    return matches[-1] if matches else ""
+
+
+def _address_score(value: str) -> int:
+    score = len(_clean(value))
+    if re.search(r"(?:လမ်း|road|street)", value, flags=re.IGNORECASE):
+        score += 80
+    if re.search(r"(?:မြို့နယ်|township)", value, flags=re.IGNORECASE):
+        score += 60
+    if re.search(r"(?:ရန်ကုန်|yangon)", value, flags=re.IGNORECASE):
+        score += 30
+    return score
+
+
+def _agent_segments(transcript: list[dict[str, Any]]) -> list[str]:
+    segments: list[str] = []
+    current: list[str] = []
+    for item in transcript:
+        if item.get("speaker") == "agent":
+            text = item.get("text", "").strip()
+            if text:
+                current.append(text)
+            continue
+        if current:
+            segments.append(" ".join(current))
+            current = []
+    if current:
+        segments.append(" ".join(current))
+    return segments
+
+
+def _address_from_agent_segment(segment: str) -> str:
+    if not re.search(r"(?:လိပ်စာ|ပို့ရမယ့်|ပို့ရန်|address|delivery)", segment, flags=re.IGNORECASE):
+        return ""
+    address = _extract_address(segment)
+    if not address:
+        match = re.search(
+            r"((?:အမှတ်|no\.?|number)\s*\(?\s*[\d۰-۹٠-٩۰-۹]+\s*\)?.*)",
+            segment,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            address = _clean(match.group(1))
+    if not address:
+        return ""
+    address = re.split(
+        r"(?:ဟုတ်ပါ|မှန်ပါ|ဖုန်းနံပါတ်|နံပါတ်လေး|စုစုပေါင်း|ဖြစ်ပါတယ်|အချက်အလက်)",
+        address,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0].strip(" \t\r\n,.;:-။၊")
+    return address if _looks_like_address(address) else ""
+
+
+def _agent_address_readback(transcript: list[dict[str, Any]], customer_address: str) -> str:
+    customer_house = _address_house_number(customer_address)
+    best = ""
+    for segment in _agent_segments(transcript):
+        candidate = _address_from_agent_segment(segment)
+        if not candidate or _is_clearly_non_myanmar_address(candidate):
+            continue
+        candidate_house = _address_house_number(candidate)
+        if customer_house and candidate_house and customer_house != candidate_house:
+            continue
+        if _address_score(candidate) > _address_score(best):
+            best = candidate
+    return best
 
 
 def _extract_address_from_transcript(transcript: list[dict[str, Any]]) -> str:
@@ -517,7 +847,32 @@ def _extract_address_from_transcript(transcript: list[dict[str, Any]]) -> str:
     for turn in reversed(turns):
         explicit_address = _extract_address(turn)
         if explicit_address:
-            return "" if _is_clearly_non_myanmar_address(explicit_address) else explicit_address
+            if _is_clearly_non_myanmar_address(explicit_address):
+                return ""
+            readback = _agent_address_readback(transcript, explicit_address)
+            return readback if readback and _address_score(readback) > _address_score(explicit_address) else explicit_address
+
+    fragments: list[str] = []
+    for index, item in enumerate(transcript):
+        if item.get("speaker") != "customer":
+            continue
+        candidate = _address_fragment_from_turn(item.get("text", ""))
+        if not candidate:
+            continue
+        raw_context = _agent_context_before(transcript, index)
+        context = _fold_text(raw_context)
+        if (
+            re.search(r"\b(?:address|delivery|ship|deliver)\b", context)
+            or re.search(r"(?:လိပ်စာ|ပို့|လမ်းနာမည်|မြို့နယ်)", raw_context)
+            or _contains_any(candidate, ("လမ်း", "မြို့နယ်", "ရပ်ကွက်", "အမှတ်"))
+            ):
+            fragments.append(candidate)
+    combined = _combine_address_fragments(fragments)
+    if combined:
+        if _is_clearly_non_myanmar_address(combined):
+            return ""
+        readback = _agent_address_readback(transcript, combined)
+        return readback if readback and _address_score(readback) > _address_score(combined) else combined
 
     for index in range(len(transcript) - 1, -1, -1):
         item = transcript[index]
@@ -530,7 +885,7 @@ def _extract_address_from_transcript(transcript: list[dict[str, Any]]) -> str:
         context = _fold_text(raw_context)
         if re.search(r"\b(?:address|delivery|ship|deliver)\b", context) or re.search(r"(?:လိပ်စာ|ပို့)", raw_context):
             return "" if _is_clearly_non_myanmar_address(candidate) else candidate
-    return ""
+    return _agent_address_readback(transcript, "")
 
 
 def _customer_attempted_phone(text: str) -> bool:
@@ -544,12 +899,17 @@ def _customer_attempted_phone(text: str) -> bool:
 
 
 def _extract_quantity(text: str) -> int | None:
-    match = re.search(r"([\d۰-۹٠-٩۰-۹]+)\s*(?:ဘူး|ဗူး|box|boxes)", text, flags=re.IGNORECASE)
+    unit_pattern = r"(?:ဘူး|ဗူး|ပုဒ်|box|boxes)"
+    match = re.search(rf"([\d۰-۹٠-٩۰-۹]+)\s*{unit_pattern}", text, flags=re.IGNORECASE)
     if match:
         return int(_normalize_digits(match.group(1)))
     for word, value in NUMBER_WORDS.items():
-        if re.search(rf"{word}\s*(?:ဘူး|ဗူး|box|boxes)", text, flags=re.IGNORECASE):
+        if re.search(rf"{word}\s*{unit_pattern}", text, flags=re.IGNORECASE):
             return value
+    if re.search(r"(?:နှစ်|နစ်)\s*ပုဒ်", text, flags=re.IGNORECASE):
+        return 2
+    if re.search(r"(?:နှိပ်ဖူး|နိပ်ဖူး|နှစ်ဖူး)", text, flags=re.IGNORECASE):
+        return 2
     folded = _fold_text(text)
     number_pattern = r"(\d+|one|two|three|four|five)"
     patterns = (
@@ -728,11 +1088,11 @@ def extract_order_selection(transcript: list[dict[str, Any]]) -> dict[str, Any] 
 def _extract_combo(text: str) -> dict[str, Any] | None:
     normalized = _normalize_digits(text)
     myanmar_match = re.search(
-        r"(?:ကွန်ဘို|combo)\s*(?:နံပါတ်|အမှတ်|#|no\.?)?\s*([0-9]+|တစ်|နှစ်|သုံး|လေး|ငါး)",
+        r"(?:ကွန်ဘို|ကွန်ဂို|combo)\s*(?:နံပါတ်|အမှတ်|#|no\.?)?\s*([0-9]+|တစ်|နှစ်|သုံး|လေး|ငါး)",
         normalized,
         flags=re.IGNORECASE,
     )
-    if myanmar_match:
+    if myanmar_match and not normalized[myanmar_match.end():].lstrip().startswith("ခု"):
         combo_number = _number_value(myanmar_match.group(1))
         if combo_number:
             return COMBO_CATALOG.get(combo_number)
@@ -879,6 +1239,10 @@ def extract_customer_facts(
     stated_phone = _extract_phone_from_turns(turns)
     metadata_phone = _normalize_phone_candidate(fallback_phone)
     phone = stated_phone or ("" if _customer_attempted_phone(text) else metadata_phone)
+    if stated_phone and _phone_candidate_uncertain(transcript, stated_phone):
+        phone = ""
+    if phone and not _phone_confirmed_after_readback(transcript, phone):
+        phone = ""
     address = _extract_address_from_transcript(transcript)
     age_range, age_confidence = _extract_age_range(text)
     gender, gender_confidence = _extract_gender(text)

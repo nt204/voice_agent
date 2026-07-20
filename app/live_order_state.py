@@ -13,6 +13,7 @@ from app.sales_analysis import (
 
 
 DELIVERY_STATE_FUNCTION = "update_delivery_state"
+PHONE_KEYPAD_FALLBACK_FAILURES = 3
 
 
 def delivery_state_tool() -> types.Tool:
@@ -104,6 +105,9 @@ class LiveDeliveryState:
             "address_confirmed": self.address_confirmed,
         }
 
+    def status_response(self, *, ok: bool, message: str) -> dict[str, Any]:
+        return self._response(ok, message)
+
     def _set(self, field: str, value: str) -> dict[str, Any]:
         if field == "phone":
             # A new attempt invalidates the old candidate even when this attempt is partial.
@@ -164,14 +168,14 @@ class LiveDeliveryState:
 
     def _next_action(self) -> tuple[str, str]:
         if not self.phone:
-            if self.phone_failures >= 2:
+            if self.phone_failures >= PHONE_KEYPAD_FALLBACK_FAILURES:
                 return (
                     "collect_phone_by_keypad",
-                    "Ask the customer to enter the complete phone number on the keypad and press #. Do not ask them to speak it again.",
+                    "The spoken phone number has failed three times. Ask the customer to enter the complete phone number on the keypad and press #. If they cannot use the keypad, ask them to say the full number slowly one more time.",
                 )
             return (
                 "ask_phone",
-                "Ask for one complete phone number from the beginning. Do not reuse any old digits.",
+                "Ask for one complete phone number from the beginning, spoken slowly one digit at a time. Do not reuse any old digits.",
             )
         if not self.phone_confirmed:
             digits = " ".join(self.phone)

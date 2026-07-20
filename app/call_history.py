@@ -225,6 +225,33 @@ def _customer_name_from_sales_result(
     return ""
 
 
+def _field_names(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [field.strip() for field in value.split(",") if field.strip()]
+    if isinstance(value, (list, tuple, set)):
+        return [str(field).strip() for field in value if str(field).strip()]
+    return []
+
+
+def _sales_result_blocks_customer_phone(sales_result: dict[str, Any]) -> bool:
+    order = sales_result.get("order") or {}
+    fields = set(_field_names(order.get("missing_fields")))
+    fields.update(_field_names(order.get("blocking_reasons")))
+    return "customer_phone" in fields
+
+
+def _phone_from_sales_result(
+    sales_result: dict[str, Any],
+    extracted: dict[str, str],
+    current_phone: str,
+) -> str:
+    sales_customer = sales_result.get("customer") or {}
+    sales_phone = _string_value(sales_customer.get("phone"))
+    if _sales_result_blocks_customer_phone(sales_result):
+        return sales_phone
+    return sales_phone or extracted["phone"] or current_phone
+
+
 def interest_status_from_intent(intent_status: str) -> str:
     if intent_status == "no_need":
         return "no_need"
@@ -729,7 +756,7 @@ class SQLiteCallHistoryStore:
         )
         sales_customer = sales_result["customer"]
         name = _customer_name_from_sales_result(sales_result, extracted)
-        phone = sales_customer["phone"] or extracted["phone"] or call["customer"]["phone"]
+        phone = _phone_from_sales_result(sales_result, extracted, call["customer"]["phone"])
         address = sales_customer["address"] or extracted["address"]
         need = sales_customer["need"] or extracted["need"]
         with self._lock, closing(self._connect()) as connection, connection:

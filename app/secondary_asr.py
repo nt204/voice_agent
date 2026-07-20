@@ -8,6 +8,7 @@ from google import genai
 from google.genai import types
 
 from app.config import config, require_env
+from app.gemini_retry import gemini_retry_delay_seconds, is_gemini_rate_limit_error
 
 
 BURMESE_PHONE_DIGIT_GUIDE = """Burmese phone digits:
@@ -15,6 +16,13 @@ BURMESE_PHONE_DIGIT_GUIDE = """Burmese phone digits:
 - When the context is a phone number, recognize every spoken digit in order. Do not combine the sequence into a quantity, price, age, or arithmetic value.
 - Listen through the entire audio before answering. Pauses between digits do not mean the phone number has ended.
 - Preserve the complete digit sequence supported by the audio. Do not guess a missing or unclear digit.
+"""
+
+
+BURMESE_ORDER_LISTENING_GUIDE = """Burmese order words:
+- Customers may say ၂ ဘူး, နှစ်ဘူး, နှစ်ပုဒ်, or similar casual speech to mean two boxes/items.
+- In a sales-order context, do not confuse နှစ်ဘူး / နှစ်ပုဒ် with keypad, pressing, or unrelated words.
+- Preserve explicit order phrases such as အော်ဒါတင်ပေးပါ, ယူမယ်, မှာမယ်, Combo 2, Combo 3, and product names.
 """
 
 
@@ -27,7 +35,7 @@ Rules:
 - Preserve numbers, product names, quantities, and place names as heard.
 - Return only the transcript, with no label, explanation, markdown, or quotation marks.
 - If speech is genuinely unintelligible, return exactly [unclear].
-""" + "\n" + BURMESE_PHONE_DIGIT_GUIDE
+""" + "\n" + BURMESE_PHONE_DIGIT_GUIDE + "\n" + BURMESE_ORDER_LISTENING_GUIDE
 
 
 def build_transcription_prompt(*, live_candidate: str = "", language_priority: str = "") -> str:
@@ -51,6 +59,7 @@ Rules:
 - Return one result for every clip. Use an empty string when a clip is unintelligible.
 - Return JSON matching the supplied schema only.
 """ + "\n" + BURMESE_PHONE_DIGIT_GUIDE
+    prompt += "\n" + BURMESE_ORDER_LISTENING_GUIDE
     if language_priority.strip():
         prompt += (
             "\nExpected customer languages, in priority order: "
@@ -126,7 +135,9 @@ class SecondaryAsrTranscriber:
         
         last_exc = None
         backoff = 0.5
-        for attempt in range(4):
+        normal_failures = 0
+        max_retry_delay = max(1, config.gemini.rate_limit_retry_max_delay_seconds)
+        while normal_failures < 4:
             try:
                 response = await self.client.aio.models.generate_content(
                     model=self.model,
@@ -156,9 +167,25 @@ class SecondaryAsrTranscriber:
                 return clean_transcript_response(getattr(response, "text", "") or "")
             except Exception as exc:
                 last_exc = exc
-                if attempt < 3:
+                if is_gemini_rate_limit_error(exc):
+                    delay = gemini_retry_delay_seconds(
+                        exc,
+                        fallback_seconds=backoff,
+                        max_delay_seconds=max_retry_delay,
+                    )
+                    await asyncio.sleep(delay)
+                    backoff = min(
+                        max(backoff * 2, delay * 1.5),
+                        max_retry_delay,
+                    )
+                    continue
+                normal_failures += 1
+                if normal_failures < 4:
                     await asyncio.sleep(backoff)
-                    backoff *= 2
+                    backoff = min(
+                        backoff * 2,
+                        max_retry_delay,
+                    )
         raise last_exc
 
     async def transcribe_many(
@@ -195,7 +222,9 @@ class SecondaryAsrTranscriber:
 
         last_exc = None
         backoff = 0.5
-        for attempt in range(4):
+        normal_failures = 0
+        max_retry_delay = max(1, config.gemini.rate_limit_retry_max_delay_seconds)
+        while normal_failures < 4:
             try:
                 response = await self.client.aio.models.generate_content(
                     model=self.model,
@@ -218,7 +247,23 @@ class SecondaryAsrTranscriber:
                 return result
             except Exception as exc:
                 last_exc = exc
-                if attempt < 3:
+                if is_gemini_rate_limit_error(exc):
+                    delay = gemini_retry_delay_seconds(
+                        exc,
+                        fallback_seconds=backoff,
+                        max_delay_seconds=max_retry_delay,
+                    )
+                    await asyncio.sleep(delay)
+                    backoff = min(
+                        max(backoff * 2, delay * 1.5),
+                        max_retry_delay,
+                    )
+                    continue
+                normal_failures += 1
+                if normal_failures < 4:
                     await asyncio.sleep(backoff)
-                    backoff *= 2
+                    backoff = min(
+                        backoff * 2,
+                        max_retry_delay,
+                    )
         raise last_exc

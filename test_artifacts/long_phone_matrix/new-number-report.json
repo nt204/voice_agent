@@ -1,0 +1,451 @@
+{
+  "created_at": "2026-07-17T08:48:33.367020+00:00",
+  "scenario_count": 1,
+  "passed_count": 1,
+  "all_passed": true,
+  "results": [
+    {
+      "scenario_id": "new-number-09993905153",
+      "expected_phone": "09993905153",
+      "secondary_asr_text": "အရင်ဖုန်းနံပါတ်ကို မသုံးတော့ဘူးရှင့် ဖုန်းနံပါတ်အသစ်က သုညကိုးကိုးကိုးသုံးကိုးသုညငါးတစ်ငါးသုံးပါရှင့်",
+      "secondary_asr_phone": "09993905153",
+      "post_call_asr": {
+        "0": "ဗဲနပ်စ် ပန်းကန်တစ်ဘူးကို ဘယ်နှစ်ရက်သောက်ရလဲ ဘယ်အချိန်သောက်ရလဲ ဈေးဘယ်လောက်လဲရှင့်",
+        "1": "အရင်စမ်းသောက်ချင်လို့ တစ်ဘူးပဲယူမယ် ပို့ခရှိရင်လည်း ပြောပေးပါရှင့်",
+        "2": "combo ၁ တစ်ဘူးမှာမယ် လက်ခံမယ့်နာမည်က အနွယ့်ပါရှင့်",
+        "3": "အရင်ဖုန်းနံပါတ်ကို မသုံးတော့ဘူးရှင့် ဖုန်းနံပါတ်အသစ်က သုည ကိုး ကိုး ကိုး သုံး ကိုး သုည ငါး တစ် ငါး သုံး ပါရှင့်",
+        "4": "ဟုတ်ကဲ့ ဖုန်းနံပါတ်အသစ် သုည ကိုး ကိုး ကိုး သုံး ကိုး သုည ငါး တစ် ငါး သုံး က မှန်ပါတယ်ရှင့်",
+        "5": "ပို့ရမယ့်လိပ်စာက အမှတ် ၅၂ အင်းစိန်လမ်း ကမာရွတ်မြို့နယ် ရန်ကုန် ပါရှင့်",
+        "6": "အမှတ် ၅၂ အင်းစိန်လမ်း ကမာရွတ်မြို့နယ် ရန်ကုန် အဲဒီလိပ်စာမှန်ပါတယ်ရှင့်",
+        "7": "combo ၁ တစ်ဘူး အနွယ့် ဖုန်းနံပါတ်အသစ်နဲ့ လိပ်စာအားလုံးမှန်ပါတယ် အော်ဒါအတည်ပြုပေးပါရှင့်"
+      },
+      "server_phone": "09993905153",
+      "phone_confirmed": true,
+      "agent_readback_phone": "09993905153",
+      "order": {
+        "customer_phone": "09993905153",
+        "customer_name": "အနွယ့်ပါရှင့်",
+        "shipping_address": "အမှတ် ၅၂ အင်းစိန်လမ်း ကမာရွတ်မြို့နယ် ရန်ကုန် ပါရှင့်",
+        "product_name": "Venus BigOne Combo 1",
+        "purchase_type": "combo",
+        "combo": "Venus BigOne Combo 1",
+        "quantity": 1,
+        "unit_price": 120000,
+        "total_price": 120000,
+        "status": "ready_to_confirm",
+        "missing_fields": [],
+        "confidence": 0.9
+      },
+      "checks": {
+        "secondary_asr_phone": true,
+        "server_phone": true,
+        "phone_confirmed": true,
+        "agent_readback_phone": true,
+        "order_phone": true,
+        "order_product": true,
+        "order_quantity": true,
+        "order_total": true,
+        "order_status": true
+      },
+      "passed": true,
+      "transcript": [
+        {
+          "speaker": "customer",
+          "text": "ဗဲနပ်စ် ပန်းကန်တစ်ဘူးကို ဘယ်နှစ်ရက်သောက်ရလဲ ဘယ်အချိန်သောက်ရလဲ ဈေးဘယ်လောက်လဲရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus BigOne"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်ဘူးက"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁၅"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရက်ခန့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "အသုံးခံပြီး၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်နေ့"
+        },
+        {
+          "speaker": "agent",
+          "text": "နှစ်ခွက်"
+        },
+        {
+          "speaker": "agent",
+          "text": "သောက်ရပါမယ်ရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "အစာမစားမီ"
+        },
+        {
+          "speaker": "agent",
+          "text": "သို့မဟုတ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "အစာစားပြီးနောက်"
+        },
+        {
+          "speaker": "agent",
+          "text": "သောက်နိုင်ပြီး၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်ဘူးကို"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁သိန်း၂သောင်းကျပ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပါရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "Combo"
+        },
+        {
+          "speaker": "agent",
+          "text": "စျေးနှုန်းလေးတွေ"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရော သိချင်ပါသလားရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "အရင်စမ်းသောက်ချင်လို့ တစ်ဘူးပဲယူမယ် ပို့ခရှိရင်လည်း ပြောပေးပါရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ Venus"
+        },
+        {
+          "speaker": "agent",
+          "text": "BigOne"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်ဘူးကို"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁သိန်း၂သောင်းကျပ်နဲ့"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ခကတော့"
+        },
+        {
+          "speaker": "agent",
+          "text": "မြို့နယ်အလိုက်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကွာခြားနိုင်ပါတယ်ရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ပေးရမယ့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "လိပ်စာလေးနဲ့"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ်လေး"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပြောပေးလို့"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရမလားရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "combo ၁ တစ်ဘူးမှာမယ် လက်ခံမယ့်နာမည်က အနွယ့်ပါရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ လက်ခံမယ့်သူ"
+        },
+        {
+          "speaker": "agent",
+          "text": "နာမည်က"
+        },
+        {
+          "speaker": "agent",
+          "text": "အနဂ္ဂ"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပါရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ်လေးကို"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်လုံးချင်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖြည်းဖြည်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပြောပေးပါရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "အရင်ဖုန်းနံပါတ်ကို မသုံးတော့ဘူးရှင့် ဖုန်းနံပါတ်အသစ်က သုည ကိုး ကိုး ကိုး သုံး ကိုး သုည ငါး တစ် ငါး သုံး ပါရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ် 09993905153 မှန်ပါသလားရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဟုတ်ကဲ့ ဖုန်းနံပါတ်အသစ် သုည ကိုး ကိုး ကိုး သုံး ကိုး သုည ငါး တစ် ငါး သုံး က မှန်ပါတယ်ရှင့်"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဖုန်းနံပါတ် 09993905153 မှန်ပါတယ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ ပို့ပေးရမယ့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "လိပ်စာလေးကိုလည်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပြောပေးပါဦးရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "ပို့ရမယ့်လိပ်စာက အမှတ် ၅၂ အင်းစိန်လမ်း ကမာရွတ်မြို့နယ် ရန်ကုန် ပါရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ ပို့ရမယ့်လိပ်စာက"
+        },
+        {
+          "speaker": "agent",
+          "text": "အမှတ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၅၂"
+        },
+        {
+          "speaker": "agent",
+          "text": "၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "အင်းစိန်လမ်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "၊ ကမာရွတ်မြို့နယ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၊ ရန်ကုန်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပါရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "လိပ်စာလေး"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှန်ပါသလားရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "အမှတ် ၅၂ အင်းစိန်လမ်း ကမာရွတ်မြို့နယ် ရန်ကုန် အဲဒီလိပ်စာမှန်ပါတယ်ရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ Venus"
+        },
+        {
+          "speaker": "agent",
+          "text": "BigOne"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်ဘူး၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "လက်ခံမယ့်သူ"
+        },
+        {
+          "speaker": "agent",
+          "text": "နာမည်"
+        },
+        {
+          "speaker": "agent",
+          "text": "အနဂ္ဂ၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "သုည"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကိုး"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကိုး"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကိုး"
+        },
+        {
+          "speaker": "agent",
+          "text": "သုံး"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကိုး"
+        },
+        {
+          "speaker": "agent",
+          "text": "သုည"
+        },
+        {
+          "speaker": "agent",
+          "text": "ငါး"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်ငါး"
+        },
+        {
+          "speaker": "agent",
+          "text": "သုံး၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ရန်လိပ်စာ"
+        },
+        {
+          "speaker": "agent",
+          "text": "အမှတ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၅၂"
+        },
+        {
+          "speaker": "agent",
+          "text": "၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "အင်းစိန်လမ်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "၊ ကမာရွတ်မြို့နယ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "၊ ရန်ကုန်၊"
+        },
+        {
+          "speaker": "agent",
+          "text": "စုစုပေါင်း"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁သိန်း၂သောင်းကျပ်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖြစ်ပါတယ်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "အချက်အလက်တွေ"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှန်ပါသလားရှင်။"
+        },
+        {
+          "speaker": "customer",
+          "text": "combo ၁ တစ်ဘူး အနွယ့် ဖုန်းနံပါတ်အသစ်နဲ့ လိပ်စာအားလုံးမှန်ပါတယ် အော်ဒါအတည်ပြုပေးပါရှင့်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ အော်ဒါ"
+        },
+        {
+          "speaker": "agent",
+          "text": "အတည်ပြုလိုက်ပါပြီရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus"
+        },
+        {
+          "speaker": "agent",
+          "text": "BigOne"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်ဘူးကို"
+        },
+        {
+          "speaker": "agent",
+          "text": "မကြာခင်"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရရှိနိုင်ဖို့"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဆောင်ရွက်ပေးပါမယ်ရှင်။"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကျေးဇူးတင်ပါတယ်ရှင်။"
+        }
+      ]
+    }
+  ]
+}

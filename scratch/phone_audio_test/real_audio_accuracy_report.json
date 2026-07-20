@@ -1,0 +1,52 @@
+{
+  "call_id": "v3:H0823DwiDThMBgVmh5vY6BYhRPluOs_W1rtO-2-IHWw7vGotVa1z3Q",
+  "expected_saved_phone": "09780771433",
+  "phone_asr_clip_results": [
+    {
+      "clip": "phone_first_attempts",
+      "asr_text": "၃၉၇၈၃၉၇၇၁၄၃၃ ၃၉၈၃၉၇၇၁၄၃၃ ပါ။ အာ မဟုတ်ဘူးနော် ဖုန်းနံပါတ်မှားနေတယ်နော်။ ပြန်ပြောပေးမယ်နော်။ ၃၉၇၈၃၉၇၇",
+      "digits": "3978397714333983977143339783977",
+      "exact_match_expected_phone": false,
+      "contains_expected_phone": false
+    },
+    {
+      "clip": "phone_corrections",
+      "asr_text": "အာ ဖုန်းနံပါတ်ပဲ ပြန်ပြောပေးလိုက်မယ်နော်။ မှတ်ပေးပါနော်။ ၃၉၇၈၃၉၇၇ အာ အဲ့လိုတော့ မလုပ်တတ်ဘူးရှင်။ ၃၉၇၈၃၉၇၇",
+      "digits": "3978397739783977",
+      "exact_match_expected_phone": false,
+      "contains_expected_phone": false
+    },
+    {
+      "clip": "phone_final",
+      "asr_text": "ရလား။ အာ ၃၉၇၈၃၉ ပါနော်။",
+      "digits": "397839",
+      "exact_match_expected_phone": false,
+      "contains_expected_phone": false
+    }
+  ],
+  "order_customer_turns_from_saved_asr": [
+    "ဟုတ်ကဲ့ နှစ်ပုဒ်ယူမယ်နော်။",
+    "ဟုတ်ကဲ့ နှစ်ပုဒ်ယူမယ်။ အော်ဒါတင်ပေးပါနော်။"
+  ],
+  "order_selection_from_saved_asr": null,
+  "rule_based_order_from_saved_asr": null,
+  "saved_final_analysis_intent": "needs_consultation",
+  "saved_order": null,
+  "vad_phone_window_comparison": [
+    {
+      "window": "phone_early",
+      "turns_current_18_frames": 7,
+      "turns_phone_160_frames": 4
+    },
+    {
+      "window": "phone_mid",
+      "turns_current_18_frames": 12,
+      "turns_phone_160_frames": 5
+    },
+    {
+      "window": "phone_final",
+      "turns_current_18_frames": 3,
+      "turns_phone_160_frames": 2
+    }
+  ]
+}
