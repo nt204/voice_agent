@@ -423,21 +423,30 @@ function renderOrders(orders) {
   });
 }
 
-function renderComboCard(call) {
-  const order = call.order;
+function renderOrderCard(call) {
+  const customer = call.customer || {};
+  const order = call.order || null;
+  const dialedPhone = call.dialed_phone || "";
+  const phone = customer.phone || dialedPhone || "";
+  const name = customer.name || "";
+  const address = customer.address || "";
   const status = order ? order.status : "missing_info";
   const missing = order?.missing_fields?.length ? order.missing_fields.join(", ") : "Không";
+  const field = value => escapeHtml(value || "Chưa cung cấp");
+
   return `
-    <div class="combo-card">
+    <div class="combo-card order-info-card">
       <div class="combo-head">
-        <h3>Đơn hàng</h3>
+        <h3>Thông tin đơn hàng</h3>
         <span class="order-status ${escapeHtml(status)}">${order ? orderStatusLabel(status) : "Chưa tạo"}</span>
       </div>
       <div class="combo-list">
-        <div><span>Sản phẩm</span><strong>${escapeHtml(order?.product_name || "Chưa có")}</strong></div>
-        <div><span>Số lượng</span><strong>${order?.quantity || "Chưa có"}</strong></div>
+        <div><span>Tên khách hàng</span><strong>${field(name)}</strong></div>
+        <div><span>Số điện thoại</span><strong>${field(phone)}</strong></div>
+        <div><span>Địa chỉ</span><strong>${field(address)}</strong></div>
+        <div><span>Gói / Combo</span><strong>${escapeHtml(order?.product_name || call.product?.name || "Chưa có")}${order?.quantity ? ` (${order.quantity} hộp)` : ""}</strong></div>
         <div><span>Tổng tiền</span><strong>${formatMoney(order?.total_price)}</strong></div>
-        <div><span>Còn thiếu</span><strong>${escapeHtml(missing)}</strong></div>
+        ${order?.missing_fields?.length ? `<div><span>Còn thiếu</span><strong style="color:var(--warning);">${escapeHtml(missing)}</strong></div>` : ""}
       </div>
     </div>`;
 }
@@ -581,9 +590,8 @@ function renderDetail(call, { scrollTop = 0, wasNearBottom = true } = {}) {
 
     <div class="detail-content">
       <div class="detail-summary">
-        <div class="detail-note"><span>Địa chỉ</span><strong>${field(customer.address)}</strong></div>
+        ${renderOrderCard(call)}
         ${renderRecordingCard(call)}
-        ${renderComboCard(call)}
       </div>
 
       <section class="transcript-panel">

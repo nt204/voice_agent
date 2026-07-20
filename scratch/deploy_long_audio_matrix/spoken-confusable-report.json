@@ -1,0 +1,631 @@
+{
+  "created_at": "2026-07-20T06:31:24.732338+00:00",
+  "database": "/Users/macbook/Desktop/Viber call/scratch/deploy_long_audio_matrix/deploy-validation-20260720-062850.db",
+  "scenario_count": 1,
+  "passed_count": 1,
+  "all_passed": true,
+  "results": [
+    {
+      "scenario_id": "spoken-confusable-09780771433",
+      "call_id": "deploy-audio-spoken-confusable-09780771433-062850578446",
+      "expected": {
+        "phone": "09780771433",
+        "name": "May Thinzar",
+        "address": "အမှတ် ၁၂၃ ဗိုလ်ချုပ်လမ်း လသာမြို့နယ် ရန်ကုန်",
+        "product_name": "Venus BigOne Combo 3",
+        "quantity": 3,
+        "total_price": 390000,
+        "ready": true
+      },
+      "response_seconds": [
+        16.30820584799949,
+        16.81891401499888,
+        8.284359891997156,
+        7.55387371800316,
+        7.2744595969998045,
+        19.828557166998507,
+        8.035486062002747
+      ],
+      "first_response_seconds": [
+        0.2502728830004344,
+        0.2505989800010866,
+        0.7517035309974744,
+        1.0057486969999445,
+        1.25672019799822,
+        0.7550141680003435,
+        1.5078918159997556
+      ],
+      "max_first_response_seconds": 1.5078918159997556,
+      "max_response_seconds": 19.828557166998507,
+      "focused_asr": {
+        "order:2": "Combo 3",
+        "phone:4": "သုည ကိုး ခုနစ် ရှစ် သုည ခုနစ် ခုနစ် တစ် လေး သုံး သုံး",
+        "address:5": "အမှတ် ၁၂၃ ဗိုလ်ချုပ်လမ်း လသာမြို့နယ် ရန်ကုန်"
+      },
+      "final_order_confirmed": true,
+      "authoritative_summary_spoken": true,
+      "authoritative_summary": "Venus BigOne Combo 3၊ အရေအတွက် 3 ဘူး၊ ဖုန်းနံပါတ် သုည ကိုး ခုနစ် ရှစ် သုည ခုနစ် ခုနစ် တစ် လေး သုံး သုံး၊ ပို့ရန်လိပ်စာ အမှတ် ၁၂၃ ဗိုလ်ချုပ်လမ်း လသာမြို့နယ် ရန်ကုန် ဖြစ်ပါတယ်။ အချက်အလက်အားလုံး မှန်ပါသလားရှင်။",
+      "customer": {
+        "name": "မသဉ္ဇာပါရှင့်",
+        "phone": "09780771433",
+        "address": "အမှတ် ၁၂၃ ဗိုလ်ချုပ်လမ်း လသာမြို့နယ် ရန်ကုန် မှန်",
+        "need": "Combo 3 ဝယ်မည်",
+        "notes": ""
+      },
+      "order": {
+        "id": 1,
+        "call_id": "deploy-audio-spoken-confusable-09780771433-062850578446",
+        "customer_phone": "09780771433",
+        "customer_name": "မသဉ္ဇာပါရှင့်",
+        "shipping_address": "အမှတ် ၁၂၃ ဗိုလ်ချုပ်လမ်း လသာမြို့နယ် ရန်ကုန် မှန်",
+        "product_name": "Venus BigOne Combo 3",
+        "quantity": 3,
+        "unit_price": 130000,
+        "total_price": 390000,
+        "status": "ready_to_confirm",
+        "missing_fields": [],
+        "confidence": 0.9,
+        "created_at": "2026-07-20T06:31:24+00:00",
+        "updated_at": "2026-07-20T06:31:24+00:00",
+        "product_id": 1
+      },
+      "checks": {
+        "no_unrelated_topic": true,
+        "response_under_timeout": true,
+        "first_response_under_5_seconds": true,
+        "all_responses_under_30_seconds": true,
+        "bridge_confirmation_state": true,
+        "summary_created": true,
+        "summary_spoken_completely": true,
+        "summary_phone": true,
+        "summary_address": true,
+        "order_persisted": true,
+        "order_status": true,
+        "order_phone": true,
+        "order_product": true,
+        "order_quantity": true,
+        "order_total": true,
+        "order_address": true,
+        "customer_name": true
+      },
+      "passed": true,
+      "transcript": [
+        {
+          "speaker": "customer",
+          "text": "ဗဲနက်စ်ပဲဂွန်က ဘာအတွက်ကောင်းလဲ ဘယ်လိုသောက်ရမလဲ တစ်ဘူးနဲ့ ကိုမိုဈေးတွေကိုလည်း ရှင်းပြပေးပါရှင့်",
+          "created_at": "2026-07-20T06:29:00+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus BigOne",
+          "created_at": "2026-07-20T06:29:00+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "နို့မှုန့်က",
+          "created_at": "2026-07-20T06:29:01+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အမျိုးသမီး",
+          "created_at": "2026-07-20T06:29:01+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟော်မုန်း",
+          "created_at": "2026-07-20T06:29:01+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ချိန်ညှိပေးပြီး",
+          "created_at": "2026-07-20T06:29:01+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရင်သား",
+          "created_at": "2026-07-20T06:29:02+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "တင်းရင်းလှပဖို့",
+          "created_at": "2026-07-20T06:29:02+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အထောက်အကူပြုပါတယ်ရှင်။",
+          "created_at": "2026-07-20T06:29:02+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်နေ့",
+          "created_at": "2026-07-20T06:29:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "နှစ်ခွက်",
+          "created_at": "2026-07-20T06:29:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "သောက်ရမှာဖြစ်ပြီး",
+          "created_at": "2026-07-20T06:29:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်ဘူးကို",
+          "created_at": "2026-07-20T06:29:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁သိန်း၂သောင်းကျပ်ပါရှင်။",
+          "created_at": "2026-07-20T06:29:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "တခြား",
+          "created_at": "2026-07-20T06:29:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "combo",
+          "created_at": "2026-07-20T06:29:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "တွေလည်း",
+          "created_at": "2026-07-20T06:29:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရှိပါသေးတယ်၊",
+          "created_at": "2026-07-20T06:29:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဘယ်",
+          "created_at": "2026-07-20T06:29:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "combo",
+          "created_at": "2026-07-20T06:29:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အကြောင်း",
+          "created_at": "2026-07-20T06:29:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "သိချင်ပါသလဲရှင်။",
+          "created_at": "2026-07-20T06:29:05+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "ကိုမိုနှစ်နဲ့ ကိုမိုသုံးကို စဉ်းစားနေတယ် လက်ဆောင်နဲ့ ပို့ခကိုပါ ပြောပေးပါ",
+          "created_at": "2026-07-20T06:29:24+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Combo 2",
+          "created_at": "2026-07-20T06:29:24+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကတော့",
+          "created_at": "2026-07-20T06:29:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus",
+          "created_at": "2026-07-20T06:29:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "၂ ဘူးကို",
+          "created_at": "2026-07-20T06:29:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "၂ သိန်း ၁",
+          "created_at": "2026-07-20T06:29:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "သောင်းကျပ်ပါ၊",
+          "created_at": "2026-07-20T06:29:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ခ",
+          "created_at": "2026-07-20T06:29:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အခမဲ့ပါရှင်။",
+          "created_at": "2026-07-20T06:29:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Combo",
+          "created_at": "2026-07-20T06:29:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "3",
+          "created_at": "2026-07-20T06:29:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကတော့",
+          "created_at": "2026-07-20T06:29:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "၃ ဘူးဝယ်ရင်",
+          "created_at": "2026-07-20T06:29:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁ ဘူးနဲ့",
+          "created_at": "2026-07-20T06:29:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "effervescent",
+          "created_at": "2026-07-20T06:29:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "tablets",
+          "created_at": "2026-07-20T06:29:27+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁ ဘူး",
+          "created_at": "2026-07-20T06:29:27+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "လက်ဆောင်ရမှာဖြစ်ပြီး",
+          "created_at": "2026-07-20T06:29:27+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "၃ သိန်း",
+          "created_at": "2026-07-20T06:29:27+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "၉ သောင်းကျပ်ပါ၊",
+          "created_at": "2026-07-20T06:29:27+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ခ",
+          "created_at": "2026-07-20T06:29:27+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အခမဲ့ပါပဲရှင်။",
+          "created_at": "2026-07-20T06:29:27+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဘယ်ဟာကို",
+          "created_at": "2026-07-20T06:29:28+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပိုစိတ်ဝင်စားပါသလဲရှင်။",
+          "created_at": "2026-07-20T06:29:28+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "ကောင်းပါပြီ ကိုမိုသုံးကို မှာယူမယ် လက်ခံမယ့်နာမည်က မသဉ္ဇာပါရှင့်",
+          "created_at": "2026-07-20T06:29:48+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။",
+          "created_at": "2026-07-20T06:29:49+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Combo",
+          "created_at": "2026-07-20T06:29:49+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "3",
+          "created_at": "2026-07-20T06:29:50+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှာယူဖို့",
+          "created_at": "2026-07-20T06:29:50+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အတွက်",
+          "created_at": "2026-07-20T06:29:50+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အခု",
+          "created_at": "2026-07-20T06:29:50+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ခေါ်ဆိုနေတဲ့",
+          "created_at": "2026-07-20T06:29:50+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ်ကိုပဲ",
+          "created_at": "2026-07-20T06:29:50+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အသုံးပြုရမလားရှင်။",
+          "created_at": "2026-07-20T06:29:50+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "အခုဖုန်းခေါ်နေတဲ့ နံပါတ်ကို မသုံးပါဘူးရှင့် တခြားနံပါတ်ပေးပါမယ်",
+          "created_at": "2026-07-20T06:30:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။",
+          "created_at": "2026-07-20T06:30:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အသုံးပြုမယ့်",
+          "created_at": "2026-07-20T06:30:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ်ကို",
+          "created_at": "2026-07-20T06:30:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်လုံးချင်း",
+          "created_at": "2026-07-20T06:30:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖြည်းဖြည်း",
+          "created_at": "2026-07-20T06:30:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပြောပေးပါရှင်။",
+          "created_at": "2026-07-20T06:30:05+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဖုန်းနံပါတ်ကို တစ်လုံးချင်းပြောမယ်နော် သုည ကိုး ခုနစ် ရှစ် သုည ခုနစ် ခုနစ် တစ် လေး သုံး သုံး ပါရှင့်",
+          "created_at": "2026-07-20T06:30:20+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ ပစ္စည်းပို့ပေးရမယ့်",
+          "created_at": "2026-07-20T06:30:21+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "လိပ်စာလေးကိုလည်း",
+          "created_at": "2026-07-20T06:30:22+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပြောပေးပါဦးရှင်။",
+          "created_at": "2026-07-20T06:30:22+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "ပို့ရမယ့်လိပ်စာက အမှတ် ၁၂၃ ဗိုလ်ချုပ်လမ်း လသာမြို့နယ် ရန်ကုန် ပါရှင့်",
+          "created_at": "2026-07-20T06:30:34+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ခဏလေး စောင့်ပေးပါရှင်၊",
+          "created_at": "2026-07-20T06:30:35+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အော်ဒါအချက်အလက်တွေကို",
+          "created_at": "2026-07-20T06:30:36+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "စစ်ဆေးနေပါတယ်။",
+          "created_at": "2026-07-20T06:30:36+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus BigOne",
+          "created_at": "2026-07-20T06:30:39+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Combo",
+          "created_at": "2026-07-20T06:30:39+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "3၊",
+          "created_at": "2026-07-20T06:30:39+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အရေအတွက်",
+          "created_at": "2026-07-20T06:30:39+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "3",
+          "created_at": "2026-07-20T06:30:39+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဘူး၊",
+          "created_at": "2026-07-20T06:30:40+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ်",
+          "created_at": "2026-07-20T06:30:40+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "သုည",
+          "created_at": "2026-07-20T06:30:40+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကိုး",
+          "created_at": "2026-07-20T06:30:40+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ခုနစ်",
+          "created_at": "2026-07-20T06:30:40+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရှစ်",
+          "created_at": "2026-07-20T06:30:40+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "သုည",
+          "created_at": "2026-07-20T06:30:40+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ခုနစ်",
+          "created_at": "2026-07-20T06:30:40+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ခုနစ်",
+          "created_at": "2026-07-20T06:30:40+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်",
+          "created_at": "2026-07-20T06:30:40+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "လေး",
+          "created_at": "2026-07-20T06:30:41+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "သုံး",
+          "created_at": "2026-07-20T06:30:41+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "သုံး၊",
+          "created_at": "2026-07-20T06:30:41+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ရန်လိပ်စာ",
+          "created_at": "2026-07-20T06:30:41+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အမှတ်",
+          "created_at": "2026-07-20T06:30:41+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁၂၃",
+          "created_at": "2026-07-20T06:30:41+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဗိုလ်ချုပ်လမ်း",
+          "created_at": "2026-07-20T06:30:41+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "လသာမြို့နယ်",
+          "created_at": "2026-07-20T06:30:42+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရန်ကုန်",
+          "created_at": "2026-07-20T06:30:42+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖြစ်ပါတယ်။",
+          "created_at": "2026-07-20T06:30:42+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အချက်အလက်အားလုံး",
+          "created_at": "2026-07-20T06:30:42+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှန်ပါသလားရှင်။",
+          "created_at": "2026-07-20T06:30:42+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဟုတ်ကဲ့ ကိုမို ဖုန်းနံပါတ်နဲ့ လိပ်စာအချက်အလက်အားလုံး မှန်ပါတယ် အော်ဒါအတည်ပြုပေးပါရှင့်",
+          "created_at": "2026-07-20T06:31:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်၊ အော်ဒါ",
+          "created_at": "2026-07-20T06:31:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အတည်ပြုပြီး",
+          "created_at": "2026-07-20T06:31:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှတ်သားလိုက်ပါပြီ။",
+          "created_at": "2026-07-20T06:31:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကျေးဇူးတင်ပါတယ်ရှင်။",
+          "created_at": "2026-07-20T06:31:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus BigOne Combo 3၊ အရေအတွက် 3 ဘူး၊ ဖုန်းနံပါတ် သုည ကိုး ခုနစ် ရှစ် သုည ခုနစ် ခုနစ် တစ် လေး သုံး သုံး၊ ပို့ရန်လိပ်စာ အမှတ် ၁၂၃ ဗိုလ်ချုပ်လမ်း လသာမြို့နယ် ရန်ကုန် ဖြစ်ပါတယ်။ အချက်အလက်အားလုံး မှန်ပါသလားရှင်။",
+          "created_at": "2026-07-20T06:31:24+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "Venus BigOne Combo 3 အရေအတွက် 3 ဘူး မှာယူမယ်၊ မှန်ပါတယ်",
+          "created_at": "2026-07-20T06:31:24+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဖုန်းနံပါတ် 09780771433 မှန်ပါတယ်",
+          "created_at": "2026-07-20T06:31:24+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "လိပ်စာ အမှတ် ၁၂၃ ဗိုလ်ချုပ်လမ်း လသာမြို့နယ် ရန်ကုန် မှန်ပါတယ်။ အချက်အလက်အားလုံး မှန်ပါတယ်",
+          "created_at": "2026-07-20T06:31:24+00:00"
+        }
+      ]
+    }
+  ]
+}

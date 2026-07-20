@@ -1,0 +1,14 @@
+{
+  "created_at": "2026-07-20T05:38:07.904222+00:00",
+  "database": "/Users/macbook/Desktop/Viber call/scratch/deploy_long_audio_matrix/deploy-validation-20260720-053511.db",
+  "scenario_count": 1,
+  "passed_count": 0,
+  "all_passed": false,
+  "results": [
+    {
+      "scenario_id": "spoken-confusable-09780771433",
+      "passed": false,
+      "error": "TimeoutError: Gemini Live did not complete its response in time"
+    }
+  ]
+}

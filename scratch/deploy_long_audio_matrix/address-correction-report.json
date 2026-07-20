@@ -1,0 +1,484 @@
+{
+  "created_at": "2026-07-20T07:46:02.698614+00:00",
+  "database": "/Users/macbook/Desktop/Viber call/scratch/deploy_long_audio_matrix/deploy-validation-20260720-074401.db",
+  "scenario_count": 1,
+  "passed_count": 0,
+  "all_passed": false,
+  "results": [
+    {
+      "scenario_id": "address-house-number-correction",
+      "call_id": "deploy-audio-address-house-number-correction-074401307287",
+      "expected": {
+        "phone": "0961695448",
+        "name": null,
+        "address": "အမှတ် ၉၇ အနော်ရထာလမ်း မြောက်ဒဂုံမြို့နယ် ရန်ကုန်",
+        "product_name": "Venus BigOne Combo 1",
+        "quantity": 1,
+        "total_price": 120000,
+        "ready": true
+      },
+      "response_seconds": [
+        13.290446131999488,
+        9.776671809002437,
+        8.474003358001937,
+        21.77810230600153,
+        4.2594070579980325,
+        7.266416551996372,
+        5.844215091998194
+      ],
+      "first_response_seconds": [
+        0.2502425029997539,
+        0.25012397799946484,
+        3.075779163998959,
+        1.2538642660001642,
+        1.2526929159976135,
+        1.502674057999684,
+        0.5035059920010099
+      ],
+      "summary_response_flags": [
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false
+      ],
+      "max_first_response_seconds": 3.075779163998959,
+      "max_response_seconds": 21.77810230600153,
+      "focused_asr": {
+        "order:1": "ကွန်ဘို တစ်ဘူး မှာ ယူမယ်",
+        "address:3": "လိပ်စာက အမှတ် ၉၇ ၆၇ အနော်ရထာလမ်း မြောက်ဒဂုံမြို့နယ် ရန်ကုန်ပါရှင့်"
+      },
+      "final_order_confirmed": true,
+      "authoritative_summary_spoken": true,
+      "authoritative_summary": "Venus BigOne Combo 1၊ အရေအတွက် 1 ဘူး၊ ဖုန်းနံပါတ် သုည ကိုး ခြောက် တစ် ခြောက် ကိုး ငါး လေး လေး ရှစ်၊ ပို့ရန်လိပ်စာ အမှတ် ၉၇ ၆၇ အနော်ရထာလမ်း မြောက်ဒဂုံမြို့နယ် ရန်ကုန်ပါရှင့် ဖြစ်ပါတယ်။ အချက်အလက်အားလုံး မှန်ပါသလားရှင်။",
+      "customer": {
+        "name": "",
+        "phone": "0961695448",
+        "address": "အမှတ် ၉၇ ၆၇ အနော်ရထာလမ်း မြောက်ဒဂုံမြို့နယ် ရန်ကုန်ပါရှင့် ဖြစ်",
+        "need": "Combo 1 ဝယ်မည်",
+        "notes": ""
+      },
+      "order": {
+        "id": 1,
+        "call_id": "deploy-audio-address-house-number-correction-074401307287",
+        "customer_phone": "0961695448",
+        "customer_name": "",
+        "shipping_address": "အမှတ် ၉၇ ၆၇ အနော်ရထာလမ်း မြောက်ဒဂုံမြို့နယ် ရန်ကုန်ပါရှင့် ဖြစ်",
+        "product_name": "Venus BigOne Combo 1",
+        "quantity": 1,
+        "unit_price": 120000,
+        "total_price": 120000,
+        "status": "ready_to_confirm",
+        "missing_fields": [],
+        "confidence": 0.9,
+        "created_at": "2026-07-20T07:46:02+00:00",
+        "updated_at": "2026-07-20T07:46:02+00:00",
+        "product_id": 1
+      },
+      "checks": {
+        "no_unrelated_topic": true,
+        "response_under_timeout": true,
+        "first_audible_response_under_6_seconds": true,
+        "regular_responses_under_30_seconds": true,
+        "complete_summary_responses_under_45_seconds": true,
+        "bridge_confirmation_state": true,
+        "summary_created": true,
+        "summary_spoken_completely": true,
+        "summary_phone": true,
+        "summary_address": true,
+        "order_persisted": true,
+        "order_status": true,
+        "order_phone": true,
+        "order_product": true,
+        "order_quantity": true,
+        "order_total": true,
+        "order_address": false
+      },
+      "passed": false,
+      "transcript": [
+        {
+          "speaker": "customer",
+          "text": "တစ်ဘူးဈေး ဘယ်လောက် လဲ ဘယ်လို ပို့ပေး လဲ ရှင်",
+          "created_at": "2026-07-20T07:44:06+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus BigOne",
+          "created_at": "2026-07-20T07:44:07+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်ဘူးကို",
+          "created_at": "2026-07-20T07:44:07+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "၁သိန်း၂သောင်းကျပ်ပါရှင်။",
+          "created_at": "2026-07-20T07:44:07+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရန်ကုန်နဲ့",
+          "created_at": "2026-07-20T07:44:07+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "မန္တလေးဆိုရင်",
+          "created_at": "2026-07-20T07:44:08+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အိမ်အရောက်",
+          "created_at": "2026-07-20T07:44:08+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ပေးပါတယ်ရှင်။",
+          "created_at": "2026-07-20T07:44:08+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကျန်တဲ့မြို့တွေကိုတော့",
+          "created_at": "2026-07-20T07:44:08+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကားဂိတ်ကနေ",
+          "created_at": "2026-07-20T07:44:09+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ပေးပါတယ်ရှင့်။",
+          "created_at": "2026-07-20T07:44:09+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဘယ်မြို့ကို",
+          "created_at": "2026-07-20T07:44:09+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ပေးရမလဲရှင်။",
+          "created_at": "2026-07-20T07:44:09+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဟုတ်ကဲ့ ကွန်ဘို တစ်ဘူး မှာ ယူ မယ် ရှင်",
+          "created_at": "2026-07-20T07:44:24+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ Combo",
+          "created_at": "2026-07-20T07:44:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "1",
+          "created_at": "2026-07-20T07:44:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်ဘူး",
+          "created_at": "2026-07-20T07:44:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှာယူတဲ့",
+          "created_at": "2026-07-20T07:44:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အတွက်",
+          "created_at": "2026-07-20T07:44:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကျေးဇူးတင်ပါတယ်ရှင်။",
+          "created_at": "2026-07-20T07:44:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အခု",
+          "created_at": "2026-07-20T07:44:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ခေါ်ဆိုနေတဲ့",
+          "created_at": "2026-07-20T07:44:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ်နဲ့ပဲ",
+          "created_at": "2026-07-20T07:44:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အော်ဒါ",
+          "created_at": "2026-07-20T07:44:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "တင်ပေးရမလားရှင်။",
+          "created_at": "2026-07-20T07:44:27+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "အခု ဖုန်းခေါ်နေတဲ့ နံပါတ် ကို ပဲ အော်ဒါ မှာ သုံး ပါ ရှင်",
+          "created_at": "2026-07-20T07:44:40+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ ပို့ဆောင်ရမယ့်",
+          "created_at": "2026-07-20T07:44:42+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ဆောင်ပေးရမယ့် လိပ်စာအပြည့်အစုံလေး",
+          "created_at": "2026-07-20T07:44:43+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပြောပေးပါဦး",
+          "created_at": "2026-07-20T07:44:44+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရှင်။",
+          "created_at": "2026-07-20T07:44:44+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "လိပ်စာက အမှတ် ၉၇ အနော်ရထာလမ်း မြောက်ဒဂုံမြို့နယ် ရန်ကုန်ပါရှင်",
+          "created_at": "2026-07-20T07:44:57+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ခဏလေး စောင့်ပေးပါရှင်၊",
+          "created_at": "2026-07-20T07:44:59+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အော်ဒါအချက်အလက်တွေကို",
+          "created_at": "2026-07-20T07:44:59+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "စစ်ဆေးနေပါတယ်။",
+          "created_at": "2026-07-20T07:44:59+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus BigOne",
+          "created_at": "2026-07-20T07:45:01+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus BigOne",
+          "created_at": "2026-07-20T07:45:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Combo",
+          "created_at": "2026-07-20T07:45:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "1၊",
+          "created_at": "2026-07-20T07:45:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အရေအတွက်",
+          "created_at": "2026-07-20T07:45:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "1",
+          "created_at": "2026-07-20T07:45:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဘူး၊",
+          "created_at": "2026-07-20T07:45:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖုန်းနံပါတ်",
+          "created_at": "2026-07-20T07:45:03+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "သုည",
+          "created_at": "2026-07-20T07:45:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကိုး",
+          "created_at": "2026-07-20T07:45:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ခြောက်",
+          "created_at": "2026-07-20T07:45:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "တစ်",
+          "created_at": "2026-07-20T07:45:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ခြောက်",
+          "created_at": "2026-07-20T07:45:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကိုး",
+          "created_at": "2026-07-20T07:45:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ငါး",
+          "created_at": "2026-07-20T07:45:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "လေး",
+          "created_at": "2026-07-20T07:45:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "လေး",
+          "created_at": "2026-07-20T07:45:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရှစ်၊",
+          "created_at": "2026-07-20T07:45:04+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ပို့ရန်လိပ်စာ",
+          "created_at": "2026-07-20T07:45:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အမှတ်",
+          "created_at": "2026-07-20T07:45:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "၉၇",
+          "created_at": "2026-07-20T07:45:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "၆၇",
+          "created_at": "2026-07-20T07:45:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အနော်ရထာလမ်း",
+          "created_at": "2026-07-20T07:45:05+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "မြောက်ဒဂုံမြို့နယ်",
+          "created_at": "2026-07-20T07:45:06+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ရန်ကုန်ပါရှင့်",
+          "created_at": "2026-07-20T07:45:06+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဖြစ်ပါတယ်။",
+          "created_at": "2026-07-20T07:45:06+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အချက်အလက်အားလုံး",
+          "created_at": "2026-07-20T07:45:06+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှန်ပါသလားရှင်။",
+          "created_at": "2026-07-20T07:45:06+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "လိပ်စာ မှား ပါ တယ် ။ အိမ်နံပါတ် ကို ပြန်ပြော ပါ မယ် ရှင်",
+          "created_at": "2026-07-20T07:45:25+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။",
+          "created_at": "2026-07-20T07:45:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အချက်အလက်အားလုံး",
+          "created_at": "2026-07-20T07:45:26+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှန်ပါသလားရှင်။",
+          "created_at": "2026-07-20T07:45:26+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "လိပ်စာ အမှန် က အမှတ် ၉၇ အနော်ရထာလမ်း မြောက်ဒဂုံမြို့နယ် ရန်ကုန်ပါရှင်",
+          "created_at": "2026-07-20T07:45:37+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "အော်ဒါလေး",
+          "created_at": "2026-07-20T07:45:39+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "မှတ်လိုက်ပါပြီရှင်။",
+          "created_at": "2026-07-20T07:45:39+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ကျေးဇူးအများကြီးတင်ပါတယ်ရှင်။",
+          "created_at": "2026-07-20T07:45:39+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဟုတ်ကဲ့ အိမ်နံပါတ် ၉၇ နဲ့ အချက်အလက် အားလုံး မှန် ပါ တယ် ရှင်",
+          "created_at": "2026-07-20T07:45:51+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "ဟုတ်ကဲ့ပါရှင်။ အော်ဒါလေး",
+          "created_at": "2026-07-20T07:45:51+00:00"
+        },
+        {
+          "speaker": "agent",
+          "text": "Venus BigOne Combo 1၊ အရေအတွက် 1 ဘူး၊ ဖုန်းနံပါတ် သုည ကိုး ခြောက် တစ် ခြောက် ကိုး ငါး လေး လေး ရှစ်၊ ပို့ရန်လိပ်စာ အမှတ် ၉၇ ၆၇ အနော်ရထာလမ်း မြောက်ဒဂုံမြို့နယ် ရန်ကုန်ပါရှင့် ဖြစ်ပါတယ်။ အချက်အလက်အားလုံး မှန်ပါသလားရှင်။",
+          "created_at": "2026-07-20T07:46:02+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "Venus BigOne Combo 1 အရေအတွက် 1 ဘူး မှာယူမယ်၊ မှန်ပါတယ်",
+          "created_at": "2026-07-20T07:46:02+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "ဖုန်းနံပါတ် 0961695448 မှန်ပါတယ်",
+          "created_at": "2026-07-20T07:46:02+00:00"
+        },
+        {
+          "speaker": "customer",
+          "text": "လိပ်စာ အမှတ် ၉၇ ၆၇ အနော်ရထာလမ်း မြောက်ဒဂုံမြို့နယ် ရန်ကုန်ပါရှင့်။ မှန်ပါတယ်။ အချက်အလက်အားလုံး မှန်ပါတယ်",
+          "created_at": "2026-07-20T07:46:02+00:00"
+        }
+      ]
+    }
+  ]
+}
