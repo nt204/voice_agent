@@ -22,6 +22,20 @@ Open the dashboard:
 http://localhost:3000/admin
 ```
 
+## Manage Multiple Products
+
+Use **Manage products** in the dashboard to add or edit:
+
+- the Telnyx phone number and optional TeXML App ID;
+- inbound and outbound greetings;
+- product-specific AI instructions and knowledge;
+- offers, quantities, prices, and shipping policies;
+- language, voice, active state, and the default product.
+
+For outbound calls, select a product before entering the customer phone number.
+For inbound calls, the app selects the product mapped to the called Telnyx number.
+Product changes apply to future calls; existing calls and order price snapshots remain unchanged.
+
 ## Main Endpoints
 
 - `GET /` sales dashboard
@@ -36,5 +50,6 @@ http://localhost:3000/admin
 
 - The app listens on port `3000` inside the container.
 - The host maps port `3000` to the app container.
-- SQLite call history is stored in the Docker volume `voice_app_data`.
+- PostgreSQL stores call history, products, offers, and orders in the `postgres_data` volume.
+- SQLite remains available as the local fallback when `DATABASE_URL` is not supplied by Docker Compose.
 - Do not commit real API keys in `.env`.

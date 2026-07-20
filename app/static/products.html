@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quản lý sản phẩm</title>
+  <link rel="stylesheet" href="/static/dashboard.css?v=products-page-1-layout-9">
+</head>
+<body class="products-page-body">
+  <header class="navigation-bar">
+    <a class="navigation-brand" href="/admin">Quản lý bán hàng</a>
+    <nav class="app-nav" aria-label="Điều hướng chính">
+      <a href="/admin">Cuộc gọi &amp; đơn hàng</a>
+      <a class="active" href="/admin/products" aria-current="page">Sản phẩm</a>
+      <a href="/admin/recordings">Bản ghi âm</a>
+    </nav>
+  </header>
+
+  <main class="products-page-shell">
+    <header class="page-heading">
+      <div>
+        <h1>Quản lý sản phẩm</h1>
+        <p>Số điện thoại, kịch bản tư vấn và bảng giá riêng cho từng sản phẩm.</p>
+      </div>
+      <span id="productPageStatus" class="sync-status">Đang tải</span>
+    </header>
+
+    <div class="products-workspace">
+      <aside class="product-catalog-panel">
+        <button id="newProductButton" class="primary-button" type="button">+ Thêm sản phẩm</button>
+        <div id="productList" class="product-list" aria-live="polite"></div>
+      </aside>
+
+      <form id="productForm" class="product-editor">
+        <input id="productId" name="id" type="hidden">
+        <div class="editor-heading">
+          <div>
+            <h2 id="productEditorTitle">Thêm sản phẩm</h2>
+            <p id="productEditorHint">Thiết lập số điện thoại và nội dung tư vấn riêng cho sản phẩm.</p>
+          </div>
+          <label class="active-toggle">
+            <input id="productActive" name="active" type="checkbox" checked>
+            <span>Đang hoạt động</span>
+          </label>
+        </div>
+
+        <section class="form-section">
+          <h3>Thông tin và định tuyến</h3>
+          <div class="field-grid">
+            <label><span>Tên sản phẩm</span><input id="productName" name="name" maxlength="160" required></label>
+            <label>
+              <span>Số điện thoại Telnyx</span>
+              <input id="productPhone" name="phone_number" type="tel" placeholder="+959..." required>
+              <small>Cuộc gọi đến số này sẽ tự động dùng đúng sản phẩm.</small>
+            </label>
+            <label><span>Mã nhận diện (slug)</span><input id="productSlug" name="slug" maxlength="100" placeholder="Tự tạo từ tên sản phẩm"></label>
+            <label><span>TeXML App ID</span><input id="productTexmlApp" name="texml_app_id" maxlength="160" placeholder="Để trống để dùng App ID chung"></label>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h3>Kịch bản hội thoại</h3>
+          <div class="field-grid">
+            <label class="wide-field"><span>Lời chào khi khách gọi đến</span><textarea id="productInboundGreeting" name="inbound_greeting" rows="3" required></textarea></label>
+            <label class="wide-field"><span>Lời chào khi gọi cho khách</span><textarea id="productOutboundGreeting" name="outbound_greeting" rows="3" required></textarea></label>
+            <label class="wide-field">
+              <span>Hướng dẫn bán hàng</span>
+              <textarea id="productSystemPrompt" name="system_prompt" rows="5" required></textarea>
+              <small>Mô tả vai trò của tư vấn viên và cách tư vấn sản phẩm này.</small>
+            </label>
+            <label class="wide-field">
+              <span>Kiến thức sản phẩm</span>
+              <textarea id="productKnowledge" name="knowledge" rows="10" required></textarea>
+              <small>Công dụng, cách dùng, lưu ý và chính sách dành riêng cho sản phẩm này.</small>
+            </label>
+            <label><span>Mã ngôn ngữ thoại</span><input id="productLanguage" name="language_code" value="my-MM" maxlength="20" required></label>
+            <label><span>Giọng đọc</span><input id="productVoice" name="voice_name" value="Aoede" maxlength="80" required></label>
+          </div>
+        </section>
+
+        <section class="form-section offers-section">
+          <div class="section-heading-row">
+            <div><h3>Gói bán và giá</h3><p>Bảng giá này là dữ liệu chuẩn khi hệ thống tạo đơn.</p></div>
+            <button id="addOfferButton" class="secondary-button" type="button">+ Thêm gói bán</button>
+          </div>
+          <div id="offerList" class="offer-editor-list"></div>
+        </section>
+
+        <p id="productFormStatus" class="form-status" role="status"></p>
+        <footer class="product-form-actions">
+          <button id="setDefaultProductButton" class="secondary-button" type="button" hidden>Đặt làm mặc định</button>
+          <button id="saveProductButton" class="primary-button" type="submit">Lưu sản phẩm</button>
+        </footer>
+      </form>
+    </div>
+  </main>
+  <script src="/static/products.js?v=products-page-1" defer></script>
+</body>
+</html>

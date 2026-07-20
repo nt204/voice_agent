@@ -24,11 +24,11 @@ def test_dashboard_renders_call_recording_player():
     main = Path("app/main.py").read_text(encoding="utf-8")
 
     assert "renderRecordingCard(call)" in source
-    assert "Call recording" in source
+    assert "Bản ghi cuộc gọi" in source
     assert "recording?.files" in source
     assert "/recording/" in main
     assert "<audio controls" in source
     assert ".recording-card" in styles
     assert "layout-9" in html
-    assert "Dialed phone" in source
-    assert "Customer-provided phone" in source
+    assert "Số đã gọi" in source
+    assert "Số khách cung cấp" in source
