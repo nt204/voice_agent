@@ -75,8 +75,9 @@ def test_live_prompt_guides_customer_to_read_phone_digits_in_burmese() -> None:
     assert "တစ်လုံးချင်း ဖြည်းဖြည်း" in prompt
     assert "0 = သုည or ဝ" in prompt
     assert "9 = ကိုး" in prompt
-    assert "Never speak phone digits" in prompt
-    assert "fixed digit-by-digit readback" in prompt
+    assert "next_action=confirm_phone" in prompt
+    assert "read the exact stored digits once" in prompt
+    assert "do not change, omit, combine" in prompt
 
 
 def test_runtime_configuration_prioritizes_myanmar() -> None:

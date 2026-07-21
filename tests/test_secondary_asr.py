@@ -104,6 +104,13 @@ def test_secondary_asr_prompts_recognize_burmese_phone_digit_words() -> None:
         assert "Burmese order words" in prompt
         assert "နှစ်ဘူး" in prompt
         assert "နှစ်ပုဒ်" in prompt
+        assert "Venus BigOne" in prompt
+        assert "Combo 1" in prompt
+        assert "Combo 2" in prompt
+        assert "Combo 3" in prompt
+        assert "Combo 5" in prompt
+        assert "ကုန်ပူ" in prompt
+        assert "ယူပါမယ်" in prompt
 
 
 class _FakeLiveSession:

@@ -24,6 +24,7 @@ from sqlalchemy import (
 from sqlalchemy.engine import Connection, Engine
 
 from app.order_extraction import analyze_call_with_gemini
+from app.sales_analysis import _is_valid_customer_name as _is_sales_customer_name
 
 
 CUSTOMER_FIELDS = ("name", "phone", "address", "need", "notes")
@@ -196,6 +197,8 @@ def _string_value(value: Any) -> str:
 def _valid_customer_name(value: str) -> bool:
     name = _clean(value)
     folded = _fold_ascii(name)
+    if not _is_sales_customer_name(name):
+        return False
     if not (2 <= len(name) <= 80):
         return False
     if not re.search(r"[A-Za-zÀ-ỹ\u1000-\u109F]", name):

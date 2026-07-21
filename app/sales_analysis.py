@@ -106,6 +106,13 @@ PHONE_DIGIT_WORD_ITEMS = sorted(
     key=lambda item: len(item[0]),
     reverse=True,
 )
+MYANMAR_PHONE_DIGIT_SIGNAL_RE = re.compile(
+    "|".join(
+        re.escape(word)
+        for word, _ in PHONE_DIGIT_WORD_ITEMS
+        if any("\u1000" <= char <= "\u109f" for char in word)
+    )
+)
 PHONE_CORRECTION_RE = re.compile(
     r"(?:မဟုတ်|မှား|မမှန်|ပြန်ပြော|ပြန်မှတ်|ပြန်မှား|မလုပ်တတ်|ဘာလို့|ခဏခဏ|ပြောပြီးပြီ|"
     r"wrong|incorrect|not\s+correct|sai|không\s+đúng|khong\s+dung|không\s+phải|khong\s+phai)",
@@ -141,6 +148,20 @@ NON_MYANMAR_ADDRESS_TOKENS = (
     "အိန္ဒိယ",
     "ဂျပန်",
     "ကိုရီးယား",
+)
+
+# Gemini/telephony ASR often inserts spaces between Burmese syllables and may
+# render the English loanword "Combo" with a nearby Burmese spelling.  These
+# aliases are only used together with a catalog combo number; they are not
+# treated as buying intent on their own.
+COMBO_ASR_ALIASES = (
+    "ကွန်ဘို",
+    "ကွန်ဂို",
+    "ကွန်ပူ",
+    "ကွန်ဘူး",
+    "ကုန်ပူ",
+    "ကုန်ဘို",
+    "ကုန်ဂို",
 )
 
 
@@ -331,6 +352,25 @@ def _fold_text(value: str) -> str:
 
 def _contains_any(text: str, tokens: tuple[str, ...]) -> bool:
     return any(token in text for token in tokens)
+
+
+def _compact_asr_text(value: str) -> str:
+    """Normalize digits/case and ignore ASR-added whitespace for matching only."""
+    return re.sub(r"\s+", "", _normalize_digits(value).casefold())
+
+
+def _contains_asr_phrase(text: str, tokens: tuple[str, ...]) -> bool:
+    """Match known phrases without changing the transcript stored for evidence."""
+    normalized = _normalize_digits(text).casefold()
+    compact = _compact_asr_text(text)
+    for token in tokens:
+        normalized_token = _normalize_digits(token).casefold()
+        if normalized_token in normalized:
+            return True
+        if any(ord(char) > 127 for char in normalized_token):
+            if re.sub(r"\s+", "", normalized_token) in compact:
+                return True
+    return False
 
 
 def _is_clearly_non_myanmar_address(value: str) -> bool:
@@ -583,23 +623,7 @@ def _extract_name_from_turn(turn: str) -> str:
             flags=re.IGNORECASE,
         )[0].strip(" \t\r\n,.;:-")
         name = re.split(r"(?:လို့|ဟု)", name, maxsplit=1)[0].strip(" \t\r\n,.;:-။၊")
-        folded_name = _fold_text(name)
-        if (
-            2 <= len(name) <= 80
-            and re.search(r"[A-Za-zÀ-ỹ\u1000-\u109F]", name)
-            and not re.search(r"\d", _normalize_digits(name))
-            and not _phone_digit_fragment(name)
-            and folded_name not in {"name", "my name", "phone", "address"}
-            and not re.search(
-                r"\b(?:combo|box|boxes|kyat|buy|order|purchase|phone|address|delivery)\b|"
-                r"(?:ကွန်ဘို|ကွန်ဂို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ)",
-                folded_name,
-            )
-            and not re.search(
-                r"(?:ကွန်ဘို|ကွန်ဂို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|ဟုတ်|မှန်|မလို|အော်ဒါ)",
-                name,
-            )
-        ):
+        if _is_valid_customer_name(name):
             return name
     return ""
 
@@ -610,17 +634,20 @@ def _is_valid_customer_name(name: str) -> bool:
     return bool(
         2 <= len(cleaned) <= 80
         and re.search(r"[A-Za-zÀ-ỹ\u1000-\u109F]", cleaned)
+        and not re.fullmatch(r"([A-Za-z\u1000-\u109F])\1{2,}", cleaned)
         and not re.search(r"\d", _normalize_digits(cleaned))
         and not _phone_digit_fragment(cleaned)
+        and len(MYANMAR_PHONE_DIGIT_SIGNAL_RE.findall(cleaned)) < 4
         and folded_name not in {"name", "my name", "phone", "address"}
         and not re.search(
             r"\b(?:combo|box|boxes|kyat|buy|order|purchase|phone|address|delivery|"
-            r"yes|ok|correct|confirm|no|need|street|road|township|why|ask|asked)\b|"
-            r"(?:ကွန်ဘို|ကွန်ဂို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|လမ်း|မြို့နယ်|ဟုတ်|မှန်|မလို|ဘာလို့|မေး|ပြောပြီး|ပြောပေး)",
+            r"yes|ok|correct|confirm|no|need|street|road|township|why|ask|asked|"
+            r"wrong|price|how\s+much|which|what)\b|"
+            r"(?:ကွန်ဘို|ကွန်ဂို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|လမ်း|မြို့နယ်|ဟုတ်|မှန်|မလို|ဘာလို့|မေး|ပြောပြီး|ပြောပေး|ပြန်ပြော|မှား|ဘယ်လောက်|ဘယ်|ဘာ|ဈေး|စျေး|လား|လဲ)",
             folded_name,
         )
         and not re.search(
-            r"(?:ကွန်ဘို|ကွန်ဂို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|လမ်း|မြို့နယ်|ဟုတ်|မှန်|မလို|အော်ဒါ|ဘာလို့|မေး|ပြောပြီး|ပြောပေး)",
+            r"(?:ကွန်ဘို|ကွန်ဂို|ဘူး|ဗူး|ကျပ်|ဝယ်|မှာ|ယူ|ဖုန်း|လိပ်စာ|လမ်း|မြို့နယ်|ဟုတ်|မှန်|မလို|အော်ဒါ|ဘာလို့|မေး|ပြောပြီး|ပြောပေး|ပြန်ပြော|မှား|ဘယ်လောက်|ဘယ်|ဘာ|ဈေး|စျေး|လား|လဲ)",
             cleaned,
         )
     )
@@ -900,12 +927,27 @@ def _customer_attempted_phone(text: str) -> bool:
 
 def _extract_quantity(text: str) -> int | None:
     unit_pattern = r"(?:ဘူး|ဗူး|ပုဒ်|box|boxes)"
-    match = re.search(rf"([\d۰-۹٠-٩۰-۹]+)\s*{unit_pattern}", text, flags=re.IGNORECASE)
-    if match:
-        return int(_normalize_digits(match.group(1)))
+    mentions: list[tuple[int, int, int]] = []
+    for match in re.finditer(
+        rf"([\d۰-۹٠-٩۰-۹]+)\s*{unit_pattern}",
+        text,
+        flags=re.IGNORECASE,
+    ):
+        mentions.append((match.start(), match.end(), int(_normalize_digits(match.group(1)))))
     for word, value in NUMBER_WORDS.items():
-        if re.search(rf"{word}\s*{unit_pattern}", text, flags=re.IGNORECASE):
+        for match in re.finditer(rf"{re.escape(word)}\s*{unit_pattern}", text, flags=re.IGNORECASE):
+            mentions.append((match.start(), match.end(), value))
+
+    if mentions:
+        # Corrections are normally spoken as "one box is wrong, take two".
+        # Prefer the last non-rejected mention instead of the first number ASR saw.
+        mentions.sort(key=lambda item: item[0])
+        for _, end, value in reversed(mentions):
+            suffix = _compact_asr_text(text[end:end + 32])
+            if re.match(r"^(?:မဟုတ်|မှား|မယူ|မဝယ်|မမှာ|not|wrong)", suffix):
+                continue
             return value
+        return mentions[-1][2]
     if re.search(r"(?:နှစ်|နစ်)\s*ပုဒ်", text, flags=re.IGNORECASE):
         return 2
     if re.search(r"(?:နှိပ်ဖူး|နိပ်ဖူး|နှစ်ဖူး)", text, flags=re.IGNORECASE):
@@ -929,7 +971,7 @@ def _extract_quantity(text: str) -> int | None:
 
 
 def _has_negated_buy_intent(text: str) -> bool:
-    if any(token in text for token in ("မဝယ်", "မယူ", "မမှာ")):
+    if _contains_asr_phrase(text, ("မဝယ်", "မယူ", "မမှာ")):
         return True
     folded = _fold_text(text)
     return bool(
@@ -943,7 +985,13 @@ def _has_negated_buy_intent(text: str) -> bool:
 def _has_buy_intent(text: str) -> bool:
     if _has_negated_buy_intent(text):
         return False
-    if _contains_any(
+    compact = _compact_asr_text(text)
+    if re.search(
+        r"(?:ဝယ်(?:ယူ)?|ယူ|မှာ(?:ယူ)?)(?:တော့)?(?:ပါ)?(?:မယ်|မည်|ချင်)",
+        compact,
+    ):
+        return True
+    if _contains_asr_phrase(
         text,
         (
             "ဝယ်ချင်",
@@ -963,7 +1011,7 @@ def _has_buy_intent(text: str) -> bool:
 
 
 def _is_question(text: str) -> bool:
-    if "?" in text or _contains_any(text, ("ဘယ်လောက်", "သလဲ", "လား", "လဲ")):
+    if "?" in text or _contains_asr_phrase(text, ("ဘယ်လောက်", "သလဲ", "လား", "လဲ")):
         return True
     folded = _fold_text(text)
     return bool(
@@ -977,7 +1025,7 @@ def _is_question(text: str) -> bool:
 def _is_delivery_order_request(text: str) -> bool:
     return bool(
         re.search(r"\b(?:ship|deliver|delivery)\b", _fold_text(text))
-        or _contains_any(text, ("ပို့ပေး", "ပို့ရန်", "ပို့ရမယ့်"))
+        or _contains_asr_phrase(text, ("ပို့ပေး", "ပို့ရန်", "ပို့ရမယ့်"))
     )
 
 
@@ -987,12 +1035,12 @@ def _is_retail_selection(text: str) -> bool:
         re.search(
             r"\b(?:retail|single box|one by one|no combo)\b",
             folded,
-        ) or _contains_any(text, ("လက်လီ", "တစ်ဘူးချင်း", "တစ်ဘူးစီ", "ကွန်ဘိုမဟုတ်"))
+        ) or _contains_asr_phrase(text, ("လက်လီ", "တစ်ဘူးချင်း", "တစ်ဘူးစီ", "ကွန်ဘိုမဟုတ်"))
     )
 
 
 def _is_no_need(text: str) -> bool:
-    if _contains_any(
+    if _contains_asr_phrase(
         text,
         (
             "မလိုချင်",
@@ -1019,7 +1067,7 @@ def _is_no_need(text: str) -> bool:
 
 
 def _is_deferred(text: str) -> bool:
-    if _contains_any(text, ("မမှာသေး", "မဝယ်သေး", "စဉ်းစား", "စဥ်းစား", "တိုင်ပင်", "ဆုံးဖြတ်")):
+    if _contains_asr_phrase(text, ("မမှာသေး", "မဝယ်သေး", "စဉ်းစား", "စဥ်းစား", "တိုင်ပင်", "ဆုံးဖြတ်")):
         return True
     folded = _fold_text(text)
     return bool(
@@ -1087,12 +1135,14 @@ def extract_order_selection(transcript: list[dict[str, Any]]) -> dict[str, Any] 
 
 def _extract_combo(text: str) -> dict[str, Any] | None:
     normalized = _normalize_digits(text)
+    compact = _compact_asr_text(text)
+    alias_pattern = "|".join(re.escape(alias) for alias in COMBO_ASR_ALIASES)
     myanmar_match = re.search(
-        r"(?:ကွန်ဘို|ကွန်ဂို|combo)\s*(?:နံပါတ်|အမှတ်|#|no\.?)?\s*([0-9]+|တစ်|နှစ်|သုံး|လေး|ငါး)",
-        normalized,
+        rf"(?:{alias_pattern})(?:နံပါတ်|အမှတ်|#)?([0-9]+|တစ်|နှစ်|သုံး|လေး|ငါး)",
+        compact,
         flags=re.IGNORECASE,
     )
-    if myanmar_match and not normalized[myanmar_match.end():].lstrip().startswith("ခု"):
+    if myanmar_match and not compact[myanmar_match.end():].startswith("ခု"):
         combo_number = _number_value(myanmar_match.group(1))
         if combo_number:
             return COMBO_CATALOG.get(combo_number)
@@ -1108,6 +1158,61 @@ def _extract_combo(text: str) -> dict[str, Any] | None:
     if not combo_number:
         return None
     return COMBO_CATALOG.get(combo_number)
+
+
+def select_customer_asr_transcript(live_candidate: str, secondary_candidate: str) -> str:
+    """Keep the transcript candidate with more usable, non-invented sales evidence.
+
+    Secondary ASR remains the tie-breaker, but it may not erase a valid phone,
+    combo, order decision, quantity, or address that Live ASR captured clearly.
+    """
+    live = " ".join(str(live_candidate or "").split())
+    secondary = " ".join(str(secondary_candidate or "").split())
+    if not live:
+        return secondary
+    if not secondary:
+        return live
+    if live == secondary:
+        return live
+
+    def signals(text: str) -> dict[str, Any]:
+        return {
+            "phone": _extract_phone_precise(text),
+            "combo": _extract_combo(text),
+            "quantity": _extract_quantity(text),
+            "decision": _has_buy_intent(text) or _is_no_need(text) or _is_deferred(text),
+            "address": _looks_like_address(text),
+        }
+
+    live_signals = signals(live)
+    secondary_signals = signals(secondary)
+
+    # Do not replace a structured value with a transcript that lost it.
+    for key in ("phone", "combo", "address"):
+        if live_signals[key] and not secondary_signals[key]:
+            return live
+    if (
+        live_signals["decision"]
+        and live_signals["quantity"]
+        and not (
+            secondary_signals["decision"]
+            and secondary_signals["quantity"]
+        )
+    ):
+        return live
+
+    weights = {
+        "phone": 12,
+        "combo": 8,
+        "quantity": 4,
+        "decision": 6,
+        "address": 5,
+    }
+    live_score = sum(weight for key, weight in weights.items() if live_signals[key])
+    secondary_score = sum(
+        weight for key, weight in weights.items() if secondary_signals[key]
+    )
+    return secondary if secondary_score >= live_score else live
 
 
 def _extract_product(text: str) -> dict[str, Any] | None:

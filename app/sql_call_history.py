@@ -798,6 +798,61 @@ class SqlAlchemyCallHistoryStore:
         self._attach_product_briefs(results)
         return results
 
+    def update_order(
+        self, order_id: int, payload: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        now = _now()
+        update_data = {"updated_at": now}
+        
+        for field in (
+            "customer_name",
+            "customer_phone",
+            "shipping_address",
+            "product_name",
+            "quantity",
+            "unit_price",
+            "total_price",
+            "status",
+            "missing_fields",
+        ):
+            if field in payload:
+                val = payload[field]
+                if field in ("quantity", "unit_price", "total_price") and val is not None:
+                    try:
+                        update_data[field] = int(val)
+                    except (ValueError, TypeError):
+                        pass
+                else:
+                    update_data[field] = str(val).strip()
+
+        with self.engine.begin() as connection:
+            statement = (
+                orders_table.update()
+                .where(orders_table.c.id == order_id)
+                .values(**update_data)
+            )
+            result = connection.execute(statement)
+            if result.rowcount == 0:
+                return None
+
+            row = connection.execute(
+                select(
+                    orders_table,
+                    calls_table.c.direction,
+                    calls_table.c.provider,
+                    calls_table.c.customer_need,
+                    calls_table.c.started_at.label("call_started_at"),
+                )
+                .join(calls_table, calls_table.c.id == orders_table.c.call_id)
+                .where(orders_table.c.id == order_id)
+            ).mappings().first()
+
+        if not row:
+            return None
+        order = self._order_summary(row)
+        self._attach_product_briefs([order])
+        return order
+
     def _save_analysis(
         self,
         connection: Connection,

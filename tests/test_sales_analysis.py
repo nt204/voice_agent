@@ -1,4 +1,4 @@
-from app.sales_analysis import analyze_call
+from app.sales_analysis import analyze_call, select_customer_asr_transcript
 
 
 def _customer_turn(text: str) -> dict[str, str]:
@@ -33,6 +33,67 @@ def test_explicit_combo_selection_uses_one_catalog_entry() -> None:
     assert result["order"]["quantity"] == 2
     assert result["order"]["unit_price"] == 105000
     assert result["order"]["total_price"] == 210000
+
+
+def test_asr_spacing_and_polite_particle_still_create_combo_order() -> None:
+    transcript = [_customer_turn("အိုကေ နှစ်ဘူး ယူ ပါ မယ် ရှင်")]
+
+    result = analyze_call(transcript, fallback_phone="")
+
+    assert result["analysis"]["intent_status"] == "ready_to_order"
+    assert result["order"]["product_name"] == "Venus BigOne Combo 2"
+    assert result["order"]["combo"] == "Venus BigOne Combo 2"
+    assert result["order"]["quantity"] == 2
+    assert result["order"]["total_price"] == 210000
+
+
+def test_latest_quantity_in_same_turn_wins_over_rejected_quantity() -> None:
+    transcript = [_customer_turn("တစ်ဘူး မဟုတ် ဘူး နော် နှစ်ဘူး ယူ မယ်")]
+
+    result = analyze_call(transcript, fallback_phone="")
+
+    assert result["order"]["product_name"] == "Venus BigOne Combo 2"
+    assert result["order"]["quantity"] == 2
+
+
+def test_common_combo_asr_alias_with_spaces_maps_to_catalog_combo() -> None:
+    transcript = [_customer_turn("ကုန်ပူ သုံး မှာ ယူ မယ်")]
+
+    result = analyze_call(transcript, fallback_phone="")
+
+    assert result["order"]["product_name"] == "Venus BigOne Combo 3"
+    assert result["order"]["quantity"] == 3
+    assert result["order"]["total_price"] == 390000
+
+
+def test_combo_asr_alias_in_price_question_does_not_create_order() -> None:
+    transcript = [_customer_turn("ကုန်ပူ သုံး ဈေး ဘယ် လောက် လဲ")]
+
+    result = analyze_call(transcript, fallback_phone="")
+
+    assert result["analysis"]["intent_status"] == "price_checking"
+    assert result["order"] is None
+
+
+def test_secondary_asr_cannot_erase_clear_live_order_evidence() -> None:
+    live = "Combo 2 ကို ယူ မယ်"
+    secondary = "အိုကေ ဟုတ်ကဲ့ပါ"
+
+    assert select_customer_asr_transcript(live, secondary) == live
+
+
+def test_secondary_asr_can_restore_order_evidence_missing_from_live() -> None:
+    live = "အိုကေ ဟုတ်ကဲ့ပါ"
+    secondary = "ကုန်ပူ သုံး မှာ ယူ မယ်"
+
+    assert select_customer_asr_transcript(live, secondary) == secondary
+
+
+def test_secondary_asr_cannot_erase_valid_live_phone() -> None:
+    live = "ဖုန်းနံပါတ် 09967954280 ပါ"
+    secondary = "ဖုန်းနံပါတ် ပြောပေးပါမယ်"
+
+    assert select_customer_asr_transcript(live, secondary) == live
 
 
 def test_combo_number_is_not_merged_into_customer_phone() -> None:
@@ -183,6 +244,19 @@ def test_incomplete_name_turn_is_not_saved_as_customer_name() -> None:
     assert result["customer"]["name"] == ""
     assert result["order"]["customer_name"] == ""
     assert result["order"]["customer_phone"] == "0961695448"
+
+
+def test_repeated_asr_filler_is_not_saved_as_customer_name() -> None:
+    transcript = [
+        _customer_turn("Venus BigOne နှစ်ဘူး ယူမယ်"),
+        _agent_turn("လက်ခံမယ့်သူရဲ့ နာမည်လေး ပြောပေးပါဦးရှင်"),
+        _customer_turn("မမမ"),
+    ]
+
+    result = analyze_call(transcript, fallback_phone="")
+
+    assert result["customer"]["name"] == ""
+    assert result["order"]["customer_name"] == ""
 
 
 def test_generic_intent_followed_by_plain_selection_is_an_order() -> None:

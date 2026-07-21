@@ -21,6 +21,7 @@ from app.sales_analysis import (
     _extract_phone_precise,
     _is_clearly_non_myanmar_address,
     _is_myanmar_phone_digits,
+    _is_valid_customer_name,
     _normalize_digits,
     _phone_candidate_uncertain,
     _phone_confirmed_after_readback,
@@ -306,7 +307,8 @@ def _extract_json_once(prompt: str) -> dict[str, Any] | None:
             response_mime_type="application/json",
             response_json_schema=ORDER_RESPONSE_SCHEMA,
             temperature=0,
-            max_output_tokens=1600,
+            max_output_tokens=3000,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
         ),
     )
     return _parse_json_response(getattr(response, "text", "") or "")
@@ -360,12 +362,17 @@ def _merge_payload(
         or not _phone_confirmed_after_readback(transcript, phone)
     ):
         phone = ""
-    customer_name = (
-        _string(customer_facts.get("name"))
-        or _string(payload.get("customer_name"))
-        or _string(fallback_customer.get("name"))
-        or _string(fallback_order.get("customer_name"))
-    )
+    customer_name = ""
+    for raw_name in (
+        customer_facts.get("name"),
+        payload.get("customer_name"),
+        fallback_customer.get("name"),
+        fallback_order.get("customer_name"),
+    ):
+        candidate_name = _string(raw_name)
+        if candidate_name and _is_valid_customer_name(candidate_name):
+            customer_name = candidate_name
+            break
     raw_address = (
         _string(payload.get("shipping_address"))
         or _string(payload.get("address"))

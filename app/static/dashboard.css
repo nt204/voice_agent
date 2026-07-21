@@ -1826,37 +1826,55 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
-  color: #475569;
-  padding-top: 4px;
+  gap: 16px;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #334155;
 }
 
-.sheet-checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.call-form label.sheet-checkbox-label {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
   cursor: pointer;
   user-select: none;
-}
-.sheet-checkbox-label input {
-  width: 14px;
-  height: 14px;
-  accent-color: #2563eb;
-  cursor: pointer;
+  margin: 0 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
 }
 
-.sheet-delay-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.sheet-checkbox-label input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  accent-color: #2563eb;
+  cursor: pointer;
+  margin: 0 !important;
 }
+
+.call-form label.sheet-delay-label {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+}
+
 .sheet-delay-label select {
   font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
+  font-weight: 500;
 }
 
 .call-form {
@@ -2107,6 +2125,7 @@ body {
 .app-nav {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--line);
@@ -2115,13 +2134,13 @@ body {
 }
 
 .app-nav a {
-  min-height: 38px;
+  min-height: 36px;
   display: flex;
   align-items: center;
-  padding: 0 15px;
+  padding: 0 12px;
   border-radius: 7px;
   color: #55667e;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 750;
   text-decoration: none;
   white-space: nowrap;

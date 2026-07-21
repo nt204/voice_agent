@@ -101,7 +101,6 @@ def map_sheet_row(row: dict[str, str]) -> dict[str, Any]:
         "raw_row": row,
     }
 
-
 async def fetch_and_parse_google_sheet(sheet_url: str) -> list[dict[str, Any]]:
     """
     Fetches Google Sheet CSV content from the given URL and parses leads.

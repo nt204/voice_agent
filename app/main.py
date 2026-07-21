@@ -255,19 +255,31 @@ async def dashboard() -> FileResponse:
     return FileResponse(BASE_DIR / "app" / "static" / "index.html")
 
 
+NO_CACHE_HEADERS = {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
+
+
 @app.get("/admin")
 async def admin_dashboard() -> FileResponse:
-    return FileResponse(BASE_DIR / "app" / "static" / "index.html")
+    return FileResponse(BASE_DIR / "app" / "static" / "index.html", headers=NO_CACHE_HEADERS)
 
 
 @app.get("/admin/products")
 async def admin_products() -> FileResponse:
-    return FileResponse(BASE_DIR / "app" / "static" / "products.html")
+    return FileResponse(BASE_DIR / "app" / "static" / "products.html", headers=NO_CACHE_HEADERS)
 
 
 @app.get("/admin/recordings")
 async def admin_recordings() -> FileResponse:
-    return FileResponse(BASE_DIR / "app" / "static" / "recordings.html")
+    return FileResponse(BASE_DIR / "app" / "static" / "recordings.html", headers=NO_CACHE_HEADERS)
+
+
+@app.get("/admin/orders")
+async def admin_orders() -> FileResponse:
+    return FileResponse(BASE_DIR / "app" / "static" / "orders.html", headers=NO_CACHE_HEADERS)
 
 
 app.include_router(admin_router)
@@ -360,6 +372,76 @@ async def api_calls(
         "counts": _call_counts(product_id),
         "interest_counts": _interest_counts(product_id),
     }
+
+
+@app.get("/api/orders")
+async def api_orders(
+    status: str | None = None,
+    product_id: int | None = None,
+    q: str = "",
+    limit: int = 100,
+) -> dict[str, object]:
+    all_orders = call_history.list_orders(limit=limit, product_id=product_id)
+    if status:
+        all_orders = [o for o in all_orders if o.get("status") == status]
+    if q.strip():
+        needle = q.strip().casefold()
+        all_orders = [
+            o for o in all_orders
+            if needle in str(o.get("customer_name") or "").casefold()
+            or needle in str(o.get("customer_phone") or "").casefold()
+            or needle in str(o.get("shipping_address") or "").casefold()
+            or needle in str(o.get("product_name") or "").casefold()
+        ]
+    return {
+        "ok": True,
+        "count": len(all_orders),
+        "orders": all_orders,
+    }
+
+
+@app.put("/api/orders/{order_id}")
+async def api_update_order(order_id: int, payload: dict) -> dict[str, object]:
+    updated = call_history.update_order(order_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"ok": True, "order": updated}
+
+
+@app.get("/api/orders/export")
+async def api_export_orders(status: str | None = None, product_id: int | None = None) -> Response:
+    orders = call_history.list_orders(limit=500, product_id=product_id)
+    if status:
+        orders = [o for o in orders if o.get("status") == status]
+    
+    import csv
+    import io
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Mã Đơn", "Ngày tạo", "Họ tên khách", "SĐT", "Sản phẩm / Combo",
+        "Số lượng", "Đơn giá (MMK)", "Tổng tiền (MMK)", "Địa chỉ giao hàng",
+        "Trạng thái đóng gói", "Ghi chú"
+    ])
+    for o in orders:
+        writer.writerow([
+            o.get("id"),
+            o.get("created_at"),
+            o.get("customer_name"),
+            o.get("customer_phone"),
+            o.get("product_name"),
+            o.get("quantity"),
+            o.get("unit_price"),
+            o.get("total_price"),
+            o.get("shipping_address"),
+            o.get("status"),
+            o.get("missing_fields"),
+        ])
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="orders-packing-manifest.csv"'},
+    )
 
 
 @app.get("/api/products")

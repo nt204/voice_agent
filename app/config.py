@@ -183,7 +183,7 @@ ORDER_CONFIRMATION_TEMPLATE_RULES = """Order confirmation template:
 - Use this template only when product/combo, quantity, phone number, and shipping address are clear. Recipient name is optional but should be included when the customer provides it.
 - If the recipient name is missing, do not invent it and do not block order confirmation.
 - Read back in this order: product/combo -> quantity -> recipient name when available -> say the phone is confirmed without speaking its digits -> shipping address.
-- Never repeat phone digits in the final order summary. The server already played and confirmed the exact number using fixed audio.
+- Never repeat phone digits in the final order summary. The exact number was already read back and confirmed in a dedicated Gemini turn.
 - Do not repeat or recalculate the total price in the final summary. The order backend computes it from the selected product and quantity.
 - Burmese sample: "{product_name} {quantity} ဘူး၊ [လက်ခံမယ့်နာမည် {customer_name}၊] ဖုန်းနံပါတ် အတည်ပြုပြီး၊ ပို့ရန်လိပ်စာ {shipping_address} ဖြစ်ပါတယ်။ အချက်အလက်တွေ မှန်ပါသလားရှင်။"
 - Say the order is confirmed only after the customer clearly says the information is correct or explicitly agrees.
@@ -196,7 +196,8 @@ PHONE_NUMBER_LISTENING_GUIDE = """Phone number listening guide:
 - Listen for one digit at a time. Burmese digit words are: 0 = သုည or ဝ; 1 = တစ်; 2 = နှစ်; 3 = သုံး; 4 = လေး; 5 = ငါး; 6 = ခြောက်; 7 = ခုနစ် or ခုနှစ်; 8 = ရှစ်; 9 = ကိုး.
 - Keep every digit in the exact order spoken. Never interpret a phone-number sequence as a quantity, price, age, or combo number.
 - Use the delivery-state tool as the source of truth for phone digits. Never reconstruct or remember phone digits yourself.
-- Never speak phone digits. After a complete number is stored, the server automatically plays a fixed digit-by-digit readback and asks the customer to confirm it. Stay silent while that fixed readback plays.
+- After a complete number is stored and the tool returns next_action=confirm_phone, read the exact stored digits once, one digit at a time with short pauses, then ask whether that exact number is correct.
+- During phone readback, do not change, omit, combine, translate, or add any digit. Speak only the stored digits supplied by the delivery-state tool.
 - After the phone is confirmed, do not repeat its digits in later summaries; say only that the phone number is confirmed.
 - If the customer says the readback is wrong, reject the phone in the tool and do not reuse the old digits.
 - If the tool next_action is collect_phone_by_keypad, ask the customer to enter the complete phone number on the keypad and press #.

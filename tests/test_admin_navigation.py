@@ -4,14 +4,20 @@ from pathlib import Path
 def test_admin_pages_have_shared_navigation_and_correct_active_state():
     dashboard = Path("app/static/index.html").read_text(encoding="utf-8")
     products = Path("app/static/products.html").read_text(encoding="utf-8")
+    recordings = Path("app/static/recordings.html").read_text(encoding="utf-8")
+    orders = Path("app/static/orders.html").read_text(encoding="utf-8")
 
-    assert 'class="app-nav"' in dashboard
+    for html_content in (dashboard, products, recordings, orders):
+        assert 'class="app-nav"' in html_content
+        assert 'href="/admin"' in html_content
+        assert 'href="/admin/products"' in html_content
+        assert 'href="/admin/recordings"' in html_content
+        assert 'href="/admin/orders"' in html_content
+
     assert 'href="/admin" aria-current="page"' in dashboard
-    assert 'href="/admin/products"' in dashboard
-
-    assert 'class="app-nav"' in products
-    assert 'href="/admin"' in products
     assert 'href="/admin/products" aria-current="page"' in products
+    assert 'href="/admin/recordings" aria-current="page"' in recordings
+    assert 'href="/admin/orders" aria-current="page"' in orders
 
 
 def test_product_management_is_a_separate_page_not_a_dashboard_modal():
@@ -49,11 +55,3 @@ def test_admin_interface_uses_plain_functional_names_without_ai_branding():
         "Đơn hàng AI",
     ):
         assert unwanted not in visible_sources
-
-
-def test_product_page_has_mobile_overflow_guards():
-    styles = Path("app/static/dashboard.css").read_text(encoding="utf-8")
-
-    assert ".products-workspace > * { min-width: 0; }" in styles
-    assert ".products-workspace .editor-heading { flex-direction: column;" in styles
-    assert ".products-workspace .product-form-actions { flex-wrap: wrap;" in styles

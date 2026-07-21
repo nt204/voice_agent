@@ -396,6 +396,34 @@ def test_merge_payload_uses_name_from_transcript_when_payload_omits_it() -> None
     assert result["order"]["customer_name"] == "Aung Min"
 
 
+def test_model_cannot_save_phone_correction_sentence_as_customer_name() -> None:
+    payload = {
+        "intent_status": "ready_to_order",
+        "customer_name": "းနေတယ်နော် ဆရာ ပြောပေးမယ်နော်",
+        "customer_phone": "09967954280",
+        "shipping_address": "အမှတ် ၆၂ ဂျပ်ဆင်လမ်း မြောက်ဥက္ကလာပမြို့နယ် ရန်ကုန်",
+        "product_name": "Venus BigOne Combo 2",
+        "quantity": 2,
+        "unit_price": 105000,
+        "total_price": 210000,
+        "combo": "Combo 2",
+        "confidence": 0.9,
+    }
+    transcript = [
+        {"speaker": "customer", "text": "နှစ်ဘူး ယူ ပါ မယ်"},
+        {"speaker": "customer", "text": "ဖုန်းနံပါတ် 09967954280 မှန်ပါတယ်"},
+        {
+            "speaker": "customer",
+            "text": "လိပ်စာက အမှတ် ၆၂ ဂျပ်ဆင်လမ်း မြောက်ဥက္ကလာပမြို့နယ် ရန်ကုန်",
+        },
+    ]
+
+    result = _merge_payload(payload, transcript, fallback_phone="", fallback={})
+
+    assert result["customer"]["name"] == ""
+    assert result["order"]["customer_name"] == ""
+
+
 def test_model_ready_intent_is_rejected_without_concrete_customer_selection() -> None:
     payload = {
         "intent_status": "ready_to_order",

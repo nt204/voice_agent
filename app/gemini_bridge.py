@@ -2,7 +2,6 @@ import asyncio
 import audioop
 import base64
 import re
-import wave
 from contextlib import suppress
 from typing import Awaitable, Callable
 
@@ -17,12 +16,12 @@ from app.live_order_state import (
     delivery_state_tool,
 )
 from app.logging_utils import log
-from app.phone_readback import phone_readback_frames
 from app.sales_analysis import (
     _extract_phone_precise,
     _phone_comparison_digits,
     _turn_confirms_phone,
     _turn_rejects_latest_phone,
+    select_customer_asr_transcript,
 )
 
 SendAudio = Callable[[bytes], Awaitable[None]]
@@ -127,13 +126,14 @@ class GeminiCallBridge:
         self.delivery_state = LiveDeliveryState()
         self.dtmf_digits = ""
         self.recorded_confirmed_facts: set[tuple[str, str]] = set()
+        self.confirmed_fact_values: dict[str, str] = {}
+        self.keypad_phone = ""
         self.collection_focus = ""
         self.collection_focus_until = 0.0
         self.authoritative_phone = ""
         self.authoritative_phone_source = ""
         self.last_phone_capture_conflicted = False
         self.pending_authoritative_phone_readback = ""
-        self.suppress_model_output_for_phone_readback = False
 
     async def start(self) -> None:
         live = self.client.aio.live.connect(
@@ -274,7 +274,6 @@ class GeminiCallBridge:
     async def start_input_activity(self) -> None:
         if not self.session or not self.explicit_vad or self.input_activity_active:
             return
-        self.suppress_model_output_for_phone_readback = False
         self.current_turn_audio.clear()
         self.realtime_live_transcript_parts.clear()
         self.turn_complete.clear()
@@ -296,7 +295,6 @@ class GeminiCallBridge:
             live_candidate,
             source="Gemini Live transcript",
         )
-        await self._flush_authoritative_phone_readback()
         if audio_bytes:
             turn_no = len(self.completed_turns_audio)
             self.completed_turns_audio.append((
@@ -417,21 +415,11 @@ class GeminiCallBridge:
                             input_text = content.input_transcription.text
                             log(f"[{self.call_id}] User: {input_text}")
                             self.realtime_live_transcript_parts.append(input_text)
-                            if (
-                                self.on_audio_turn
-                                and not self.delivery_state.phone_confirmed
-                                and re.search(
-                                    r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|mobile)",
-                                    input_text,
-                                    flags=re.IGNORECASE,
-                                )
-                            ):
-                                self.suppress_model_output_for_phone_readback = True
                             await self._record_transcript("customer", input_text)
                             live_customer_text = " ".join(
                                 self.realtime_live_transcript_parts
                             ).strip()
-                            phone_changed = self._capture_authoritative_phone(
+                            self._capture_authoritative_phone(
                                 live_customer_text,
                                 source="Gemini Live transcript",
                             )
@@ -439,17 +427,14 @@ class GeminiCallBridge:
                                 await self._confirm_authoritative_phone_from_text(
                                     live_customer_text
                                 )
-                            if phone_changed and not self.input_activity_active:
-                                await self._flush_authoritative_phone_readback()
                         if content.output_transcription and content.output_transcription.text:
                             self.last_model_activity_at = asyncio.get_running_loop().time()
                             log(f"[{self.call_id}] Gemini: {content.output_transcription.text}")
                             self._track_collection_focus(content.output_transcription.text)
-                            if not self.suppress_model_output_for_phone_readback:
-                                await self._record_transcript(
-                                    "agent",
-                                    content.output_transcription.text,
-                                )
+                            await self._record_transcript(
+                                "agent",
+                                content.output_transcription.text,
+                            )
 
                          # model_turn = content.model_turn (note: keep standard block)
                         model_turn = content.model_turn
@@ -466,10 +451,7 @@ class GeminiCallBridge:
                                 call_pcm = self._resample_output(pcm, gemini_rate)
 
                                 for frame in self.output_frames.push(call_pcm):
-                                    if (
-                                        not self.output_muted
-                                        and not self.suppress_model_output_for_phone_readback
-                                    ):
+                                    if not self.output_muted:
                                         self.audio_queue.put_nowait(frame)
 
                         if content.turn_complete:
@@ -512,6 +494,23 @@ class GeminiCallBridge:
                 authoritative_phone = _phone_comparison_digits(self.authoritative_phone)
                 if (
                     field == "phone"
+                    and action in {"set", "reject"}
+                    and self.authoritative_phone_source == "keypad"
+                ):
+                    result = self.delivery_state.status_response(
+                        ok=True,
+                        message=(
+                            "Ignored speech/model phone change. The number submitted "
+                            f"on the keypad, {self.authoritative_phone}, is authoritative. "
+                            "Only a new complete keypad entry ending in # may replace it."
+                        ),
+                    )
+                    log(
+                        f"[{self.call_id}] Ignored model phone {action}; "
+                        f"keypad phone remains '{self.authoritative_phone}'"
+                    )
+                elif (
+                    field == "phone"
                     and action == "set"
                     and self.authoritative_phone
                     and model_phone != authoritative_phone
@@ -542,12 +541,17 @@ class GeminiCallBridge:
                         self.authoritative_phone = ""
                         self.authoritative_phone_source = ""
                         self.pending_authoritative_phone_readback = ""
+                        self.confirmed_fact_values.pop("phone", None)
+                    elif field == "shipping_address" and action == "reject":
+                        self.confirmed_fact_values.pop("shipping_address", None)
                     result = self.delivery_state.apply(
                         field=field,
                         action=action,
                         value=value,
                     )
                 if result["ok"] and action == "confirm":
+                    if field == "phone":
+                        self.pending_authoritative_phone_readback = ""
                     await self._record_confirmed_fact(field)
 
             function_responses.append(
@@ -594,11 +598,12 @@ class GeminiCallBridge:
         facts = self.delivery_state.confirmed_facts()
         value = facts.get(field, "")
         marker = (field, value)
-        if not value or marker in self.recorded_confirmed_facts:
+        if not value:
+            return
+        self.confirmed_fact_values[field] = value
+        if marker in self.recorded_confirmed_facts:
             return
         self.recorded_confirmed_facts.add(marker)
-        label = "ဖုန်းနံပါတ်" if field == "phone" else "လိပ်စာ"
-        await self._record_transcript("customer", f"{label} {value} မှန်ပါတယ်")
 
     async def handle_dtmf(self, digit: str) -> None:
         digit = str(digit or "").strip()
@@ -621,12 +626,14 @@ class GeminiCallBridge:
         )
         if not result["ok"]:
             return
+        # A complete keypad sequence terminated by # is lossless customer
+        # input. Keep it above every probabilistic speech transcript.
+        self.delivery_state.apply(field="phone", action="confirm")
         self.authoritative_phone = self.delivery_state.phone
         self.authoritative_phone_source = "keypad"
+        self.keypad_phone = self.authoritative_phone
         self.pending_authoritative_phone_readback = self.authoritative_phone
-
-        text = f"ဖုန်းနံပါတ် {self.delivery_state.phone}"
-        await self._record_transcript("customer", text)
+        await self._record_confirmed_fact("phone")
         await self._flush_authoritative_phone_readback()
 
     async def _process_audio_turn_correction(
@@ -636,11 +643,15 @@ class GeminiCallBridge:
         live_candidate: str,
     ) -> None:
         try:
-            corrected_text = await self.on_audio_turn(
+            secondary_text = await self.on_audio_turn(
                 audio_bytes,
                 self.gemini_input_sample_rate,
                 turn_no,
                 live_candidate
+            )
+            corrected_text = select_customer_asr_transcript(
+                live_candidate,
+                secondary_text,
             )
             self.secondary_asr_results[turn_no] = corrected_text
             if corrected_text:
@@ -662,7 +673,7 @@ class GeminiCallBridge:
                                     types.Part(
                                         text=(
                                             "Server ASR confirms that the previously played phone "
-                                            "number is correct. Never speak any phone digits. "
+                                            "number is correct. Do not repeat its digits. "
                                             "Acknowledge briefly and ask only for the shipping address."
                                         )
                                     )
@@ -717,8 +728,8 @@ class GeminiCallBridge:
         result = self.delivery_state.apply(field="phone", action="confirm")
         if not result["ok"]:
             return False
+        self.pending_authoritative_phone_readback = ""
         await self._record_confirmed_fact("phone")
-        self.suppress_model_output_for_phone_readback = False
         log(
             f"[{self.call_id}] Customer transcript confirmed authoritative phone "
             f"'{self.authoritative_phone}'"
@@ -733,6 +744,21 @@ class GeminiCallBridge:
 
         comparison_phone = _phone_comparison_digits(phone)
         authoritative_phone = _phone_comparison_digits(self.authoritative_phone)
+        if (
+            authoritative_phone
+            and comparison_phone != authoritative_phone
+            and self.authoritative_phone_source == "keypad"
+            and source != "keypad"
+        ):
+            self.last_phone_capture_conflicted = bool(
+                _turn_rejects_latest_phone(text)
+                or PHONE_REPLACEMENT_RE.search(text)
+            )
+            log(
+                f"[{self.call_id}] Ignored {source} phone '{comparison_phone}'; "
+                f"keypad phone remains '{self.authoritative_phone}'"
+            )
+            return self.authoritative_phone
         if (
             authoritative_phone
             and comparison_phone != authoritative_phone
@@ -766,7 +792,7 @@ class GeminiCallBridge:
             comparison_phone == authoritative_phone
             and comparison_phone == _phone_comparison_digits(self.delivery_state.phone)
         ):
-            if source == "secondary ASR":
+            if source == "secondary ASR" and self.authoritative_phone_source != "keypad":
                 self.authoritative_phone_source = source
             return self.authoritative_phone
 
@@ -794,13 +820,18 @@ class GeminiCallBridge:
         self.pending_authoritative_phone_readback = ""
         digits = " ".join(phone)
         await self._clear_pending_output_audio()
-        frames = []
-        try:
-            frames = phone_readback_frames(phone, self.call_sample_rate)
-        except (FileNotFoundError, ValueError, wave.Error) as exc:
-            log(f"[{self.call_id}] Deterministic phone readback unavailable: {exc}")
-        self.suppress_model_output_for_phone_readback = bool(frames)
-        if self.session and not frames:
+        if self.session:
+            next_instruction = (
+                "The customer submitted this complete number on the keypad and pressed #, "
+                "so it is already confirmed. Read the digits exactly once, acknowledge receipt, "
+                "then ask only for the shipping address. Do not ask the customer to say or "
+                "confirm the phone again."
+                if self.authoritative_phone_source == "keypad"
+                else (
+                    "Ask only whether this exact number is correct. Do not change, omit, "
+                    "combine, or add any digit."
+                )
+            )
             await self.session.send_client_content(
                 turns=types.Content(
                     role="user",
@@ -813,23 +844,15 @@ class GeminiCallBridge:
                                 "number inferred from audio or conversation memory. Call "
                                 f"{DELIVERY_STATE_FUNCTION} with field=phone, action=set, and "
                                 f"value={phone}. "
-                                + (
-                                    f"Then read exactly these digits one by one: {digits}. "
-                                    "Ask only whether this exact number is correct."
-                                )
+                                f"Then speak in Burmese and read exactly these digits one by one "
+                                f"with short pauses: {digits}. {next_instruction}"
                             )
                         )
                     ],
                 ),
                 turn_complete=True,
             )
-        if frames:
-            await self._record_transcript(
-                "agent",
-                f"ဖုန်းနံပါတ် {phone} မှန်ပါသလားရှင်။",
-            )
-            for frame in frames:
-                await self.send_audio(frame)
+            log(f"[{self.call_id}] Requested Gemini Live phone readback for '{phone}'")
 
     async def wait_for_audio_turns(self) -> None:
         if self.asr_tasks:
@@ -863,7 +886,11 @@ class GeminiCallBridge:
         for turn_index, _, live_candidate in self.completed_turns_audio:
             if turn_index not in self.secondary_asr_results:
                 continue
-            corrected_text = self.secondary_asr_results[turn_index]
+            corrected_text = select_customer_asr_transcript(
+                live_candidate,
+                self.secondary_asr_results[turn_index],
+            )
+            self.secondary_asr_results[turn_index] = corrected_text
             if corrected_text != live_candidate:
                 shown = corrected_text or "[unclear]"
                 log(
@@ -888,6 +915,19 @@ class GeminiCallBridge:
         # Freeze Live transcription before replacing customer turns with final ASR.
         await self._stop_receiver()
         await self.run_post_call_asr(store)
+        # Append server-confirmed facts only after ASR replacement. Synthetic
+        # tool/DTMF rows must never shift the audio-turn indexes, and keypad
+        # digits must remain the final, lossless evidence used for extraction.
+        for field in ("phone", "shipping_address"):
+            value = self.confirmed_fact_values.get(field, "")
+            if not value:
+                continue
+            label = "ဖုန်းနံပါတ်" if field == "phone" else "လိပ်စာ"
+            store.add_transcript(
+                self.call_id,
+                "customer",
+                f"{label} {value} မှန်ပါတယ်",
+            )
         self.transcript_finalized = True
 
 

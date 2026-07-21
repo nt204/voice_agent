@@ -22,7 +22,10 @@ BURMESE_PHONE_DIGIT_GUIDE = """Burmese phone digits:
 BURMESE_ORDER_LISTENING_GUIDE = """Burmese order words:
 - Customers may say ၂ ဘူး, နှစ်ဘူး, နှစ်ပုဒ်, or similar casual speech to mean two boxes/items.
 - In a sales-order context, do not confuse နှစ်ဘူး / နှစ်ပုဒ် with keypad, pressing, or unrelated words.
-- Preserve explicit order phrases such as အော်ဒါတင်ပေးပါ, ယူမယ်, မှာမယ်, Combo 2, Combo 3, and product names.
+- Catalog vocabulary includes Venus BigOne and Combo 1, Combo 2, Combo 3, and Combo 5.
+- Burmese pronunciation of the English word Combo may sound close to ကွန်ဘို, ကွန်ဂို, ကွန်ပူ, or ကုန်ပူ. When the audio supports that catalog word followed by 1, 2, 3, or 5, transcribe it as "Combo <number>"; never invent it from unclear audio.
+- Preserve explicit order phrases such as အော်ဒါတင်ပေးပါ, ယူမယ်, ယူပါမယ်, မှာမယ်, မှာယူမယ်, Combo 2, Combo 3, and product names.
+- Do not remove Burmese politeness particles or insert spaces that change a phrase's meaning. Keep corrections such as "တစ်ဘူး မဟုတ်ဘူး၊ နှစ်ဘူး ယူမယ်" complete.
 """
 
 

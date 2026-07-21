@@ -169,7 +169,8 @@ def test_bridge_records_phone_after_customer_confirms_it(monkeypatch) -> None:
     bridge = asyncio.run(run())
 
     assert bridge.delivery_state.confirmed_facts()["phone"] == "09789119333"
-    assert transcripts == [("customer", "ဖုန်းနံပါတ် 09789119333 မှန်ပါတယ်")]
+    assert bridge.confirmed_fact_values["phone"] == "09789119333"
+    assert transcripts == []
 
 
 def test_dtmf_phone_is_recorded_and_sent_to_live_conversation(monkeypatch) -> None:
@@ -202,12 +203,99 @@ def test_dtmf_phone_is_recorded_and_sent_to_live_conversation(monkeypatch) -> No
     bridge, session = asyncio.run(run())
 
     assert bridge.delivery_state.phone == "09789119333"
-    assert transcripts == [
-        ("customer", "ဖုန်းနံပါတ် 09789119333"),
-        ("agent", "ဖုန်းနံပါတ် 09789119333 မှန်ပါသလားရှင်။"),
+    assert bridge.delivery_state.phone_confirmed is True
+    assert bridge.authoritative_phone_source == "keypad"
+    assert bridge.confirmed_fact_values["phone"] == "09789119333"
+    assert transcripts == []
+    assert sent_audio == []
+    assert len(session.client_content) == 1
+    instruction = session.client_content[0]["turns"].parts[0].text
+    assert "09789119333" in instruction
+    assert "read exactly these digits one by one" in instruction
+    assert "already confirmed" in instruction
+
+
+def test_keypad_phone_cannot_be_overwritten_by_speech_asr_or_model_reject(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
+
+    async def send_audio(_: bytes) -> None:
+        pass
+
+    async def run() -> GeminiCallBridge:
+        bridge = GeminiCallBridge(
+            call_id="keypad-lock",
+            call_sample_rate=16000,
+            send_audio=send_audio,
+            send_initial_greeting=False,
+        )
+        bridge.session = _FakeSession()
+        for digit in "09967954280#":
+            await bridge.handle_dtmf(digit)
+
+        bridge._capture_authoritative_phone(
+            "ဖုန်းနံပါတ် 0996552800 ပါ",
+            source="Gemini Live transcript",
+        )
+        bridge._capture_authoritative_phone(
+            "ဖုန်းနံပါတ် 0996954220 ပါ",
+            source="secondary ASR",
+        )
+        await bridge._handle_tool_call(
+            types.LiveServerToolCall(
+                function_calls=[
+                    types.FunctionCall(
+                        id="reject-keypad-phone",
+                        name=DELIVERY_STATE_FUNCTION,
+                        args={"field": "phone", "action": "reject"},
+                    )
+                ]
+            )
+        )
+        return bridge
+
+    bridge = asyncio.run(run())
+
+    assert bridge.authoritative_phone == "09967954280"
+    assert bridge.authoritative_phone_source == "keypad"
+    assert bridge.delivery_state.phone == "09967954280"
+    assert bridge.delivery_state.phone_confirmed is True
+    assert bridge.confirmed_fact_values["phone"] == "09967954280"
+
+
+def test_keypad_phone_is_appended_after_final_asr_for_order_extraction(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
+
+    class Store:
+        def __init__(self) -> None:
+            self.transcripts = []
+
+        def add_transcript(self, call_id: str, speaker: str, text: str) -> None:
+            self.transcripts.append((call_id, speaker, text))
+
+    async def send_audio(_: bytes) -> None:
+        pass
+
+    async def run() -> tuple[GeminiCallBridge, Store]:
+        bridge = GeminiCallBridge(
+            call_id="keypad-final-fact",
+            call_sample_rate=16000,
+            send_audio=send_audio,
+            send_initial_greeting=False,
+        )
+        for digit in "09967954280#":
+            await bridge.handle_dtmf(digit)
+        store = Store()
+        await bridge.finalize_transcript(store)
+        return bridge, store
+
+    bridge, store = asyncio.run(run())
+
+    assert bridge.transcript_finalized is True
+    assert store.transcripts == [
+        ("keypad-final-fact", "customer", "ဖုန်းနံပါတ် 09967954280 မှန်ပါတယ်")
     ]
-    assert sent_audio
-    assert session.client_content == []
 
 
 def test_secondary_asr_phone_replaces_wrong_live_phone_and_blocks_overwrite(monkeypatch) -> None:
@@ -266,8 +354,10 @@ def test_secondary_asr_phone_replaces_wrong_live_phone_and_blocks_overwrite(monk
     assert bridge.delivery_state.phone == "09780771433"
     assert bridge.authoritative_phone == "09780771433"
     assert cleared == [True]
-    assert session.client_content == []
-    assert bridge.suppress_model_output_for_phone_readback is True
+    assert len(session.client_content) == 1
+    instruction = session.client_content[0]["turns"].parts[0].text
+    assert "09780771433" in instruction
+    assert "read exactly these digits one by one" in instruction
     response = session.tool_responses[0]["function_responses"][0].response
     assert response["state"]["phone"] == "09780771433"
     assert response["next_action"] == "confirm_phone"
@@ -304,7 +394,6 @@ def test_live_transcript_phone_is_authoritative_without_secondary_asr(monkeypatc
             "သုည ကိုး ခုနစ် ရှစ် သုည ခုနစ် ခုနစ် တစ် လေး သုံး သုံး ပါ",
             source="Gemini Live transcript",
         )
-        await bridge._flush_authoritative_phone_readback()
         return bridge, session, phone
 
     bridge, session, phone = asyncio.run(run())
@@ -312,9 +401,9 @@ def test_live_transcript_phone_is_authoritative_without_secondary_asr(monkeypatc
     assert phone == "09780771433"
     assert bridge.delivery_state.phone == "09780771433"
     assert bridge.authoritative_phone == "09780771433"
-    assert cleared == [True]
+    assert bridge.pending_authoritative_phone_readback == "09780771433"
+    assert cleared == []
     assert session.client_content == []
-    assert bridge.suppress_model_output_for_phone_readback is True
 
 
 def test_confirmation_transcript_cannot_replace_authoritative_phone(monkeypatch) -> None:
@@ -477,7 +566,8 @@ def test_customer_transcript_confirms_authoritative_phone_without_tool_call(monk
     assert confirmed is True
     assert bridge.delivery_state.phone == "09780771433"
     assert bridge.delivery_state.phone_confirmed is True
-    assert transcripts == [("customer", "ဖုန်းနံပါတ် 09780771433 မှန်ပါတယ်")]
+    assert bridge.confirmed_fact_values["phone"] == "09780771433"
+    assert transcripts == []
 
 
 def test_explicit_new_phone_replaces_authoritative_phone(monkeypatch) -> None:
