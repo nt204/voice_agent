@@ -75,6 +75,14 @@ class SqlAlchemyCallHistoryStore:
                             "ADD COLUMN product_id INTEGER REFERENCES products(id)"
                         )
                     )
+            outbound_cols = {col["name"] for col in inspect(connection).get_columns("outbound_call_requests")}
+            for col_name, col_type in [
+                ("prompt_override", "TEXT NOT NULL DEFAULT ''"),
+                ("customer_name", "TEXT NOT NULL DEFAULT ''"),
+                ("customer_data_json", "TEXT NOT NULL DEFAULT ''"),
+            ]:
+                if col_name not in outbound_cols:
+                    connection.execute(text(f"ALTER TABLE outbound_call_requests ADD COLUMN {col_name} {col_type}"))
             for index_sql in (
                 "CREATE INDEX IF NOT EXISTS idx_calls_product_id ON calls(product_id)",
                 "CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders(product_id)",
@@ -403,6 +411,9 @@ class SqlAlchemyCallHistoryStore:
         to_number: str,
         from_number: str = "",
         product_id: int | None = None,
+        prompt_override: str = "",
+        customer_name: str = "",
+        customer_data_json: str = "",
     ) -> dict[str, Any]:
         now = _now()
         with self._lock, self.engine.begin() as connection:
@@ -412,6 +423,9 @@ class SqlAlchemyCallHistoryStore:
                     from_number=from_number.strip(),
                     product_id=product_id,
                     status="queued",
+                    prompt_override=prompt_override.strip(),
+                    customer_name=customer_name.strip(),
+                    customer_data_json=customer_data_json.strip(),
                     created_at=now,
                     updated_at=now,
                 )

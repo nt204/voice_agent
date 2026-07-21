@@ -36,6 +36,28 @@ const productList = document.querySelector("#productList");
 const productForm = document.querySelector("#productForm");
 const offerList = document.querySelector("#offerList");
 const productFormStatus = document.querySelector("#productFormStatus");
+const sheetProduct = document.querySelector("#sheetProduct");
+const sheetCampaignForm = document.querySelector("#sheetCampaignForm");
+const sheetUrlInput = document.querySelector("#sheetUrlInput");
+const previewSheetButton = document.querySelector("#previewSheetButton");
+const launchSheetButton = document.querySelector("#launchSheetButton");
+const sheetCampaignStatus = document.querySelector("#sheetCampaignStatus");
+const modeQuickTab = document.querySelector("#modeQuickTab");
+const modeSheetTab = document.querySelector("#modeSheetTab");
+
+modeQuickTab?.addEventListener("click", () => {
+  modeQuickTab.classList.add("active");
+  modeSheetTab?.classList.remove("active");
+  if (outboundCallForm) outboundCallForm.style.display = "grid";
+  if (sheetCampaignForm) sheetCampaignForm.style.display = "none";
+});
+
+modeSheetTab?.addEventListener("click", () => {
+  modeSheetTab.classList.add("active");
+  modeQuickTab?.classList.remove("active");
+  if (sheetCampaignForm) sheetCampaignForm.style.display = "grid";
+  if (outboundCallForm) outboundCallForm.style.display = "none";
+});
 
 const escapeHtml = (value = "") => String(value).replace(
   /[&<>"']/g,
@@ -185,6 +207,12 @@ async function loadProducts({ preserveSelection = true } = {}) {
       ? previousOutbound
       : defaultProduct?.id || "";
     outboundProduct.value = String(preferred);
+  }
+
+  if (sheetProduct) {
+    sheetProduct.innerHTML = '<option value="">Mặc định theo Sheet</option>' + activeProducts.map(product => `
+      <option value="${product.id}">${escapeHtml(product.name)}</option>
+    `).join("");
   }
 }
 
@@ -913,6 +941,155 @@ endCallButton?.addEventListener("click", async () => {
     outboundCallStatus.textContent = error.message;
     outboundCallStatus.className = "form-status error";
   }
+});
+
+const sheetPreviewModal = document.querySelector("#sheetPreviewModal");
+const modalLeadSummary = document.querySelector("#modalLeadSummary");
+const sheetPreviewTableBody = document.querySelector("#sheetPreviewTableBody");
+const closeModalButton = document.querySelector("#closeModalButton");
+const cancelModalButton = document.querySelector("#cancelModalButton");
+const confirmLaunchCampaignButton = document.querySelector("#confirmLaunchCampaignButton");
+
+const skipAlreadyCalledCheck = document.querySelector("#skipAlreadyCalledCheck");
+const sheetDelaySelect = document.querySelector("#sheetDelaySelect");
+
+function openSheetPreviewModal(data = {}) {
+  const leads = data.leads || [];
+  if (!sheetPreviewModal || !sheetPreviewTableBody) return;
+  
+  const readyCount = data.ready_count !== undefined ? data.ready_count : leads.filter(l => l.status_tag === "ready").length;
+  const dupCount = data.duplicate_count !== undefined ? data.duplicate_count : leads.filter(l => l.status_tag === "duplicate").length;
+  const calledCount = data.called_count !== undefined ? data.called_count : leads.filter(l => l.status_tag === "already_called").length;
+  const invalidCount = data.invalid_count !== undefined ? data.invalid_count : leads.filter(l => l.status_tag === "invalid").length;
+
+  if (modalLeadSummary) {
+    modalLeadSummary.textContent = `Tổng ${leads.length} khách: ${readyCount} sẵn sàng, ${dupCount} trùng lặp, ${calledCount} đã gọi, ${invalidCount} SĐT lỗi.`;
+  }
+  if (confirmLaunchCampaignButton) {
+    confirmLaunchCampaignButton.textContent = `Gọi chiến dịch cho ${readyCount} khách sẵn sàng`;
+  }
+
+  sheetPreviewTableBody.innerHTML = leads.map((lead, index) => {
+    let badgeHtml = '<span style="background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🟢 Sẵn sàng gọi</span>';
+    if (lead.status_tag === "invalid") {
+      badgeHtml = '<span style="background:#fee2e2; color:#b91c1c; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🔴 SĐT không hợp lệ</span>';
+    } else if (lead.status_tag === "duplicate") {
+      badgeHtml = '<span style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🟡 Trùng lặp trong Sheet</span>';
+    } else if (lead.status_tag === "already_called") {
+      badgeHtml = '<span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🔵 Đã gọi trước đó</span>';
+    }
+
+    return `
+      <tr style="${lead.status_tag !== 'ready' ? 'opacity: 0.7;' : ''}">
+        <td><strong>${index + 1}</strong></td>
+        <td><strong>${escapeHtml(lead.name || "Chưa có")}</strong></td>
+        <td><code style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">${escapeHtml(lead.phone || "Thiếu SĐT")}</code></td>
+        <td>${escapeHtml(lead.product || "Mặc định")}</td>
+        <td>${escapeHtml(lead.quantity || "1")}</td>
+        <td>${escapeHtml(lead.address || "Chưa có")}</td>
+        <td>${badgeHtml}</td>
+        <td><span style="color:#64748b;">${escapeHtml(lead.notes || "—")}</span></td>
+      </tr>
+    `;
+  }).join("") || '<tr><td colspan="8" style="text-align:center; padding: 20px; color: #94a3b8;">Không tìm thấy dữ liệu hợp lệ</td></tr>';
+  
+  sheetPreviewModal.style.display = "flex";
+}
+
+function closeSheetPreviewModal() {
+  if (sheetPreviewModal) {
+    sheetPreviewModal.style.display = "none";
+  }
+}
+
+closeModalButton?.addEventListener("click", closeSheetPreviewModal);
+cancelModalButton?.addEventListener("click", closeSheetPreviewModal);
+sheetPreviewModal?.addEventListener("click", (e) => {
+  if (e.target === sheetPreviewModal) closeSheetPreviewModal();
+});
+
+previewSheetButton?.addEventListener("click", async () => {
+  const sheetUrl = sheetUrlInput?.value.trim();
+  if (!sheetUrl) {
+    if (sheetCampaignStatus) {
+      sheetCampaignStatus.textContent = "Hãy nhập đường dẫn Google Sheet.";
+      sheetCampaignStatus.className = "form-status error";
+    }
+    return;
+  }
+  previewSheetButton.disabled = true;
+  if (sheetCampaignStatus) {
+    sheetCampaignStatus.textContent = "Đang kết nối và đọc Google Sheet...";
+    sheetCampaignStatus.className = "form-status";
+  }
+  try {
+    const data = await postJson("/api/sheets/preview", { sheet_url: sheetUrl });
+    if (sheetCampaignStatus) {
+      sheetCampaignStatus.textContent = `Đã kết nối ${data.count} khách hàng (${data.ready_count} sẵn sàng gọi). Đang mở bảng xem trước...`;
+      sheetCampaignStatus.className = "form-status success";
+    }
+    openSheetPreviewModal(data);
+  } catch (error) {
+    if (sheetCampaignStatus) {
+      sheetCampaignStatus.textContent = error.message;
+      sheetCampaignStatus.className = "form-status error";
+    }
+  } finally {
+    previewSheetButton.disabled = false;
+  }
+});
+
+async function triggerLaunchCampaign() {
+  const sheetUrl = sheetUrlInput?.value.trim();
+  const productId = sheetProduct?.value || "";
+  const skipAlreadyCalled = skipAlreadyCalledCheck ? skipAlreadyCalledCheck.checked : true;
+  const delaySeconds = sheetDelaySelect ? Number(sheetDelaySelect.value) || 0 : 0;
+
+  if (!sheetUrl) {
+    if (sheetCampaignStatus) {
+      sheetCampaignStatus.textContent = "Hãy nhập đường dẫn Google Sheet.";
+      sheetCampaignStatus.className = "form-status error";
+    }
+    return;
+  }
+  if (launchSheetButton) launchSheetButton.disabled = true;
+  if (confirmLaunchCampaignButton) confirmLaunchCampaignButton.disabled = true;
+  if (sheetCampaignStatus) {
+    sheetCampaignStatus.textContent = "Đang khởi tạo chiến dịch cuộc gọi...";
+    sheetCampaignStatus.className = "form-status";
+  }
+  try {
+    const data = await postJson("/api/sheets/launch-campaign", {
+      sheet_url: sheetUrl,
+      product_id: productId ? Number(productId) : null,
+      skip_already_called: skipAlreadyCalled,
+      delay_seconds: delaySeconds,
+    });
+    closeSheetPreviewModal();
+    if (sheetCampaignStatus) {
+      const delayInfo = data.delay_seconds > 0 ? ` (giãn cách ${data.delay_seconds}s)` : "";
+      sheetCampaignStatus.textContent = `Đã thêm ${data.count} cuộc gọi từ Google Sheet vào hàng chờ${delayInfo}!`;
+      sheetCampaignStatus.className = "form-status success";
+    }
+    await loadDashboard();
+  } catch (error) {
+    if (sheetCampaignStatus) {
+      sheetCampaignStatus.textContent = error.message;
+      sheetCampaignStatus.className = "form-status error";
+    }
+  } finally {
+    if (launchSheetButton) launchSheetButton.disabled = false;
+    if (confirmLaunchCampaignButton) confirmLaunchCampaignButton.disabled = false;
+  }
+}
+
+sheetCampaignForm?.addEventListener("submit", async event => {
+  event.preventDefault();
+  await triggerLaunchCampaign();
+});
+
+confirmLaunchCampaignButton?.addEventListener("click", async () => {
+  await triggerLaunchCampaign();
 });
 
 document.querySelector("#refreshButton")?.addEventListener("click", loadDashboard);

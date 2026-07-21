@@ -54,7 +54,14 @@
       </section>
 
       <section class="control-card call-card">
-        <div class="panel-heading"><h2>Gọi nhanh cho khách</h2></div>
+        <div class="panel-heading call-heading">
+          <h2>Tạo cuộc gọi đi</h2>
+          <div class="call-mode-switcher" role="tablist">
+            <button id="modeQuickTab" class="call-mode-tab active" type="button" role="tab" aria-selected="true" title="Gọi nhanh cho khách">Gọi nhanh<span class="sr-only">Gọi nhanh cho khách</span></button>
+            <button id="modeSheetTab" class="call-mode-tab" type="button" role="tab" aria-selected="false">Google Sheet</button>
+          </div>
+        </div>
+
         <form id="outboundCallForm" class="call-form">
           <label class="product-field">
             <span>Sản phẩm</span>
@@ -69,6 +76,37 @@
             <button id="endCallButton" class="call-button end-call-button" type="button" hidden>Ngắt cuộc gọi</button>
           </div>
           <p id="outboundCallStatus" class="form-status" role="status"></p>
+        </form>
+
+        <form id="sheetCampaignForm" class="call-form" style="display: none;">
+          <label class="product-field">
+            <span>Sản phẩm</span>
+            <select id="sheetProduct" name="product_id"><option value="">Mặc định theo Sheet</option></select>
+          </label>
+          <label class="phone-field">
+            <span>Link Google Sheet</span>
+            <input id="sheetUrlInput" name="sheet_url" type="url" placeholder="https://docs.google.com/spreadsheets/d/..." required>
+          </label>
+          <div class="call-actions sheet-actions">
+            <button id="previewSheetButton" class="call-button preview-sheet-button" type="button">Xem trước</button>
+            <button id="launchSheetButton" class="call-button launch-sheet-button" type="submit">Gọi chiến dịch</button>
+          </div>
+          <div class="sheet-options-bar">
+            <label class="sheet-checkbox-label">
+              <input id="skipAlreadyCalledCheck" type="checkbox" checked>
+              <span>Lọc trùng & khách đã gọi</span>
+            </label>
+            <label class="sheet-delay-label">
+              <span>Giãn cách:</span>
+              <select id="sheetDelaySelect">
+                <option value="0">Ngay lập tức</option>
+                <option value="5">5 giây</option>
+                <option value="10">10 giây</option>
+                <option value="15">15 giây</option>
+              </select>
+            </label>
+          </div>
+          <p id="sheetCampaignStatus" class="form-status" role="status"></p>
         </form>
       </section>
     </section>
@@ -112,6 +150,43 @@
       </aside>
     </section>
   </main>
+
+  <!-- Modal Xem trước Google Sheet -->
+  <div id="sheetPreviewModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <h2>Xem trước danh sách Google Sheet</h2>
+          <p id="modalLeadSummary" class="modal-subtitle">Đang tải danh sách...</p>
+        </div>
+        <button id="closeModalButton" class="icon-button close-modal-btn" type="button" aria-label="Đóng">✕</button>
+      </header>
+      <div class="modal-body">
+        <div class="sheet-preview-table-wrap">
+          <table class="sheet-preview-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Họ tên</th>
+                <th>Số điện thoại</th>
+                <th>Sản phẩm</th>
+                <th>Số lượng</th>
+                <th>Địa chỉ</th>
+                <th>Trạng thái</th>
+                <th>Ghi chú</th>
+              </tr>
+            </thead>
+            <tbody id="sheetPreviewTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <footer class="modal-footer">
+        <button id="cancelModalButton" class="secondary-button" type="button">Hủy bỏ</button>
+        <button id="confirmLaunchCampaignButton" class="primary-button" type="button" style="background:#16a34a; border-color:#16a34a;">Gọi chiến dịch ngay</button>
+      </footer>
+    </div>
+  </div>
 
   <template id="loadingTemplate"><div class="list-state">Đang tải dữ liệu...</div></template>
   <template id="emptyTemplate"><div class="list-state"><strong>Chưa có cuộc gọi</strong></div></template>

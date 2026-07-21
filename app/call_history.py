@@ -115,6 +115,9 @@ outbound_requests_table = Table(
     Column("status", String(30), nullable=False, server_default="queued"),
     Column("call_sid", Text, nullable=False, server_default=""),
     Column("error", Text, nullable=False, server_default=""),
+    Column("prompt_override", Text, nullable=False, server_default=""),
+    Column("customer_name", Text, nullable=False, server_default=""),
+    Column("customer_data_json", Text, nullable=False, server_default=""),
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
 )
@@ -1039,6 +1042,7 @@ class SQLiteCallHistoryStore:
 
     @staticmethod
     def _outbound_request_summary(row: sqlite3.Row) -> dict[str, Any]:
+        keys = set(row.keys())
         result = {
             "id": row["id"],
             "to_number": row["to_number"],
@@ -1049,8 +1053,14 @@ class SQLiteCallHistoryStore:
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
         }
-        if "product_id" in set(row.keys()):
+        if "product_id" in keys:
             result["product_id"] = row["product_id"]
+        if "prompt_override" in keys:
+            result["prompt_override"] = row["prompt_override"]
+        if "customer_name" in keys:
+            result["customer_name"] = row["customer_name"]
+        if "customer_data_json" in keys:
+            result["customer_data_json"] = row["customer_data_json"]
         return result
 
     @staticmethod

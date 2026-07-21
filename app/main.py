@@ -27,6 +27,9 @@ from app.config import config, gemini_initial_greeting, gemini_system_instructio
 from app.database import init_db
 from app.gemini_bridge import GeminiCallBridge
 from app.logging_utils import log
+import re
+from app.google_sheets import fetch_and_parse_google_sheet
+from app.sheet_prompts import build_outbound_sheet_prompt
 from app.admin import router as admin_router
 from app.phone_numbers import normalize_phone_number
 from app.recording_manager import latest_recording_for_call, recording_path_for_call
@@ -592,9 +595,17 @@ async def telnyx_outbound_answer(request: Request) -> Response:
         product_id = int(payload.get("product_id")) if payload.get("product_id") else None
     except (TypeError, ValueError):
         product_id = None
+    request_id = payload.get("request_id") or request.query_params.get("request_id") or ""
     product = call_history.get_product(product_id) if product_id is not None else None
     product = product or call_history.get_default_product()
-    product_query = urlencode({"product_id": product["id"]}) if product else ""
+    
+    query_params = {}
+    if product:
+        query_params["product_id"] = product["id"]
+    if request_id:
+        query_params["request_id"] = str(request_id)
+        
+    product_query = urlencode(query_params) if query_params else ""
     stream_url = _public_ws_url(
         f"/telnyx/outbound/ws?{product_query}" if product_query else "/telnyx/outbound/ws"
     )
@@ -623,6 +634,134 @@ async def telnyx_outbound_answer(request: Request) -> Response:
     return Response(content=texml, media_type="application/xml")
 
 
+@app.post("/api/sheets/preview")
+async def api_sheets_preview(payload: dict) -> dict:
+    sheet_url = str(payload.get("sheet_url") or "").strip()
+    if not sheet_url:
+        raise HTTPException(status_code=400, detail="Missing sheet_url")
+    try:
+        leads = await fetch_and_parse_google_sheet(sheet_url)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    existing_calls = call_history.list_calls(limit=500)
+    existing_phones = {
+        re.sub(r"\D", "", str(c.get("customer_phone") or c.get("dialed_phone") or ""))
+        for c in existing_calls
+        if c.get("customer_phone") or c.get("dialed_phone")
+    }
+
+    processed_leads = []
+    ready_count = 0
+    duplicate_count = 0
+    called_count = 0
+    invalid_count = 0
+
+    for lead in leads:
+        clean_phone = re.sub(r"\D", "", lead.get("phone") or "")
+        if lead.get("is_valid_phone") is False or not clean_phone:
+            lead["status_tag"] = "invalid"
+            lead["status_label"] = "SĐT không hợp lệ"
+            invalid_count += 1
+        elif lead.get("is_duplicate"):
+            lead["status_tag"] = "duplicate"
+            lead["status_label"] = "Trùng lặp trong Sheet"
+            duplicate_count += 1
+        elif lead.get("called") or (clean_phone and clean_phone in existing_phones):
+            lead["status_tag"] = "already_called"
+            lead["status_label"] = "Đã gọi trước đó"
+            called_count += 1
+        else:
+            lead["status_tag"] = "ready"
+            lead["status_label"] = "Sẵn sàng gọi"
+            ready_count += 1
+        processed_leads.append(lead)
+
+    return {
+        "ok": True,
+        "count": len(processed_leads),
+        "ready_count": ready_count,
+        "duplicate_count": duplicate_count,
+        "called_count": called_count,
+        "invalid_count": invalid_count,
+        "leads": processed_leads,
+    }
+
+
+@app.post("/api/sheets/launch-campaign")
+async def api_sheets_launch_campaign(payload: dict) -> dict:
+    sheet_url = str(payload.get("sheet_url") or "").strip()
+    leads = payload.get("leads") or []
+    product_id = payload.get("product_id")
+    from_number = str(payload.get("from_number") or "").strip()
+    skip_already_called = bool(payload.get("skip_already_called", True))
+    delay_seconds = int(payload.get("delay_seconds", 0) or 0)
+
+    if not leads and sheet_url:
+        try:
+            leads = await fetch_and_parse_google_sheet(sheet_url)
+            existing_calls = call_history.list_calls(limit=500)
+            existing_phones = {
+                re.sub(r"\D", "", str(c.get("customer_phone") or c.get("dialed_phone") or ""))
+                for c in existing_calls
+                if c.get("customer_phone") or c.get("dialed_phone")
+            }
+            for lead in leads:
+                clean_phone = re.sub(r"\D", "", lead.get("phone") or "")
+                if lead.get("is_valid_phone") is False or not clean_phone:
+                    lead["status_tag"] = "invalid"
+                elif lead.get("is_duplicate"):
+                    lead["status_tag"] = "duplicate"
+                elif lead.get("called") or (clean_phone and clean_phone in existing_phones):
+                    lead["status_tag"] = "already_called"
+                else:
+                    lead["status_tag"] = "ready"
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if not leads:
+        raise HTTPException(status_code=400, detail="No valid leads found in Google Sheet")
+
+    product = call_history.get_product(int(product_id)) if product_id else call_history.get_default_product()
+
+    created_requests = []
+    skipped_count = 0
+
+    for lead in leads:
+        to_number = normalize_phone_number(str(lead.get("phone") or ""))
+        if not to_number or lead.get("status_tag") == "invalid":
+            skipped_count += 1
+            continue
+
+        status_tag = lead.get("status_tag", "ready")
+        if skip_already_called and status_tag in {"duplicate", "already_called"}:
+            skipped_count += 1
+            continue
+
+        prompt_override = build_outbound_sheet_prompt(lead, product)
+        cust_name = str(lead.get("name") or "").strip()
+        cust_json = str(lead.get("raw_row") or {})
+
+        from_num = normalize_phone_number(from_number or (product.get("phone_number") if product else "") or config.telnyx.outbound_from_number or "")
+        outbound_req = call_history.create_outbound_request(
+            to_number=to_number,
+            from_number=from_num,
+            product_id=product["id"] if product else None,
+            prompt_override=prompt_override,
+            customer_name=cust_name,
+            customer_data_json=str(cust_json),
+        )
+        created_requests.append(outbound_req)
+
+    return {
+        "ok": True,
+        "count": len(created_requests),
+        "skipped_count": skipped_count,
+        "delay_seconds": delay_seconds,
+        "requests": created_requests,
+    }
+
+
 @app.post("/telnyx/outbound/call")
 async def telnyx_outbound_call(request: Request) -> dict[str, object]:
     payload = await request.json()
@@ -645,12 +784,19 @@ async def telnyx_outbound_call(request: Request) -> dict[str, object]:
         or config.telnyx.outbound_from_number
         or ""
     ))
+    prompt_override = str(payload.get("prompt_override") or "")
+    customer_name = str(payload.get("customer_name") or "")
+    customer_data_json = str(payload.get("customer_data_json") or "")
+
     if not to_number:
         raise HTTPException(status_code=400, detail="Missing to_number")
     if not from_number:
         outbound_request = call_history.create_outbound_request(
             to_number=to_number,
             product_id=product["id"],
+            prompt_override=prompt_override,
+            customer_name=customer_name,
+            customer_data_json=customer_data_json,
         )
         call_history.mark_outbound_request_failed(
             outbound_request["id"],
@@ -662,6 +808,9 @@ async def telnyx_outbound_call(request: Request) -> dict[str, object]:
         to_number=to_number,
         from_number=from_number,
         product_id=product["id"],
+        prompt_override=prompt_override,
+        customer_name=customer_name,
+        customer_data_json=customer_data_json,
     )
 
     missing = [
@@ -680,7 +829,7 @@ async def telnyx_outbound_call(request: Request) -> dict[str, object]:
         raise HTTPException(status_code=500, detail=detail)
 
     url = f"https://api.telnyx.com/v2/texml/Accounts/{config.telnyx.account_sid}/Calls"
-    product_query = urlencode({"product_id": product["id"]})
+    product_query = urlencode({"product_id": product["id"], "request_id": outbound_request["id"]})
     texml_url = _public_http_url(f"/telnyx/outbound/answer?{product_query}")
     status_callback = _public_http_url(f"/telnyx/outbound/status?{product_query}")
     body = {
@@ -779,12 +928,19 @@ async def telnyx_ws(websocket: WebSocket) -> None:
 
 
 def _telnyx_bridge_options(
-    mode: str, product: dict[str, object] | None = None
+    mode: str,
+    product: dict[str, object] | None = None,
+    prompt_override: str | None = None,
 ) -> dict[str, object]:
+    system_instruction = (
+        prompt_override.strip()
+        if prompt_override and prompt_override.strip()
+        else gemini_system_instruction(mode, product=product)
+    )
     return {
         "send_initial_greeting": True,
         "initial_greeting": gemini_initial_greeting(mode, product=product),
-        "system_instruction": gemini_system_instruction(mode, product=product),
+        "system_instruction": system_instruction,
         "language_code": product.get("language_code") if product else None,
         "voice_name": product.get("voice_name") if product else None,
     }
@@ -951,7 +1107,16 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     )
                     log(f"[{call_id}] Sent Telnyx clear event")
 
-                bridge_options = _telnyx_bridge_options(mode, product)
+                request_id_str = websocket.query_params.get("request_id")
+                outbound_req = None
+                if request_id_str:
+                    try:
+                        outbound_req = call_history.get_outbound_request(int(request_id_str))
+                    except (TypeError, ValueError):
+                        outbound_req = None
+
+                prompt_override = (outbound_req.get("prompt_override") or None) if outbound_req else None
+                bridge_options = _telnyx_bridge_options(mode, product, prompt_override=prompt_override)
                 bridge = GeminiCallBridge(
                     call_id=call_id,
                     call_sample_rate=sample_rate,

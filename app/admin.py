@@ -14,6 +14,8 @@ from app.recording_manager import (
     storage_summary,
 )
 from app.reporting import export_sales_csv, sales_report
+from app.google_sheets import fetch_and_parse_google_sheet
+from app.sheet_prompts import build_outbound_sheet_prompt
 from app.telnyx_client import create_outbound_call
 
 
@@ -26,6 +28,127 @@ def _require_admin_token(request: Request) -> None:
 
 
 router = APIRouter(prefix="/admin", dependencies=[Depends(_require_admin_token)])
+
+
+@router.post("/api/sheets/preview")
+async def api_sheets_preview(payload: dict, request: Request) -> dict:
+    sheet_url = str(payload.get("sheet_url") or "").strip()
+    if not sheet_url:
+        raise HTTPException(status_code=400, detail="Missing sheet_url")
+    try:
+        leads = await fetch_and_parse_google_sheet(sheet_url)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    call_history = request.app.state.call_history
+    existing_requests = call_history.list_outbound_requests(limit=500)
+    existing_phones = {
+        re.sub(r"\D", "", str(r.get("to_number") or ""))
+        for r in existing_requests
+        if r.get("to_number")
+    }
+
+    processed_leads = []
+    ready_count = 0
+    duplicate_count = 0
+    called_count = 0
+
+    for lead in leads:
+        clean_phone = re.sub(r"\D", "", lead.get("phone") or "")
+        if lead.get("is_duplicate"):
+            lead["status_tag"] = "duplicate"
+            lead["status_label"] = "Trùng lặp trong Sheet"
+            duplicate_count += 1
+        elif lead.get("called") or (clean_phone and clean_phone in existing_phones):
+            lead["status_tag"] = "already_called"
+            lead["status_label"] = "Đã gọi trước đó"
+            called_count += 1
+        else:
+            lead["status_tag"] = "ready"
+            lead["status_label"] = "Sẵn sàng gọi"
+            ready_count += 1
+        processed_leads.append(lead)
+
+    return {
+        "ok": True,
+        "count": len(processed_leads),
+        "ready_count": ready_count,
+        "duplicate_count": duplicate_count,
+        "called_count": called_count,
+        "leads": processed_leads,
+    }
+
+
+@router.post("/api/sheets/launch-campaign")
+async def api_sheets_launch_campaign(payload: dict, request: Request) -> dict:
+    sheet_url = str(payload.get("sheet_url") or "").strip()
+    leads = payload.get("leads") or []
+    product_id = payload.get("product_id")
+    from_number = str(payload.get("from_number") or "").strip()
+    skip_already_called = bool(payload.get("skip_already_called", True))
+
+    call_history = request.app.state.call_history
+
+    if not leads and sheet_url:
+        try:
+            leads = await fetch_and_parse_google_sheet(sheet_url)
+            existing_requests = call_history.list_outbound_requests(limit=500)
+            existing_phones = {
+                re.sub(r"\D", "", str(r.get("to_number") or ""))
+                for r in existing_requests
+                if r.get("to_number")
+            }
+            for lead in leads:
+                clean_phone = re.sub(r"\D", "", lead.get("phone") or "")
+                if lead.get("is_duplicate"):
+                    lead["status_tag"] = "duplicate"
+                elif lead.get("called") or (clean_phone and clean_phone in existing_phones):
+                    lead["status_tag"] = "already_called"
+                else:
+                    lead["status_tag"] = "ready"
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if not leads:
+        raise HTTPException(status_code=400, detail="No valid leads found in Google Sheet")
+
+    product = call_history.get_product(int(product_id)) if product_id else call_history.get_default_product()
+
+    created_requests = []
+    skipped_count = 0
+
+    for lead in leads:
+        to_number = str(lead.get("phone") or "").strip()
+        if not to_number:
+            continue
+
+        # Skip duplicates or already-called if configured
+        status_tag = lead.get("status_tag", "ready")
+        if skip_already_called and status_tag in {"duplicate", "already_called"}:
+            skipped_count += 1
+            continue
+
+        prompt_override = build_outbound_sheet_prompt(lead, product)
+        cust_name = str(lead.get("name") or "").strip()
+        cust_json = str(lead.get("raw_row") or {})
+
+        from_num = from_number or (product.get("phone_number") if product else "")
+        outbound_req = call_history.create_outbound_request(
+            to_number=to_number,
+            from_number=from_num,
+            product_id=product["id"] if product else None,
+            prompt_override=prompt_override,
+            customer_name=cust_name,
+            customer_data_json=str(cust_json),
+        )
+        created_requests.append(outbound_req)
+
+    return {
+        "ok": True,
+        "count": len(created_requests),
+        "skipped_count": skipped_count,
+        "requests": created_requests,
+    }
 
 
 @router.get("", response_class=HTMLResponse)
