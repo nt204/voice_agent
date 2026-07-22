@@ -32,6 +32,9 @@ function friendlyProductError(message = "") {
     ["offer names must be unique", "Tên các gói bán không được trùng nhau."],
     ["unique quantities", "Hai gói đang bán không được dùng cùng một số lượng."],
     ["product knowledge is required", "Kiến thức sản phẩm là bắt buộc."],
+    ["cannot delete the default product", "Không thể xóa sản phẩm mặc định. Hãy đặt một sản phẩm khác làm mặc định trước."],
+    ["cannot delete a product with existing calls", "Sản phẩm đã có cuộc gọi, đơn hàng hoặc chiến dịch. Hãy tạm ngưng sản phẩm để giữ dữ liệu lịch sử."],
+    ["product not found", "Sản phẩm không còn tồn tại."],
   ];
   const normalized = String(message).toLowerCase();
   return rules.find(([needle]) => normalized.includes(needle))?.[1] || message || "Không thể lưu sản phẩm";
@@ -149,6 +152,7 @@ function blankProductForm() {
   document.querySelector("#productVoice").value = "Aoede";
   document.querySelector("#productEditorTitle").textContent = "Thêm sản phẩm";
   document.querySelector("#productEditorHint").textContent = "Thiết lập số điện thoại và nội dung tư vấn riêng cho sản phẩm.";
+  document.querySelector("#deleteProductButton").hidden = true;
   document.querySelector("#setDefaultProductButton").hidden = true;
   productFormStatus.textContent = "";
   productFormStatus.className = "form-status";
@@ -178,8 +182,9 @@ function editProduct(productId) {
   activeInput.disabled = Boolean(product.is_default);
   document.querySelector("#productEditorTitle").textContent = product.name;
   document.querySelector("#productEditorHint").textContent = product.is_default
-    ? "Đây là sản phẩm mặc định. Hãy chọn sản phẩm mặc định khác trước khi tạm ngưng."
-    : "Thay đổi chỉ áp dụng cho cuộc gọi mới. Đơn hàng cũ vẫn giữ nguyên giá đã lưu.";
+    ? "Đây là sản phẩm mặc định. Hãy chọn sản phẩm mặc định khác trước khi tạm ngưng hoặc xóa."
+    : "Chỉ có thể xóa khi sản phẩm chưa có cuộc gọi, đơn hàng hoặc chiến dịch; nếu đã dùng, hãy tạm ngưng.";
+  document.querySelector("#deleteProductButton").hidden = Boolean(product.is_default);
   document.querySelector("#setDefaultProductButton").hidden = Boolean(product.is_default || !product.active);
   productFormStatus.textContent = "";
   productFormStatus.className = "form-status";
@@ -284,6 +289,31 @@ document.querySelector("#setDefaultProductButton").addEventListener("click", asy
   } catch (error) {
     productFormStatus.textContent = error.message;
     productFormStatus.className = "form-status error";
+  }
+});
+
+document.querySelector("#deleteProductButton").addEventListener("click", async () => {
+  const product = state.products.find(
+    item => Number(item.id) === Number(state.editingProductId)
+  );
+  if (!product || product.is_default) return;
+  if (!window.confirm(`Xóa vĩnh viễn sản phẩm “${product.name}”? Thao tác này không thể hoàn tác.`)) return;
+
+  const deleteButton = document.querySelector("#deleteProductButton");
+  deleteButton.disabled = true;
+  productFormStatus.textContent = "Đang xóa sản phẩm...";
+  productFormStatus.className = "form-status";
+  try {
+    await writeJson(`/api/products/${product.id}`, "DELETE");
+    state.editingProductId = null;
+    await loadProducts();
+    productFormStatus.textContent = `Đã xóa sản phẩm “${product.name}”.`;
+    productFormStatus.className = "form-status success";
+  } catch (error) {
+    productFormStatus.textContent = error.message;
+    productFormStatus.className = "form-status error";
+  } finally {
+    deleteButton.disabled = false;
   }
 });
 

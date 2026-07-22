@@ -241,6 +241,36 @@ def test_product_rejects_phone_that_telnyx_cannot_dial(tmp_path):
         store.create_product(_product_payload(phone_number="12345"))
 
 
+def test_product_delete_only_allows_unused_non_default_product(tmp_path):
+    store = CallHistoryStore(tmp_path / "delete-products.db")
+    default_product = store.get_default_product()
+
+    with pytest.raises(ValueError, match="default product"):
+        store.delete_product(default_product["id"])
+
+    deletable = store.create_product(_product_payload())
+    deleted = store.delete_product(deletable["id"])
+    assert deleted["name"] == "Moe Collagen"
+    assert store.get_product(deletable["id"]) is None
+
+    used = store.create_product(
+        _product_payload(
+            name="Used Product",
+            slug="used-product",
+            phone_number="+959111222334",
+        )
+    )
+    store.start_call(
+        "used-product-call",
+        "outbound",
+        "telnyx",
+        product_id=used["id"],
+    )
+    with pytest.raises(ValueError, match="existing calls"):
+        store.delete_product(used["id"])
+    assert store.get_product(used["id"])["name"] == "Used Product"
+
+
 def test_product_requires_unambiguous_active_offer_configuration(tmp_path):
     store = CallHistoryStore(tmp_path / "product-offer-validation.db")
 
@@ -373,6 +403,20 @@ def test_product_api_crud_and_outbound_rejects_unknown_product(tmp_path, monkeyp
     assert selected.status_code == 200
     assert selected.json()["product"]["is_default"] is True
 
+    deletable = client.post(
+        "/api/products",
+        json=_product_payload(
+            name="Delete Me",
+            slug="delete-me",
+            phone_number="+959111222334",
+        ),
+    ).json()["product"]
+    deleted = client.delete(f"/api/products/{deletable['id']}")
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted"] is True
+    assert client.delete(f"/api/products/{deletable['id']}").status_code == 404
+    assert client.delete(f"/api/products/{product['id']}").status_code == 400
+
     outbound = client.post(
         "/telnyx/outbound/call",
         json={"product_id": 999999, "to_number": "+959123456789"},
@@ -479,11 +523,13 @@ def test_dashboard_includes_product_management_and_product_call_selection():
     assert 'id="productForm"' in products_html
     assert 'id="productList"' in products_html
     assert 'id="applyProductPromptDefaultsButton"' in products_html
+    assert 'id="deleteProductButton"' in products_html
     assert "Prompt lõi và xác nhận đơn đã được dùng chung" in products_html
     assert 'fetchJson("/api/products")' in source
     assert 'product_id: Number(productId)' in source
     assert 'fetchJson("/api/products")' in products_source
     assert "renderProductList" in products_source
     assert "standardConversationDefaults" in products_source
+    assert 'writeJson(`/api/products/${product.id}`, "DELETE")' in products_source
     assert ".products-workspace" in styles
     assert "@media (max-width: 680px)" in styles

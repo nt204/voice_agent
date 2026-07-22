@@ -571,6 +571,17 @@ async def api_set_default_product(product_id: int) -> dict[str, object]:
     return {"product": product}
 
 
+@app.delete("/api/products/{product_id}")
+async def api_delete_product(product_id: int) -> dict[str, object]:
+    try:
+        product = call_history.delete_product(product_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"deleted": True, "product": product}
+
+
 @app.get("/api/calls/{call_id}")
 async def api_call_detail(call_id: str) -> dict[str, object]:
     call = call_history.get_call(call_id)

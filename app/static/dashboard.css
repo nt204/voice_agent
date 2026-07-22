@@ -2423,7 +2423,8 @@ body:not(.products-page-body) .dashboard-shell {
   .products-workspace .field-grid textarea { max-width: 100%; }
   .products-workspace .product-form-actions { flex-wrap: wrap; margin-inline: -14px; }
   .products-workspace .product-form-actions .primary-button,
-  .products-workspace .product-form-actions .secondary-button { flex: 1 1 160px; }
+  .products-workspace .product-form-actions .secondary-button,
+  .products-workspace .product-form-actions .danger-button { flex: 1 1 160px; }
 }
 
 /* Google Sheet Preview Modal */

@@ -415,6 +415,53 @@ class SqlAlchemyCallHistoryStore:
             )
         return self.get_product(product_id) or {}
 
+    def delete_product(self, product_id: int) -> dict[str, Any]:
+        with self._lock, self.engine.begin() as connection:
+            product_row = connection.execute(
+                select(products_table).where(products_table.c.id == product_id)
+            ).mappings().first()
+            if not product_row:
+                raise LookupError("Product not found")
+            if bool(product_row["is_default"]):
+                raise ValueError(
+                    "Cannot delete the default product. Set another default product first"
+                )
+
+            reference_tables = (
+                calls_table,
+                orders_table,
+                outbound_requests_table,
+                campaign_runs_table,
+            )
+            is_in_use = any(
+                int(
+                    connection.scalar(
+                        select(func.count())
+                        .select_from(table)
+                        .where(table.c.product_id == product_id)
+                    )
+                    or 0
+                )
+                for table in reference_tables
+            )
+            if is_in_use:
+                raise ValueError(
+                    "Cannot delete a product with existing calls, orders, or campaigns. "
+                    "Disable the product instead"
+                )
+
+            # Delete offers explicitly so deletion is consistent on SQLite, where
+            # foreign-key cascade enforcement may not be enabled by the connection.
+            connection.execute(
+                product_offers_table.delete().where(
+                    product_offers_table.c.product_id == product_id
+                )
+            )
+            connection.execute(
+                products_table.delete().where(products_table.c.id == product_id)
+            )
+            return dict(product_row)
+
     @staticmethod
     def _replace_product_offers(
         connection: Connection,
