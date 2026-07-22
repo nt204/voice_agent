@@ -1090,10 +1090,10 @@ class GeminiCallBridge:
 
     async def handle_dtmf(self, digit: str) -> None:
         digit = str(digit or "").strip()
-        if self.campaign_confirmation_mode and not self.awaiting_keypad_phone:
-            # DTMF has exactly one campaign purpose: replace a rejected delivery
-            # phone while Gemini is explicitly waiting for keypad input.
-            return
+        # In campaign calls every complete digit sequence ending in # has one
+        # unambiguous meaning: the customer's latest delivery phone. Accept it
+        # even when the customer starts entering early, before Gemini finishes
+        # asking for keypad input. The latest complete valid sequence wins.
         if digit == "*":
             self.dtmf_digits = ""
             return

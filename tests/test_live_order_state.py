@@ -172,7 +172,7 @@ def test_bridge_records_phone_after_customer_confirms_it(monkeypatch) -> None:
     assert transcripts == []
 
 
-def test_dtmf_phone_requires_spoken_confirmation_after_readback(monkeypatch) -> None:
+def test_campaign_accepts_complete_dtmf_phone_even_when_customer_enters_early(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
     transcripts = []
@@ -197,26 +197,13 @@ def test_dtmf_phone_requires_spoken_confirmation_after_readback(monkeypatch) -> 
         )
         session = _FakeSession()
         bridge.session = session
-        await bridge._handle_tool_call(
-            types.LiveServerToolCall(
-                function_calls=[
-                    types.FunctionCall(
-                        id="reject-sheet-phone",
-                        name=DELIVERY_STATE_FUNCTION,
-                        args={"field": "phone", "action": "reject"},
-                    )
-                ]
-            )
-        )
-        assert bridge.awaiting_keypad_phone is True
-        assert session.client_content == []
-        for digit in "09789119333#":
+        for digit in "0965198457#":
             await bridge.handle_dtmf(digit)
         return bridge, session
 
     bridge, session = asyncio.run(run())
 
-    assert bridge.delivery_state.phone == "09789119333"
+    assert bridge.delivery_state.phone == "0965198457"
     assert bridge.delivery_state.phone_confirmed is False
     assert bridge.authoritative_phone_source == "keypad"
     assert "phone" not in bridge.confirmed_fact_values
@@ -224,7 +211,7 @@ def test_dtmf_phone_requires_spoken_confirmation_after_readback(monkeypatch) -> 
     assert sent_audio == []
     assert len(session.client_content) == 1
     instruction = session.client_content[0]["turns"].parts[0].text
-    assert "09789119333" in instruction
+    assert "0965198457" in instruction
     assert "SYSTEM DTMF EVENT" in instruction
     assert "read every digit exactly once" in instruction
     assert "authoritative, unconfirmed phone" in instruction
