@@ -30,6 +30,12 @@ def normalize_phone_number(number: str) -> str:
         if country_hint == "VN" or digits.startswith(VIETNAM_LOCAL_PREFIXES):
             return f"+84{digits[1:]}"
         return f"+95{digits[1:]}"
+    # Myanmar Sheets commonly drop the domestic trunk prefix 0, leaving a
+    # 9- or 10-digit mobile subscriber number beginning with 9. Myanmar is the
+    # default market; callers can still force Vietnam with a VN country hint.
+    if digits.startswith("9") and len(digits) in {9, 10}:
+        country_code = "84" if country_hint == "VN" else "95"
+        return f"+{country_code}{digits}"
     return digits
 
 

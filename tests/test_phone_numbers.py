@@ -5,6 +5,8 @@ def test_normalizes_myanmar_numbers_by_default() -> None:
     assert normalize_phone_number("+95 961 695 448") == "+95961695448"
     assert normalize_phone_number("95961695448") == "+95961695448"
     assert normalize_phone_number("0961695448") == "+95961695448"
+    assert normalize_phone_number("961695448") == "+95961695448"
+    assert normalize_phone_number("9793905153") == "+959793905153"
 
 
 def test_normalizes_vietnam_numbers_when_country_code_is_explicit() -> None:
@@ -24,3 +26,4 @@ def test_ambiguous_vietnam_09_local_number_requires_country_hint() -> None:
     assert normalize_phone_number("0961695448") == "+95961695448"
     assert normalize_phone_number("VN 0961695448") == "+84961695448"
     assert normalize_phone_number("vietnam: 0961695448") == "+84961695448"
+    assert normalize_phone_number("VN 961695448") == "+84961695448"

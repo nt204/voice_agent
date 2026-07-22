@@ -67,19 +67,19 @@ def test_sheet_campaign_dispatches_created_requests_with_selected_product(
     leads = [
         {
             "name": "Older Duplicate",
-            "phone": "09 777 111 222",
+            "phone": "9 777 111 222",
             "status_tag": "duplicate",
             "raw_row": {},
         },
         {
             "name": "Thaw Zin",
-            "phone": "09 777 111 222",
+            "phone": "9 777 111 222",
             "product": "Untrusted Other Product",
             "quantity": "2",
             "address": "Mandalay",
             "notes": "Call before delivery",
             "status_tag": "ready",
-            "raw_row": {"Name": "Thaw Zin", "Phone": "09 777 111 222"},
+            "raw_row": {"Name": "Thaw Zin", "Phone": "9 777 111 222"},
         },
         {
             "name": "Already Called",
@@ -120,7 +120,7 @@ def test_sheet_campaign_dispatches_created_requests_with_selected_product(
     assert customer_data["Name"] == "Thaw Zin"
     assert customer_data["lead"] == {
         "name": "Thaw Zin",
-        "phone": "09 777 111 222",
+        "phone": "9 777 111 222",
         "product": "Untrusted Other Product",
         "offer": "",
         "quantity": "2",
@@ -149,7 +149,7 @@ def test_sheet_campaign_dispatches_created_requests_with_selected_product(
     seed = main_module._sheet_delivery_seed(request)
     assert seed == {
         "customer_name": "Thaw Zin",
-        "phone": "09 777 111 222",
+        "phone": "9 777 111 222",
         "shipping_address": "Mandalay",
     }
 
