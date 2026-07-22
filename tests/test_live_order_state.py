@@ -314,42 +314,54 @@ def test_keypad_readback_timeout_stops_runaway_audio_and_reopens_input(monkeypat
     assert cleared
 
 
-def test_keypad_readback_stops_when_gemini_streams_trailing_silence(monkeypatch) -> None:
+def test_keypad_readback_waits_for_all_digits_and_confirmation_question(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
+    monkeypatch.setattr(
+        "app.gemini_bridge.PHONE_READBACK_QUESTION_GRACE_SECONDS",
+        0.01,
+    )
     cleared = []
-    sent = []
 
-    async def send_audio(frame: bytes) -> None:
-        sent.append(frame)
+    async def send_audio(_: bytes) -> None:
+        pass
 
     async def clear_audio() -> None:
         cleared.append(True)
 
     async def run() -> GeminiCallBridge:
         bridge = GeminiCallBridge(
-            call_id="dtmf-readback-silence",
+            call_id="dtmf-readback-complete-question",
             call_sample_rate=16000,
             send_audio=send_audio,
             clear_audio=clear_audio,
             send_initial_greeting=False,
             campaign_confirmation_mode=True,
         )
+        bridge.delivery_state.apply(
+            field="phone",
+            action="set",
+            value="0961984204",
+        )
+        bridge.authoritative_phone = "0961984204"
         bridge.phone_readback_active = True
         bridge.phone_readback_started = True
         bridge.turn_complete.clear()
-        task = asyncio.create_task(bridge._playback_loop())
-        bridge.audio_queue.put_nowait(b"\xe8\x03" * 160)
-        for _ in range(20):
-            bridge.audio_queue.put_nowait(b"\x00\x00" * 160)
+        bridge._track_phone_readback_transcript(
+            "ဖုန်းနံပါတ်က ၀ ၉ ၆ ၁ ၉ ၈ ၄ ၂"
+        )
+        assert bridge.phone_readback_active is True
+        assert bridge.phone_readback_question_generated is False
+        assert bridge.turn_complete.is_set() is False
+
+        bridge._track_phone_readback_transcript(
+            "၀ ၄ ဖြစ်ပါတယ်ရှင်။ အဲ့ဒီနံပါတ်က မှန်ပါသလားရှင်။"
+        )
         await asyncio.wait_for(bridge.turn_complete.wait(), timeout=1)
-        task.cancel()
-        await task
         return bridge
 
     bridge = asyncio.run(run())
 
-    assert sent
     assert cleared == [True]
     assert bridge.phone_readback_active is False
     assert bridge.phone_readback_awaiting_confirmation is True
