@@ -70,6 +70,33 @@ def test_confirmed_address_is_retained_and_workflow_advances() -> None:
     }
 
 
+def test_sheet_address_remains_default_until_customer_explicitly_replaces_it() -> None:
+    old_address = "အမှတ် ၉၉ ဟံသာဝတီလမ်း အရှေ့ဒဂုံမြို့နယ် ရန်ကုန်"
+    new_address = "အမှတ် ၁၂ ပြည်လမ်း ကမာရွတ်မြို့နယ် ရန်ကုန်"
+    state = LiveDeliveryState()
+    state.apply(field="phone", action="set", value="09789119333")
+    state.apply(field="phone", action="confirm")
+    state.apply(field="shipping_address", action="set", value=old_address)
+    state.mark_current_address_as_sheet_default()
+
+    # The workflow still reads the address back, while persistence safely keeps
+    # the Sheet value when the customer says no change.
+    assert state.snapshot()["address_confirmed"] is False
+    assert state.snapshot()["sheet_address_default_active"] is True
+    assert state.confirmed_facts()["shipping_address"] == old_address
+    assert state.status_response(ok=True, message="seeded")["next_action"] == (
+        "confirm_shipping_address"
+    )
+
+    state.apply(field="shipping_address", action="reject")
+    assert state.confirmed_facts()["shipping_address"] == ""
+
+    state.apply(field="shipping_address", action="set", value=new_address)
+    assert state.confirmed_facts()["shipping_address"] == ""
+    state.apply(field="shipping_address", action="confirm")
+    assert state.confirmed_facts()["shipping_address"] == new_address
+
+
 def test_campaign_qty_is_package_count_and_offer_controls_units() -> None:
     state = LiveDeliveryState(
         require_order_confirmation=True,
@@ -991,6 +1018,9 @@ def test_campaign_phone_confirmation_continues_from_tool_response_only(monkeypat
     bridge, session = asyncio.run(run())
 
     assert bridge.delivery_state.phone_confirmed is True
+    assert bridge.delivery_state.address_confirmed is False
+    assert bridge.delivery_state.sheet_address_default_active is True
+    assert bridge.delivery_state.confirmed_facts()["shipping_address"] == address
     assert session.client_content == []
     response = session.tool_responses[0]["function_responses"][0].response
     assert response["next_action"] == "confirm_customer_name"

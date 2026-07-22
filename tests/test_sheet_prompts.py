@@ -46,6 +46,7 @@ def test_build_outbound_sheet_prompt():
     assert "customer's latest correction always wins" in prompt
     assert "complete keypad entry followed by #" in prompt
     assert "Pressing # completes entry but does not confirm" in prompt
+    assert "says they do not want to change it" in prompt
     assert "Requested Package / Combo Count: 1" in prompt
     assert "Configured Offer: Venus BigOne Combo 2" in prompt
     assert "Product Units per Package / Combo: 2" in prompt

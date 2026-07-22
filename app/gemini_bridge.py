@@ -177,11 +177,13 @@ class GeminiCallBridge:
                 value=initial_phone,
             )
         if initial_shipping_address:
-            self.delivery_state.apply(
+            address_result = self.delivery_state.apply(
                 field="shipping_address",
                 action="set",
                 value=initial_shipping_address,
             )
+            if campaign_confirmation_mode and address_result["ok"]:
+                self.delivery_state.mark_current_address_as_sheet_default()
         self.dtmf_digits = ""
         self.recorded_confirmed_facts: set[tuple[str, str]] = set()
         self.confirmed_fact_values: dict[str, str] = {}

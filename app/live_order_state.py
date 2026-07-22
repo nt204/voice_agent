@@ -123,6 +123,7 @@ class LiveDeliveryState:
     phone_confirmed: bool = False
     shipping_address: str = ""
     address_confirmed: bool = False
+    sheet_address_default_active: bool = False
     phone_failures: int = 0
     phone_rejections: int = 0
     name_failures: int = 0
@@ -151,9 +152,15 @@ class LiveDeliveryState:
             "customer_name": self.customer_name if self.name_confirmed else "",
             "phone": self.phone if self.phone_confirmed else "",
             "shipping_address": (
-                self.shipping_address if self.address_confirmed else ""
+                self.shipping_address
+                if self.address_confirmed or self.sheet_address_default_active
+                else ""
             ),
         }
+
+    def mark_current_address_as_sheet_default(self) -> None:
+        """Keep the Sheet address unless the customer explicitly replaces it."""
+        self.sheet_address_default_active = bool(self.shipping_address)
 
     def confirmed_order_facts(self) -> dict[str, Any]:
         if not (
@@ -191,6 +198,7 @@ class LiveDeliveryState:
             "phone_confirmed": self.phone_confirmed,
             "shipping_address": self.shipping_address,
             "address_confirmed": self.address_confirmed,
+            "sheet_address_default_active": self.sheet_address_default_active,
         }
 
     def status_response(self, *, ok: bool, message: str) -> dict[str, Any]:
@@ -244,6 +252,7 @@ class LiveDeliveryState:
 
         self.shipping_address = ""
         self.address_confirmed = False
+        self.sheet_address_default_active = False
         candidate = _clean_address(value)
         if (
             not _looks_like_address(candidate)
@@ -313,6 +322,7 @@ class LiveDeliveryState:
 
         self.shipping_address = ""
         self.address_confirmed = False
+        self.sheet_address_default_active = False
         self.address_failures += 1
         return self._response(True, "Rejected address candidate cleared.")
 
@@ -394,7 +404,10 @@ class LiveDeliveryState:
         if not self.address_confirmed:
             return (
                 "confirm_shipping_address",
-                f"Read back this exact address: {self.shipping_address}. Ask only whether it is correct.",
+                f"Read back this exact address: {self.shipping_address}. Ask only whether it is correct. "
+                "If the customer says it is correct, wants no change, or wants to keep the Sheet address, "
+                "confirm shipping_address. Reject it only when the customer explicitly says it is wrong "
+                "or provides a replacement.",
             )
         return (
             "read_back_order",
