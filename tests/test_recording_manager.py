@@ -11,6 +11,7 @@ from app.recording_manager import (
     _recording_item,
     cleanup_recordings,
     delete_recording,
+    delete_recordings,
     list_recordings,
     storage_summary,
 )
@@ -55,6 +56,9 @@ def test_recording_item_links_files_by_recording_id_and_file_kind(tmp_path) -> N
     assert item["files"]["outbound"]["url"] == "/admin/file/95961695448_20260714-094436/outbound"
     assert item["files"]["mixed"]["url"] == "/admin/file/95961695448_20260714-094436/mixed"
     assert item["files"]["log"]["url"] == "/admin/file/95961695448_20260714-094436/log"
+    assert item["started_at"] == "2026-07-14T09:44:36Z"
+    assert item["ended_at"] == ""
+    assert item["latest_time"] == "2026-07-14T09:44:36Z"
 
 
 def _use_test_recording_database(tmp_path, monkeypatch):
@@ -164,6 +168,48 @@ def test_delete_recording_never_deletes_a_path_outside_recording_root(tmp_path, 
     assert result["deleted_files"] == 3
     assert external_file.exists()
     assert not files["inbound"].exists()
+
+
+def test_delete_recordings_removes_selected_completed_audio_and_skips_active(
+    tmp_path,
+    monkeypatch,
+):
+    session_factory = _use_test_recording_database(tmp_path, monkeypatch)
+    root = tmp_path / "recordings"
+    first_files = _add_recording(session_factory, root, "selected-first")
+    second_files = _add_recording(session_factory, root, "selected-second")
+    active_files = _add_recording(
+        session_factory,
+        root,
+        "selected-active",
+        status="active",
+    )
+
+    result = delete_recordings(
+        [
+            "selected-first",
+            "selected-second",
+            "selected-active",
+            "missing-recording",
+            "selected-first",
+        ]
+    )
+
+    assert result == {
+        "deleted_recordings": 2,
+        "deleted_files": 8,
+        "freed_bytes": 80,
+        "requested_recordings": 4,
+        "skipped_active": 1,
+        "missing_recordings": 1,
+    }
+    assert all(not path.exists() for path in first_files.values())
+    assert all(not path.exists() for path in second_files.values())
+    assert all(path.exists() for path in active_files.values())
+    with session_factory() as session:
+        assert session.get(CallRecordingRow, "selected-first").status == "deleted"
+        assert session.get(CallRecordingRow, "selected-second").status == "deleted"
+        assert session.get(CallRecordingRow, "selected-active").status == "active"
 
 
 def test_cleanup_only_deletes_completed_recordings_older_than_retention(tmp_path, monkeypatch):

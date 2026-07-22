@@ -1,6 +1,7 @@
 const state = {
   recordings: [],
   summary: { count: 0, total_bytes: 0 },
+  selectedRecordingIds: new Set(),
 };
 
 const recordingList = document.querySelector("#recordingList");
@@ -8,6 +9,9 @@ const recordingSearch = document.querySelector("#recordingSearch");
 const retentionDays = document.querySelector("#retentionDays");
 const recordingStatus = document.querySelector("#recordingStatus");
 const cleanupRecordingsButton = document.querySelector("#cleanupRecordingsButton");
+const selectAllRecordings = document.querySelector("#selectAllRecordings");
+const selectedRecordingCount = document.querySelector("#selectedRecordingCount");
+const deleteSelectedRecordingsButton = document.querySelector("#deleteSelectedRecordingsButton");
 const adminToken = new URLSearchParams(window.location.search).get("token") || "";
 
 const escapeHtml = (value = "") => String(value).replace(
@@ -39,10 +43,14 @@ function formatBytes(value) {
 
 function formatDate(value) {
   if (!value) return "Chưa có";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Thời gian không hợp lệ";
   return new Intl.DateTimeFormat("vi-VN", {
     dateStyle: "short",
     timeStyle: "short",
-  }).format(new Date(value));
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour12: false,
+  }).format(parsed);
 }
 
 function directionLabel(direction) {
@@ -97,6 +105,11 @@ function recordingRow(recording) {
   const isActive = recording.status === "active";
   return `
     <article class="recording-row">
+      <label class="recording-select-cell">
+        <input class="recording-select-checkbox" data-recording-id="${escapeHtml(recording.id)}" type="checkbox"
+          ${state.selectedRecordingIds.has(recording.id) ? "checked" : ""} ${isActive ? "disabled" : ""}>
+        <span class="sr-only">Chọn bản ghi ${escapeHtml(recording.phone || recording.call_id || recording.id)}</span>
+      </label>
       <div class="recording-identity">
         <strong>${escapeHtml(recording.phone || recording.call_id || recording.id)}</strong>
         <small>${escapeHtml(directionLabel(recording.direction))} · ${escapeHtml(recording.call_id || recording.id)}</small>
@@ -113,12 +126,42 @@ function recordingRow(recording) {
     </article>`;
 }
 
-function renderRecordings() {
+function filteredRecordings() {
   const term = recordingSearch.value.trim().toLowerCase();
-  const filtered = state.recordings.filter(recording => !term || searchableText(recording).includes(term));
+  return state.recordings.filter(recording => !term || searchableText(recording).includes(term));
+}
+
+function reconcileSelectedRecordings() {
+  const availableIds = new Set(
+    state.recordings
+      .filter(recording => recording.status !== "active")
+      .map(recording => recording.id)
+  );
+  for (const recordingId of state.selectedRecordingIds) {
+    if (!availableIds.has(recordingId)) state.selectedRecordingIds.delete(recordingId);
+  }
+}
+
+function updateSelectionControls() {
+  const selectable = filteredRecordings().filter(recording => recording.status !== "active");
+  const selectedVisible = selectable.filter(recording => state.selectedRecordingIds.has(recording.id));
+  const selectedCount = state.selectedRecordingIds.size;
+  selectAllRecordings.disabled = selectable.length === 0;
+  selectAllRecordings.checked = selectable.length > 0 && selectedVisible.length === selectable.length;
+  selectAllRecordings.indeterminate = selectedVisible.length > 0 && selectedVisible.length < selectable.length;
+  selectedRecordingCount.textContent = `Đã chọn ${selectedCount} bản ghi`;
+  deleteSelectedRecordingsButton.textContent = selectedCount
+    ? `Xóa đã chọn (${selectedCount})`
+    : "Xóa đã chọn";
+  deleteSelectedRecordingsButton.disabled = selectedCount === 0;
+}
+
+function renderRecordings() {
+  const filtered = filteredRecordings();
   recordingList.innerHTML = filtered.length
     ? filtered.map(recordingRow).join("")
     : '<div class="recording-list-state">Không tìm thấy bản ghi phù hợp.</div>';
+  updateSelectionControls();
 }
 
 async function loadRecordings({ announce = false } = {}) {
@@ -126,6 +169,7 @@ async function loadRecordings({ announce = false } = {}) {
     const data = await requestJson("/admin/api/recordings");
     state.recordings = data.recordings || [];
     state.summary = data.summary || { count: 0, total_bytes: 0 };
+    reconcileSelectedRecordings();
     renderSummary();
     renderRecordings();
     if (announce) {
@@ -151,11 +195,55 @@ recordingList.addEventListener("click", async event => {
     });
     recordingStatus.textContent = `Đã xóa ${result.deleted_files} file, giải phóng ${formatBytes(result.freed_bytes)}.`;
     recordingStatus.className = "form-status recording-page-status success";
+    state.selectedRecordingIds.delete(recordingId);
     await loadRecordings();
   } catch (error) {
     button.disabled = false;
     recordingStatus.textContent = error.message;
     recordingStatus.className = "form-status recording-page-status error";
+  }
+});
+
+recordingList.addEventListener("change", event => {
+  const checkbox = event.target.closest(".recording-select-checkbox");
+  if (!checkbox || checkbox.disabled) return;
+  const recordingId = checkbox.dataset.recordingId;
+  if (checkbox.checked) state.selectedRecordingIds.add(recordingId);
+  else state.selectedRecordingIds.delete(recordingId);
+  updateSelectionControls();
+});
+
+selectAllRecordings.addEventListener("change", () => {
+  for (const recording of filteredRecordings()) {
+    if (recording.status === "active") continue;
+    if (selectAllRecordings.checked) state.selectedRecordingIds.add(recording.id);
+    else state.selectedRecordingIds.delete(recording.id);
+  }
+  renderRecordings();
+});
+
+deleteSelectedRecordingsButton.addEventListener("click", async () => {
+  const recordingIds = [...state.selectedRecordingIds];
+  if (!recordingIds.length) return;
+  if (!window.confirm(`Xóa file audio của ${recordingIds.length} bản ghi đã chọn? Lịch sử cuộc gọi và transcript vẫn được giữ lại.`)) return;
+  deleteSelectedRecordingsButton.disabled = true;
+  try {
+    const result = await requestJson("/admin/api/recordings/delete-batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recording_ids: recordingIds }),
+    });
+    const skippedText = result.skipped_active
+      ? ` Bỏ qua ${result.skipped_active} bản ghi đang hoạt động.`
+      : "";
+    recordingStatus.textContent = `Đã xóa ${result.deleted_recordings} bản ghi (${result.deleted_files} file), giải phóng ${formatBytes(result.freed_bytes)}.${skippedText}`;
+    recordingStatus.className = "form-status recording-page-status success";
+    state.selectedRecordingIds.clear();
+    await loadRecordings();
+  } catch (error) {
+    recordingStatus.textContent = error.message;
+    recordingStatus.className = "form-status recording-page-status error";
+    updateSelectionControls();
   }
 });
 

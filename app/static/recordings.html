@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Quản lý bản ghi âm</title>
-  <link rel="stylesheet" href="/static/dashboard.css?v=layout-fix-v27">
+  <link rel="stylesheet" href="/static/dashboard.css?v=recordings-bulk-v28">
 </head>
 <body class="recordings-page-body">
   <header class="navigation-bar">
@@ -57,12 +57,22 @@
         <button id="cleanupRecordingsButton" class="danger-button" type="button">Dọn bản ghi cũ</button>
       </div>
 
+      <div class="recording-bulk-toolbar">
+        <label class="recording-select-all">
+          <input id="selectAllRecordings" type="checkbox">
+          <span>Chọn tất cả bản ghi đang hiển thị</span>
+        </label>
+        <span id="selectedRecordingCount">Đã chọn 0 bản ghi</span>
+        <button id="deleteSelectedRecordingsButton" class="danger-button" type="button" disabled>Xóa đã chọn</button>
+      </div>
+
       <p id="recordingStatus" class="form-status recording-page-status" role="status"></p>
 
       <div class="recording-table-wrap">
         <div class="recording-table-head" aria-hidden="true">
+          <span>Chọn</span>
           <span>Cuộc gọi</span>
-          <span>Thời gian</span>
+          <span>Thời gian (UTC+7)</span>
           <span>Nghe lại</span>
           <span>Dung lượng</span>
           <span>Thao tác</span>
@@ -74,6 +84,6 @@
     </section>
   </main>
 
-  <script src="/static/recordings.js?v=layout-fix-v27" defer></script>
+  <script src="/static/recordings.js?v=recordings-bulk-v28" defer></script>
 </body>
 </html>

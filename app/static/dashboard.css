@@ -103,6 +103,31 @@ button { cursor: pointer; }
   border-bottom: 1px solid var(--line);
   background: var(--panel-soft);
 }
+.recording-bulk-toolbar {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+.recording-select-all,
+.recording-select-cell {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.recording-select-all { color: #42536b; font-size: 13px; font-weight: 750; }
+.recording-select-all input,
+.recording-select-cell input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+#selectedRecordingCount { margin-left: auto; color: var(--muted); font-size: 13px; }
+#deleteSelectedRecordingsButton { min-height: 36px; }
 .recording-toolbar label { min-width: 0; display: grid; gap: 6px; }
 .recording-toolbar label > span:first-child { color: #52627a; font-size: 12px; font-weight: 750; }
 .recording-toolbar input {
@@ -146,7 +171,7 @@ button { cursor: pointer; }
 .recording-table-head,
 .recording-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1.2fr) 150px minmax(260px, 1.35fr) 100px 80px;
+  grid-template-columns: 44px minmax(220px, 1.2fr) 150px minmax(260px, 1.35fr) 100px 80px;
   gap: 16px;
   align-items: center;
 }
@@ -162,6 +187,7 @@ button { cursor: pointer; }
   letter-spacing: .035em;
 }
 .recording-row { min-height: 92px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.recording-select-cell { justify-content: center; }
 .recording-row:last-child { border-bottom: 0; }
 .recording-row time { color: #53637a; font-size: 13px; }
 .recording-identity { min-width: 0; display: grid; gap: 4px; }
@@ -201,14 +227,16 @@ button { cursor: pointer; }
   }
   .recording-row {
     min-width: 0;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto 1fr auto;
     gap: 12px;
     border: 1px solid var(--line);
     border-radius: 10px;
   }
-  .recording-identity,
+  .recording-select-cell { grid-column: 1; grid-row: 1; justify-content: start; }
+  .recording-identity { grid-column: 2 / -1; grid-row: 1; }
+  .recording-row time { grid-column: 2 / -1; }
   .recording-audio { grid-column: 1 / -1; }
-  .recording-size { text-align: right; }
+  .recording-size { grid-column: 2; text-align: right; }
 }
 
 @media (max-width: 680px) {
@@ -217,6 +245,8 @@ button { cursor: pointer; }
   .recording-summary-grid,
   .recording-list { grid-template-columns: 1fr; }
   .recording-toolbar { grid-template-columns: 1fr; }
+  .recording-bulk-toolbar { align-items: stretch; flex-direction: column; }
+  #selectedRecordingCount { margin-left: 0; }
   .recording-metric { min-height: 78px; }
 }
 .app-header .header-actions {

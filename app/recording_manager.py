@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy import desc, func, select
@@ -93,6 +93,47 @@ def delete_recording(recording_id: str) -> dict[str, int]:
         if row.status == "active":
             raise RecordingInUseError("Cannot delete an active recording")
         return _delete_recording_files(row)
+
+
+def delete_recordings(recording_ids: list[str]) -> dict[str, int]:
+    """Delete multiple completed recording files while preserving call data."""
+    unique_ids = list(
+        dict.fromkeys(
+            row_id
+            for raw_id in recording_ids
+            if (row_id := _safe_recording_id(raw_id))
+        )
+    )
+    deleted_recordings = 0
+    deleted_files = 0
+    freed_bytes = 0
+    skipped_active = 0
+    missing_recordings = 0
+    with db_session() as session:
+        rows = {
+            row.id: row
+            for row in session.scalars(
+                select(CallRecordingRow).where(CallRecordingRow.id.in_(unique_ids))
+            ).all()
+        }
+        for recording_id in unique_ids:
+            row = rows.get(recording_id)
+            if not row or row.status == "deleted":
+                missing_recordings += 1
+                continue
+            if row.status == "active":
+                skipped_active += 1
+                continue
+            result = _delete_recording_files(row)
+            deleted_recordings += result["deleted_recordings"]
+            deleted_files += result["deleted_files"]
+            freed_bytes += result["freed_bytes"]
+    return {
+        **_deletion_result(deleted_recordings, deleted_files, freed_bytes),
+        "requested_recordings": len(unique_ids),
+        "skipped_active": skipped_active,
+        "missing_recordings": missing_recordings,
+    }
 
 
 def cleanup_recordings(days: int) -> dict[str, int]:
@@ -205,10 +246,10 @@ def _recording_item(row: CallRecordingRow, intent: CallIntentRow | None = None) 
         "to": row.to_number,
         "direction": row.direction,
         "timestamp": row.started_at.strftime("%Y%m%d-%H%M%S") if row.started_at else "",
-        "started_at": row.started_at.isoformat(timespec="seconds") if row.started_at else "",
-        "ended_at": row.ended_at.isoformat(timespec="seconds") if row.ended_at else "",
-        "latest_mtime": latest.timestamp() if latest else 0.0,
-        "latest_time": latest.isoformat(timespec="seconds") if latest else "",
+        "started_at": _utc_iso(row.started_at),
+        "ended_at": _utc_iso(row.ended_at),
+        "latest_mtime": _as_utc(latest).timestamp() if latest else 0.0,
+        "latest_time": _utc_iso(latest),
         "status": row.status,
         "sales_status": row.sales_status,
         "codec": row.codec,
@@ -284,7 +325,7 @@ def _intent_info(intent: CallIntentRow | None) -> dict:
         "combo": intent.combo,
         "confidence": intent.confidence,
         "missing_fields": _json_list(intent.missing_fields),
-        "updated_at": intent.updated_at.isoformat(timespec="seconds") if intent.updated_at else "",
+        "updated_at": _utc_iso(intent.updated_at),
     }
 
 
@@ -296,3 +337,22 @@ def _json_list(value: str) -> list:
     except json.JSONDecodeError:
         return []
     return parsed if isinstance(parsed, list) else []
+
+
+def _safe_recording_id(value: object) -> str:
+    candidate = str(value or "").strip()
+    if not candidate or Path(candidate).name != candidate:
+        return ""
+    return candidate
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _utc_iso(value: datetime | None) -> str:
+    if value is None:
+        return ""
+    return _as_utc(value).isoformat(timespec="seconds").replace("+00:00", "Z")

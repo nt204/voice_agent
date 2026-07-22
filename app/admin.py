@@ -10,6 +10,7 @@ from app.recording_manager import (
     RecordingInUseError,
     cleanup_recordings,
     delete_recording,
+    delete_recordings,
     list_recordings,
     recording_path,
     storage_summary,
@@ -197,6 +198,19 @@ async def api_delete_recording(recording_id: str) -> dict:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     if result["deleted_recordings"] == 0:
         raise HTTPException(status_code=404, detail="Recording not found")
+    return {"ok": True, **result}
+
+
+@router.post("/api/recordings/delete-batch")
+async def api_delete_recordings(payload: dict) -> dict:
+    recording_ids = payload.get("recording_ids")
+    if not isinstance(recording_ids, list) or not recording_ids:
+        raise HTTPException(status_code=400, detail="Select at least one recording")
+    if len(recording_ids) > 500:
+        raise HTTPException(status_code=400, detail="Cannot delete more than 500 recordings at once")
+    result = delete_recordings([str(recording_id) for recording_id in recording_ids])
+    if result["requested_recordings"] == 0:
+        raise HTTPException(status_code=400, detail="No valid recording IDs")
     return {"ok": True, **result}
 
 
