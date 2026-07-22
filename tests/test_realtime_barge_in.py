@@ -157,3 +157,33 @@ def test_dtmf_entry_blocks_key_tones_from_starting_a_speech_turn() -> None:
     assert bridge.muted == []
     assert bridge.started == 0
     assert bridge.frames == []
+
+
+def test_soft_yes_is_accepted_after_keypad_phone_readback() -> None:
+    class SoftConfirmationBridge(_FakeBridge):
+        def __init__(self) -> None:
+            super().__init__()
+            self.phone_readback_awaiting_confirmation = True
+
+        def output_recent(self, seconds: float) -> bool:
+            return False
+
+    async def run() -> SoftConfirmationBridge:
+        bridge = SoftConfirmationBridge()
+        gate = RealtimeInputGate(
+            bridge,
+            "soft-phone-confirmation",
+            speech_threshold=350,
+            speech_start_frames=5,
+            campaign_confirmation_mode=True,
+        )
+
+        await gate.push(b"\x01\x00" * 160, 180)
+        await gate.push(b"\x01\x00" * 160, 180)
+        return bridge
+
+    bridge = asyncio.run(run())
+
+    assert bridge.muted == [True]
+    assert bridge.started == 1
+    assert len(bridge.frames) == 2

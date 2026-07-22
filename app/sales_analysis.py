@@ -124,7 +124,7 @@ BROAD_PHONE_REJECTION_RE = re.compile(
     flags=re.IGNORECASE,
 )
 PHONE_CONFIRMATION_RE = re.compile(
-    r"(?:မှန်|ဟုတ်|အိုကေ|ok|okay|correct|right|yes|đúng|dung)",
+    r"(?:မှန်|ဟုတ်|အိုကေ|ok|okay|correct|right|yes|đúng|dung|\bs[ií]\b)",
     flags=re.IGNORECASE,
 )
 NON_MYANMAR_ADDRESS_PATTERNS = (

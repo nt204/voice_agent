@@ -860,6 +860,38 @@ class GeminiCallBridge:
         )
         log(f"[{self.call_id}] Phone rejected; requested keypad entry ending in #")
 
+    async def _prompt_invalid_keypad_phone(self, submitted_digits: str) -> None:
+        self._finish_phone_readback_guard()
+        self.authoritative_phone = ""
+        self.authoritative_phone_source = ""
+        self.pending_authoritative_phone_readback = ""
+        self.keypad_phone = ""
+        self.confirmed_fact_values.pop("phone", None)
+        if not self.session:
+            return
+        self.turn_complete.clear()
+        await self._clear_pending_output_audio()
+        await self.session.send_client_content(
+            turns=types.Content(
+                role="user",
+                parts=[
+                    types.Part(
+                        text=(
+                            "The keypad entry was incomplete or not a valid delivery "
+                            "phone number. Never read it back and never reuse its digits. "
+                            "In one short Burmese sentence, ask the customer to enter the "
+                            "complete phone number again from the beginning and press #."
+                        )
+                    )
+                ],
+            ),
+            turn_complete=True,
+        )
+        log(
+            f"[{self.call_id}] Rejected invalid keypad phone "
+            f"'{submitted_digits}'; requested complete re-entry"
+        )
+
     async def _handle_customer_phone_rejection(
         self,
         text: str,
@@ -985,6 +1017,7 @@ class GeminiCallBridge:
             value=phone,
         )
         if not result["ok"]:
+            await self._prompt_invalid_keypad_phone(phone)
             return
         # A complete keypad sequence terminated by # is lossless customer
         # input, but it still needs one explicit customer confirmation after

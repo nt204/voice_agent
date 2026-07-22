@@ -75,6 +75,8 @@ class RealtimeInputGate:
         confirmation_max_speech_frames: int = 1000,
         confirmation_phone_max_speech_frames: int = 750,
         confirmation_address_max_speech_frames: int = 1500,
+        phone_confirmation_speech_threshold: int = 140,
+        phone_confirmation_speech_start_frames: int = 2,
     ):
         self.bridge = bridge
         self.call_id = call_id
@@ -99,6 +101,8 @@ class RealtimeInputGate:
         self.confirmation_max_speech_frames = confirmation_max_speech_frames
         self.confirmation_phone_max_speech_frames = confirmation_phone_max_speech_frames
         self.confirmation_address_max_speech_frames = confirmation_address_max_speech_frames
+        self.phone_confirmation_speech_threshold = phone_confirmation_speech_threshold
+        self.phone_confirmation_speech_start_frames = phone_confirmation_speech_start_frames
         self.noise_floor = 0.0
         self.prebuffer: deque[bytes] = deque(maxlen=prebuffer_frames)
         self.speech_active = False
@@ -184,6 +188,20 @@ class RealtimeInputGate:
             self.prebuffer.clear()
             return
         threshold = self._effective_threshold(output_recent=output_recent)
+        awaiting_phone_confirmation = bool(
+            getattr(
+                self.bridge,
+                "phone_readback_awaiting_confirmation",
+                False,
+            )
+        )
+        if awaiting_phone_confirmation and not output_recent:
+            # The expected answer is often a very short, softly spoken yes/no.
+            # Use a narrow, temporary threshold only for this confirmation turn.
+            threshold = min(
+                threshold,
+                self.phone_confirmation_speech_threshold,
+            )
         self.prebuffer.append(pcm)
         if rms >= threshold:
             self.speech_frames += 1
@@ -191,7 +209,12 @@ class RealtimeInputGate:
             self.speech_frames = 0
             self._update_noise_floor(rms, output_recent=output_recent)
 
-        if self.speech_frames < self.speech_start_frames:
+        required_start_frames = (
+            self.phone_confirmation_speech_start_frames
+            if awaiting_phone_confirmation
+            else self.speech_start_frames
+        )
+        if self.speech_frames < required_start_frames:
             return
 
         self.speech_active = True
