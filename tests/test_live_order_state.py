@@ -211,6 +211,119 @@ def test_dtmf_phone_requires_spoken_confirmation_after_readback(monkeypatch) -> 
     assert "Do not ask for the address" in instruction
 
 
+def test_keypad_readback_ignores_completion_from_previous_model_turn(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
+
+    async def send_audio(_: bytes) -> None:
+        pass
+
+    async def run() -> tuple[GeminiCallBridge, bool, bool]:
+        bridge = GeminiCallBridge(
+            call_id="dtmf-stale-completion",
+            call_sample_rate=16000,
+            send_audio=send_audio,
+            send_initial_greeting=False,
+            campaign_confirmation_mode=True,
+        )
+        bridge.session = _FakeSession()
+        bridge.turn_complete.clear()  # A previous model response is still active.
+        for digit in "0961984204#":
+            await bridge.handle_dtmf(digit)
+        bridge._cancel_phone_readback_watchdog()
+
+        stale_result = bridge._handle_model_turn_complete()
+        stale_event_state = bridge.turn_complete.is_set()
+        bridge._mark_phone_readback_started()
+        readback_result = bridge._handle_model_turn_complete()
+        return bridge, stale_result or stale_event_state, readback_result
+
+    bridge, stale_completed, readback_completed = asyncio.run(run())
+
+    assert stale_completed is False
+    assert readback_completed is True
+    assert bridge.turn_complete.is_set() is True
+    assert bridge.phone_readback_active is False
+
+
+def test_keypad_readback_timeout_stops_runaway_audio_and_reopens_input(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
+    monkeypatch.setattr("app.gemini_bridge.PHONE_READBACK_TIMEOUT_SECONDS", 0.01)
+    cleared = []
+
+    async def send_audio(_: bytes) -> None:
+        pass
+
+    async def clear_audio() -> None:
+        cleared.append(True)
+
+    async def run() -> GeminiCallBridge:
+        bridge = GeminiCallBridge(
+            call_id="dtmf-readback-timeout",
+            call_sample_rate=16000,
+            send_audio=send_audio,
+            clear_audio=clear_audio,
+            send_initial_greeting=False,
+            campaign_confirmation_mode=True,
+        )
+        bridge.session = _FakeSession()
+        bridge.turn_complete.set()
+        for digit in "0961984204#":
+            await bridge.handle_dtmf(digit)
+        await asyncio.sleep(0.03)
+        return bridge
+
+    bridge = asyncio.run(run())
+
+    assert bridge.phone_readback_active is False
+    assert bridge.turn_complete.is_set() is True
+    assert bridge.drop_model_audio_until_customer_activity is True
+    assert cleared
+
+
+def test_keypad_readback_stops_when_gemini_streams_trailing_silence(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
+    cleared = []
+    sent = []
+
+    async def send_audio(frame: bytes) -> None:
+        sent.append(frame)
+
+    async def clear_audio() -> None:
+        cleared.append(True)
+
+    async def run() -> GeminiCallBridge:
+        bridge = GeminiCallBridge(
+            call_id="dtmf-readback-silence",
+            call_sample_rate=16000,
+            send_audio=send_audio,
+            clear_audio=clear_audio,
+            send_initial_greeting=False,
+            campaign_confirmation_mode=True,
+        )
+        bridge.phone_readback_active = True
+        bridge.phone_readback_started = True
+        bridge.turn_complete.clear()
+        task = asyncio.create_task(bridge._playback_loop())
+        bridge.audio_queue.put_nowait(b"\xe8\x03" * 160)
+        for _ in range(20):
+            bridge.audio_queue.put_nowait(b"\x00\x00" * 160)
+        await asyncio.wait_for(bridge.turn_complete.wait(), timeout=1)
+        task.cancel()
+        await task
+        return bridge
+
+    bridge = asyncio.run(run())
+
+    assert sent
+    assert cleared == [True]
+    assert bridge.phone_readback_active is False
+    assert bridge.phone_readback_awaiting_confirmation is True
+    assert bridge.drop_model_audio_until_customer_activity is True
+
+
 def test_keypad_phone_ignores_speech_but_can_be_rejected_for_new_keypad_entry(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)

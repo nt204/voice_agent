@@ -133,3 +133,27 @@ def test_campaign_confirmation_ignores_recent_output_echo() -> None:
     assert bridge.muted == []
     assert bridge.started == 0
     assert bridge.frames == []
+
+
+def test_dtmf_entry_blocks_key_tones_from_starting_a_speech_turn() -> None:
+    async def run() -> _FakeBridge:
+        bridge = _FakeBridge()
+        bridge.dtmf_digits = "0961"
+        bridge.phone_readback_active = False
+        gate = RealtimeInputGate(
+            bridge,
+            "dtmf-audio-block",
+            speech_threshold=300,
+            speech_start_frames=2,
+            campaign_confirmation_mode=True,
+        )
+
+        for _ in range(8):
+            await gate.push(b"\x01\x00" * 160, 1800)
+        return bridge
+
+    bridge = asyncio.run(run())
+
+    assert bridge.muted == []
+    assert bridge.started == 0
+    assert bridge.frames == []

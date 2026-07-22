@@ -111,6 +111,16 @@ class RealtimeInputGate:
 
     async def push(self, pcm: bytes, rms: int, timestamp_ms: int | None = None) -> None:
         self.last_frame_bytes = len(pcm)
+        if (
+            getattr(self.bridge, "dtmf_digits", "")
+            or getattr(self.bridge, "phone_readback_active", False)
+        ):
+            # Key tones and handset sidetone are not customer speech. Feeding
+            # them to Gemini creates a competing response before # finishes.
+            self.speech_frames = 0
+            self.silence_frames = 0
+            self.prebuffer.clear()
+            return
         if self.speech_active:
             await self.bridge.send_input_audio(pcm)
             end_threshold = (
@@ -157,7 +167,16 @@ class RealtimeInputGate:
             self.prebuffer.clear()
             return
 
-        output_recent = self.bridge.output_recent(self.echo_suppression_seconds)
+        echo_suppression_seconds = (
+            min(self.echo_suppression_seconds, 0.2)
+            if getattr(
+                self.bridge,
+                "phone_readback_awaiting_confirmation",
+                False,
+            )
+            else self.echo_suppression_seconds
+        )
+        output_recent = self.bridge.output_recent(echo_suppression_seconds)
         if self.campaign_confirmation_mode and output_recent:
             # Campaign prompts are short and contain values the customer must hear
             # exactly. Do not let handset echo clear or mute them.
@@ -229,6 +248,18 @@ class RealtimeInputGate:
         if hasattr(self.bridge, "set_output_muted"):
             await getattr(self.bridge, "set_output_muted")(False)
         await self.bridge.commit_input_audio_turn()
+
+    async def handle_dtmf(self, digit: str) -> None:
+        """Close any accidental voice turn before processing keypad input."""
+        digit = str(digit or "").strip()
+        if digit not in "0123456789*#":
+            return
+        if self.speech_active:
+            log(f"[{self.call_id}] Ending accidental speech activity for DTMF input")
+            await self.force_end(flush_silence=False)
+        self.speech_frames = 0
+        self.silence_frames = 0
+        self.prebuffer.clear()
 
     def _effective_threshold(self, *, output_recent: bool) -> int:
         threshold = self.speech_threshold
@@ -1905,6 +1936,8 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                 if bridge:
                     dtmf = event.get("dtmf")
                     digit = dtmf.get("digit") if isinstance(dtmf, dict) else dtmf
+                    if input_gate and hasattr(input_gate, "handle_dtmf"):
+                        await input_gate.handle_dtmf(str(digit or ""))
                     await bridge.handle_dtmf(str(digit or ""))
 
             elif event_type == "mark":
@@ -2076,6 +2109,8 @@ async def signalwire_ws(websocket: WebSocket) -> None:
                 if bridge:
                     dtmf = event.get("dtmf")
                     digit = dtmf.get("digit") if isinstance(dtmf, dict) else dtmf
+                    if input_gate and hasattr(input_gate, "handle_dtmf"):
+                        await input_gate.handle_dtmf(str(digit or ""))
                     await bridge.handle_dtmf(str(digit or ""))
 
             elif event_type == "mark":

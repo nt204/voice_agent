@@ -37,6 +37,9 @@ DELIVERY_CORRECTION_RE = re.compile(
     r"change|update|replace|edit|sai|không\s+đúng|khong\s+dung|sửa|sua|đổi|doi)",
     flags=re.IGNORECASE,
 )
+PHONE_READBACK_TIMEOUT_SECONDS = 12.0
+PHONE_READBACK_SILENCE_RMS = 80
+PHONE_READBACK_END_SILENCE_FRAMES = 20
 
 
 def _automatic_activity_detection(explicit_vad: bool) -> types.AutomaticActivityDetection:
@@ -171,6 +174,13 @@ class GeminiCallBridge:
         self.phone_keypad_prompted = False
         self.phone_confirmation_followup_sent = False
         self.replacement_prompted_fields: set[str] = set()
+        self.phone_readback_active = False
+        self.phone_readback_started = False
+        self.phone_readback_waiting_for_prior_turn = False
+        self.phone_readback_watchdog_task: asyncio.Task | None = None
+        self.drop_model_audio_until_customer_activity = False
+        self.phone_readback_silence_frames = 0
+        self.phone_readback_awaiting_confirmation = False
 
     async def start(self) -> None:
         live = self.client.aio.live.connect(
@@ -189,7 +199,9 @@ class GeminiCallBridge:
                 output_audio_transcription=_audio_transcription_config(),
                 realtime_input_config=types.RealtimeInputConfig(
                     automatic_activity_detection=_automatic_activity_detection(self.explicit_vad),
-                    activity_handling=_activity_handling(False),
+                    activity_handling=_activity_handling(
+                        self.campaign_confirmation_mode
+                    ),
                     turn_coverage=types.TurnCoverage.TURN_INCLUDES_ONLY_ACTIVITY,
                 ),
             ),
@@ -316,6 +328,11 @@ class GeminiCallBridge:
         self.turn_complete.clear()
         self.input_resample_state = None
         await self.session.send_realtime_input(activity_start=types.ActivityStart())
+        # In campaign mode ActivityStart interrupts a readback generation that
+        # exceeded its safety timeout. New model audio may be accepted again
+        # only after that explicit customer activity starts.
+        self.drop_model_audio_until_customer_activity = False
+        self.phone_readback_awaiting_confirmation = False
         self.input_activity_active = True
         log(f"[{self.call_id}] Gemini input activity started")
 
@@ -370,6 +387,7 @@ class GeminiCallBridge:
         await self.commit_input_audio_turn()
 
     async def close(self) -> None:
+        self._cancel_phone_readback_watchdog()
         if self.playback_task:
             self.playback_task.cancel()
         await self._stop_receiver()
@@ -395,7 +413,24 @@ class GeminiCallBridge:
                     self.audio_queue.task_done()
                     continue
 
-                self.last_output_at = asyncio.get_running_loop().time()
+                frame_rms = audioop.rms(frame, 2) if len(frame) >= 2 else 0
+                if self.phone_readback_active and self.phone_readback_started:
+                    if frame_rms <= PHONE_READBACK_SILENCE_RMS:
+                        self.phone_readback_silence_frames += 1
+                    else:
+                        self.phone_readback_silence_frames = 0
+                    if (
+                        self.phone_readback_silence_frames
+                        >= PHONE_READBACK_END_SILENCE_FRAMES
+                    ):
+                        self.audio_queue.task_done()
+                        await self._finish_phone_readback_after_silence()
+                        continue
+
+                # Silent Gemini frames preserve pacing but must not keep VAD
+                # closed as though the agent were still audibly speaking.
+                if frame_rms > PHONE_READBACK_SILENCE_RMS:
+                    self.last_output_at = asyncio.get_running_loop().time()
                 await self.send_audio(frame)
                 self.output_frame_count += 1
                 self.first_audio_sent.set()
@@ -475,6 +510,7 @@ class GeminiCallBridge:
                                         live_customer_text
                                     )
                         if content.output_transcription and content.output_transcription.text:
+                            self._mark_phone_readback_started()
                             self.last_model_activity_at = asyncio.get_running_loop().time()
                             log(f"[{self.call_id}] Gemini: {content.output_transcription.text}")
                             self._track_collection_focus(content.output_transcription.text)
@@ -492,19 +528,21 @@ class GeminiCallBridge:
                                     continue
 
                                 self.last_model_activity_at = asyncio.get_running_loop().time()
+                                self._mark_phone_readback_started()
 
                                 gemini_rate = extract_sample_rate(inline.mime_type, 24000)
                                 pcm = _inline_bytes(inline.data)
                                 call_pcm = self._resample_output(pcm, gemini_rate)
 
                                 for frame in self.output_frames.push(call_pcm):
-                                    if not self.output_muted:
+                                    if (
+                                        not self.output_muted
+                                        and not self.drop_model_audio_until_customer_activity
+                                    ):
                                         self.audio_queue.put_nowait(frame)
 
                         if content.turn_complete:
-                            self.completed_turn_count += 1
-                            log(f"[{self.call_id}] Gemini turn complete")
-                            self.turn_complete.set()
+                            self._handle_model_turn_complete()
                 
                 # Sleep briefly before restarting the receive loop to prevent tight loops
                 await asyncio.sleep(0.01)
@@ -693,6 +731,88 @@ class GeminiCallBridge:
             return
         self.recorded_confirmed_facts.add(marker)
 
+    def _mark_phone_readback_started(self) -> None:
+        if (
+            self.phone_readback_active
+            and not self.phone_readback_waiting_for_prior_turn
+        ):
+            self.phone_readback_started = True
+
+    def _handle_model_turn_complete(self) -> bool:
+        if (
+            self.phone_readback_active
+            and self.phone_readback_waiting_for_prior_turn
+        ):
+            self.phone_readback_waiting_for_prior_turn = False
+            log(
+                f"[{self.call_id}] Ignored stale turn_complete "
+                "before keypad phone readback started"
+            )
+            return False
+        if self.phone_readback_active:
+            self._finish_phone_readback_guard(ready_for_confirmation=True)
+        self.completed_turn_count += 1
+        log(f"[{self.call_id}] Gemini turn complete")
+        self.turn_complete.set()
+        return True
+
+    def _cancel_phone_readback_watchdog(self) -> None:
+        task = self.phone_readback_watchdog_task
+        if task and task is not asyncio.current_task() and not task.done():
+            task.cancel()
+        self.phone_readback_watchdog_task = None
+
+    def _finish_phone_readback_guard(
+        self,
+        *,
+        ready_for_confirmation: bool = False,
+    ) -> None:
+        self.phone_readback_active = False
+        self.phone_readback_started = False
+        self.phone_readback_waiting_for_prior_turn = False
+        self.phone_readback_silence_frames = 0
+        self.phone_readback_awaiting_confirmation = ready_for_confirmation
+        self._cancel_phone_readback_watchdog()
+
+    async def _finish_phone_readback_after_silence(self) -> None:
+        if not self.phone_readback_active:
+            return
+        self.drop_model_audio_until_customer_activity = True
+        self._finish_phone_readback_guard(ready_for_confirmation=True)
+        await self._clear_pending_output_audio()
+        self.turn_complete.set()
+        log(
+            f"[{self.call_id}] Keypad phone readback reached model silence; "
+            "stopped silent output and reopened input"
+        )
+
+    def _start_phone_readback_watchdog(self) -> None:
+        self._cancel_phone_readback_watchdog()
+        self.phone_readback_watchdog_task = asyncio.create_task(
+            self._phone_readback_watchdog()
+        )
+
+    async def _phone_readback_watchdog(self) -> None:
+        try:
+            await asyncio.sleep(PHONE_READBACK_TIMEOUT_SECONDS)
+            if not self.phone_readback_active:
+                return
+            self.phone_readback_active = False
+            self.phone_readback_started = False
+            self.phone_readback_waiting_for_prior_turn = False
+            self.phone_readback_watchdog_task = None
+            self.drop_model_audio_until_customer_activity = True
+            self.phone_readback_awaiting_confirmation = True
+            self.phone_readback_silence_frames = 0
+            await self._clear_pending_output_audio()
+            self.turn_complete.set()
+            log(
+                f"[{self.call_id}] Keypad phone readback exceeded "
+                f"{PHONE_READBACK_TIMEOUT_SECONDS:.0f}s; stopped output and reopened input"
+            )
+        except asyncio.CancelledError:
+            raise
+
     def _phone_rejected_in_context(self, text: str) -> bool:
         clean_text = str(text or "").strip()
         if not clean_text:
@@ -718,6 +838,7 @@ class GeminiCallBridge:
         if self.phone_keypad_prompted or not self.session:
             return
         self.phone_keypad_prompted = True
+        self._finish_phone_readback_guard()
         self.turn_complete.clear()
         await self._clear_pending_output_audio()
         await self.session.send_client_content(
@@ -999,6 +1120,7 @@ class GeminiCallBridge:
         if self.phone_confirmation_followup_sent or not self.session:
             return
         self.phone_confirmation_followup_sent = True
+        self._finish_phone_readback_guard()
         name = self.delivery_state.customer_name
         address = self.delivery_state.shipping_address
         if self.delivery_state.require_customer_name and not name:
@@ -1146,6 +1268,13 @@ class GeminiCallBridge:
             return
         self.pending_authoritative_phone_readback = ""
         digits = " ".join(phone)
+        prior_turn_pending = not self.turn_complete.is_set()
+        self.phone_readback_active = True
+        self.phone_readback_started = False
+        self.phone_readback_waiting_for_prior_turn = prior_turn_pending
+        self.drop_model_audio_until_customer_activity = False
+        self.phone_readback_silence_frames = 0
+        self.phone_readback_awaiting_confirmation = False
         self.turn_complete.clear()
         await self._clear_pending_output_audio()
         if self.session:
@@ -1179,6 +1308,7 @@ class GeminiCallBridge:
                 ),
                 turn_complete=True,
             )
+            self._start_phone_readback_watchdog()
             log(f"[{self.call_id}] Requested Gemini Live phone readback for '{phone}'")
 
     async def wait_for_audio_turns(self) -> None:
