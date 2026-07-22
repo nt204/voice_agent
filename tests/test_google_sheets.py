@@ -1,5 +1,10 @@
 import pytest
-from app.google_sheets import parse_google_sheet_url, build_csv_export_url, map_sheet_row
+from app.google_sheets import (
+    build_csv_export_url,
+    map_sheet_row,
+    parse_google_sheet_csv,
+    parse_google_sheet_url,
+)
 
 
 def test_parse_google_sheet_url_valid():
@@ -59,3 +64,84 @@ def test_map_sheet_row_does_not_default_missing_quantity_to_one():
     lead = map_sheet_row({"Name": "Myat Thu", "Phone": "9777706050"})
 
     assert lead["quantity"] == ""
+
+
+def test_map_sheet_row_keeps_full_name_when_customer_note_is_present():
+    lead = map_sheet_row(
+        {
+            "Time": "22/06/2026 14:03",
+            "No.": "17",
+            "Full name": "ဒေါ်သန်းသန်းရွှေ",
+            "Phone": "9673639587",
+            "Address": "ရန်ကုန်",
+            "Qty": "1",
+            "Combo": "1",
+            "Joint note": "အိမ်မှာသာပို့ရန်",
+            "Customer note": "မနက် 10 နာရီလောက် အိမ်မှာရှိပါသည်။",
+            "Source": "messenger_consultation",
+            "Status": "New",
+            "Called": "FALSE",
+            "Confirmed": "FALSE",
+            "Delivered": "FALSE",
+            "Canceled": "FALSE",
+            "Sales note": "ပြန်စစ်ရန်",
+            "System code": "17",
+        }
+    )
+
+    assert lead["name"] == "ဒေါ်သန်းသန်းရွှေ"
+    assert lead["customer_note"] == "မနက် 10 နာရီလောက် အိမ်မှာရှိပါသည်။"
+    assert lead["joint_note"] == "အိမ်မှာသာပို့ရန်"
+    assert lead["sales_note"] == "ပြန်စစ်ရန်"
+    assert lead["notes"] == (
+        "မနက် 10 နာရီလောက် အိမ်မှာရှိပါသည်။ | "
+        "အိမ်မှာသာပို့ရန် | ပြန်စစ်ရန်"
+    )
+    assert lead["source"] == "messenger_consultation"
+    assert lead["time_raw"] == "22/06/2026 14:03"
+    assert lead["row_number"] == "17"
+    assert lead["system_code"] == "17"
+
+
+@pytest.mark.parametrize("terminal_column", ["Confirmed", "Delivered", "Canceled"])
+def test_processed_sheet_flags_prevent_accidental_recall(terminal_column):
+    row = {
+        "Full name": "Myat Thu",
+        "Phone": "9777706050",
+        "Called": "FALSE",
+        terminal_column: "TRUE",
+    }
+
+    lead = map_sheet_row(row)
+
+    assert lead[terminal_column.casefold()] is True
+    assert lead["called"] is True
+
+
+def test_csv_parser_deduplicates_equivalent_phone_formats_and_rejects_malformed_number():
+    leads = parse_google_sheet_csv(
+        "Full name,Phone,Address,Qty,Combo,Status,Called\n"
+        'Old row,"09 777 111 222",Yangon,1,1,New,FALSE\n'
+        "New row,+959777111222,Mandalay,1,1,New,FALSE\n"
+        "Bad row,92001788,Mandalay,1,1,New,FALSE\n"
+    )
+
+    assert leads[0]["normalized_phone"] == "+959777111222"
+    assert leads[0]["is_duplicate"] is True
+    assert leads[1]["normalized_phone"] == "+959777111222"
+    assert leads[1]["is_duplicate"] is False
+    assert leads[2]["normalized_phone"] == ""
+    assert leads[2]["is_valid_phone"] is False
+
+
+def test_missing_phone_is_not_guessed_from_time_or_system_code():
+    lead = map_sheet_row(
+        {
+            "Time": "22/06/2026 14:03",
+            "No.": "17",
+            "Full name": "No Phone Customer",
+            "System code": "9955104433",
+        }
+    )
+
+    assert lead["phone"] == ""

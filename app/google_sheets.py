@@ -4,6 +4,8 @@ import re
 from typing import Any
 import httpx
 
+from app.phone_numbers import normalize_phone_number
+
 
 def parse_google_sheet_url(url: str) -> tuple[str, str]:
     """
@@ -34,67 +36,158 @@ def normalize_column_name(header: str) -> str:
     return re.sub(r"\s+", "_", header.strip().lower())
 
 
+def _first_value(row: dict[str, str], *aliases: str) -> str:
+    for alias in aliases:
+        value = row.get(alias, "")
+        if value:
+            return value
+    return ""
+
+
+def _sheet_flag(value: object) -> bool:
+    return str(value or "").strip().casefold() in {
+        "true",
+        "yes",
+        "1",
+        "x",
+        "y",
+        "checked",
+        "đã gọi",
+        "đã chốt",
+    }
+
+
+def _combined_notes(*values: str) -> str:
+    notes: list[str] = []
+    for value in values:
+        clean = str(value or "").strip()
+        if clean and clean not in notes:
+            notes.append(clean)
+    return " | ".join(notes)
+
+
 def map_sheet_row(row: dict[str, str]) -> dict[str, Any]:
     """
     Maps a CSV row dict (header -> val) to normalized lead fields:
     phone, name, product, offer, quantity, address, notes, called, status_raw.
     """
-    normalized_dict = {normalize_column_name(k): v.strip() for k, v in row.items() if k}
-    
-    phone = ""
-    name = ""
-    product = ""
-    offer = ""
-    # Missing quantity must stay unknown. Sheet campaigns confirm an existing
-    # order, but must never silently turn an empty quantity into one item.
-    quantity = ""
-    address = ""
-    notes = ""
-    called = False
-    status_raw = ""
-    
-    for key, val in normalized_dict.items():
-        if not val:
-            continue
-        # Phone
-        if any(term in key for term in ["phone", "sdt", "số_điện_thoại", "điện_thoại", "contact", "mobile", "tel"]):
-            phone = val
-        # Name
-        elif any(term in key for term in ["name", "tên", "khách_hàng", "họ_tên", "customer"]):
-            name = val
-        # Configured product and selected package/offer are separate concepts.
-        # A Sheet commonly stores "Combo" while the campaign selects Product.
-        elif any(term in key for term in ["combo", "offer", "package", "gói"]):
-            offer = val
-        # Product
-        elif any(term in key for term in ["product", "sản_phẩm", "sp", "item"]):
-            product = val
-        # Quantity
-        elif any(term in key for term in ["quantity", "số_lượng", "qty", "sl", "amount"]):
-            quantity = val
-        # Address
-        elif any(term in key for term in ["address", "địa_chỉ", "nơi_ở", "location"]):
-            address = val
-        # Notes
-        elif any(term in key for term in ["note", "ghi_chú", "notes", "yêu_cầu", "remark"]):
-            notes = val
-        # Called status
-        elif key == "called" or "đã_gọi" in key:
-            if val.lower() in {"true", "yes", "1", "x", "đã gọi", "y"}:
-                called = True
-        # Status raw
-        elif key in {"status", "trạng_thái"}:
-            status_raw = val
-            if val.lower() in {"called", "confirmed", "canceled", "cancelled", "completed", "đã gọi", "đã chốt"}:
-                called = True
+    normalized_dict = {
+        normalize_column_name(k): str(v or "").strip()
+        for k, v in row.items()
+        if k
+    }
 
-    # Backup heuristic: if phone wasn't matched by header, check if any column value looks like a phone number
-    if not phone:
-        for val in normalized_dict.values():
-            digits = re.sub(r"\D", "", val)
-            if 8 <= len(digits) <= 15:
-                phone = val
-                break
+    # Match known headers explicitly. In particular, `customer_note` must not
+    # be treated as a customer name merely because it contains `customer`.
+    phone = _first_value(
+        normalized_dict,
+        "phone",
+        "phone_number",
+        "số_điện_thoại",
+        "điện_thoại",
+        "sdt",
+        "mobile",
+        "contact",
+        "tel",
+    )
+    name = _first_value(
+        normalized_dict,
+        "full_name",
+        "customer_name",
+        "name",
+        "họ_tên",
+        "tên_khách_hàng",
+        "khách_hàng",
+        "tên",
+        "customer",
+    )
+    product = _first_value(
+        normalized_dict,
+        "product",
+        "product_name",
+        "sản_phẩm",
+        "sp",
+        "item",
+    )
+    offer = _first_value(
+        normalized_dict,
+        "combo",
+        "offer",
+        "offer_name",
+        "package",
+        "gói",
+    )
+    # Missing quantity must stay unknown. Never silently turn an empty cell
+    # into one package.
+    quantity = _first_value(
+        normalized_dict,
+        "qty",
+        "quantity",
+        "số_lượng",
+        "sl",
+        "amount",
+    )
+    address = _first_value(
+        normalized_dict,
+        "address",
+        "shipping_address",
+        "địa_chỉ",
+        "nơi_ở",
+        "location",
+    )
+
+    customer_note = _first_value(
+        normalized_dict,
+        "customer_note",
+        "customer_notes",
+        "ghi_chú_khách_hàng",
+    )
+    joint_note = _first_value(normalized_dict, "joint_note", "joint_notes")
+    sales_note = _first_value(normalized_dict, "sales_note", "sales_notes")
+    generic_note = _first_value(
+        normalized_dict,
+        "note",
+        "notes",
+        "ghi_chú",
+        "yêu_cầu",
+        "remark",
+    )
+    notes = _combined_notes(customer_note, joint_note, generic_note, sales_note)
+
+    status_raw = _first_value(normalized_dict, "status", "trạng_thái")
+    confirmed = _sheet_flag(
+        _first_value(normalized_dict, "confirmed", "đã_xác_nhận")
+    )
+    delivered = _sheet_flag(
+        _first_value(normalized_dict, "delivered", "đã_giao")
+    )
+    canceled = _sheet_flag(
+        _first_value(
+            normalized_dict,
+            "canceled",
+            "cancelled",
+            "đã_hủy",
+        )
+    )
+    called = _sheet_flag(
+        _first_value(normalized_dict, "called", "đã_gọi")
+    )
+    if status_raw.casefold() in {
+        "called",
+        "confirmed",
+        "canceled",
+        "cancelled",
+        "completed",
+        "delivered",
+        "đã gọi",
+        "đã chốt",
+        "đã giao",
+        "đã hủy",
+    }:
+        called = True
+    # A fulfilled, confirmed, or canceled order must never be queued as a new
+    # outbound sales call merely because its Called cell was left blank.
+    called = called or confirmed or delivered or canceled
 
     return {
         "phone": phone,
@@ -104,10 +197,48 @@ def map_sheet_row(row: dict[str, str]) -> dict[str, Any]:
         "quantity": quantity,
         "address": address,
         "notes": notes,
+        "customer_note": customer_note,
+        "joint_note": joint_note,
+        "sales_note": sales_note,
+        "source": _first_value(normalized_dict, "source", "nguồn"),
         "called": called,
+        "confirmed": confirmed,
+        "delivered": delivered,
+        "canceled": canceled,
         "status_raw": status_raw,
+        "time_raw": _first_value(normalized_dict, "time", "timestamp", "created_at"),
+        "row_number": _first_value(normalized_dict, "no.", "no", "number", "stt"),
+        "system_code": _first_value(normalized_dict, "system_code", "mã_hệ_thống"),
         "raw_row": row,
     }
+
+
+def parse_google_sheet_csv(csv_text: str) -> list[dict[str, Any]]:
+    """Parse exported CSV and mark invalid/duplicate phone rows."""
+    reader = csv.DictReader(io.StringIO(csv_text))
+    leads: list[dict[str, Any]] = []
+
+    for row in reader:
+        lead = map_sheet_row(row)
+        if lead["phone"] or lead["name"]:
+            leads.append(lead)
+
+    # Keep only the bottom-most row active for each normalized phone number.
+    # Formatting variants such as 09... and +959... therefore count as the
+    # same customer.
+    seen_phones: set[str] = set()
+    for lead in reversed(leads):
+        normalized_phone = normalize_phone_number(str(lead.get("phone") or ""))
+        is_valid = bool(re.fullmatch(r"\+[1-9][0-9]{7,14}", normalized_phone))
+        lead["normalized_phone"] = normalized_phone if is_valid else ""
+        lead["is_valid_phone"] = is_valid
+        if is_valid:
+            lead["is_duplicate"] = normalized_phone in seen_phones
+            seen_phones.add(normalized_phone)
+        else:
+            lead["is_duplicate"] = False
+
+    return leads
 
 async def fetch_and_parse_google_sheet(sheet_url: str) -> list[dict[str, Any]]:
     """
@@ -127,27 +258,4 @@ async def fetch_and_parse_google_sheet(sheet_url: str) -> list[dict[str, Any]]:
             )
         csv_text = response.text
 
-    reader = list(csv.DictReader(io.StringIO(csv_text)))
-    leads: list[dict[str, Any]] = []
-    
-    for row in reader:
-        lead = map_sheet_row(row)
-        if lead["phone"] or lead["name"]:  # Skip completely empty rows
-            leads.append(lead)
-
-    # Reverse pass: Keep the latest (last) entry for each phone number active,
-    # and flag earlier entries of the same phone number as duplicate.
-    seen_phones: set[str] = set()
-    for lead in reversed(leads):
-        clean_phone = re.sub(r"\D", "", lead["phone"]) if lead["phone"] else ""
-        lead["is_valid_phone"] = bool(clean_phone and 7 <= len(clean_phone) <= 15)
-        if clean_phone and lead["is_valid_phone"]:
-            if clean_phone in seen_phones:
-                lead["is_duplicate"] = True
-            else:
-                lead["is_duplicate"] = False
-                seen_phones.add(clean_phone)
-        else:
-            lead["is_duplicate"] = False
-
-    return leads
+    return parse_google_sheet_csv(csv_text)
