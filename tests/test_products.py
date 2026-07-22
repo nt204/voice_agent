@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from app.call_history import CallHistoryStore
+from app.call_history import CallHistoryStore, calls_table, orders_table
 from app.config import gemini_system_instruction
 from app.order_extraction import _merge_payload, analyze_call_with_gemini
 
@@ -165,6 +165,29 @@ def test_product_crud_replaces_offers_and_resolves_normalized_phone(tmp_path):
     assert len(store.list_products(active_only=True)) == 2
 
 
+def test_new_product_gets_standard_conversation_defaults_when_optional_prompt_is_blank(
+    tmp_path,
+):
+    store = CallHistoryStore(tmp_path / "product-default-prompt.db")
+    created = store.create_product(
+        _product_payload(
+            inbound_greeting="",
+            outbound_greeting="",
+            system_prompt="",
+        )
+    )
+
+    assert "Moe Collagen" in created["inbound_greeting"]
+    assert "Moe Collagen" in created["outbound_greeting"]
+    assert "phone sales consultant for Moe Collagen" in created["system_prompt"]
+
+    prompt = gemini_system_instruction("outbound", product=created)
+    assert "Order confirmation template" in prompt
+    assert "Phone number listening guide" in prompt
+    assert "cannot override the shared voice" in prompt
+    assert "Moe Collagen Duo" in prompt
+
+
 def test_product_rejects_duplicate_phone_and_cannot_disable_only_default(tmp_path):
     store = CallHistoryStore(tmp_path / "products.db")
     created = store.create_product(_product_payload())
@@ -198,6 +221,13 @@ def test_product_rejects_duplicate_phone_and_cannot_disable_only_default(tmp_pat
         },
     )
     assert disabled_venus["active"] is False
+
+
+def test_product_rejects_phone_that_telnyx_cannot_dial(tmp_path):
+    store = CallHistoryStore(tmp_path / "invalid-product-phone.db")
+
+    with pytest.raises(ValueError, match="valid international number"):
+        store.create_product(_product_payload(phone_number="12345"))
 
 
 def test_product_requires_unambiguous_active_offer_configuration(tmp_path):
@@ -254,6 +284,42 @@ def test_calls_requests_and_orders_keep_product_association(tmp_path):
     assert store.get_outbound_request(request["id"])["product_id"] == product["id"]
 
 
+def test_legacy_order_is_backfilled_from_an_unambiguous_configured_offer(tmp_path):
+    db_path = tmp_path / "legacy-order-products.db"
+    store = CallHistoryStore(db_path)
+    product = store.create_product(_product_payload())
+    with store.engine.begin() as connection:
+        connection.execute(
+            calls_table.insert().values(
+                id="legacy-product-call",
+                direction="outbound",
+                provider="telnyx",
+                status="completed",
+                started_at="2026-07-20T01:00:00+00:00",
+            )
+        )
+        connection.execute(
+            orders_table.insert().values(
+                call_id="legacy-product-call",
+                product_name="Moe Collagen Duo",
+                quantity=2,
+                unit_price=80000,
+                total_price=160000,
+                status="confirmed",
+                created_at="2026-07-20T01:05:00+00:00",
+                updated_at="2026-07-20T01:05:00+00:00",
+            )
+        )
+
+    reopened = CallHistoryStore(db_path)
+    orders = reopened.list_orders(product_id=product["id"])
+
+    assert len(orders) == 1
+    assert orders[0]["product_id"] == product["id"]
+    assert orders[0]["product"]["name"] == "Moe Collagen"
+    assert reopened.get_call("legacy-product-call")["product"]["id"] == product["id"]
+
+
 def test_product_prompt_contains_only_selected_product_knowledge(tmp_path):
     store = CallHistoryStore(tmp_path / "products.db")
     product = store.create_product(_product_payload())
@@ -265,6 +331,8 @@ def test_product_prompt_contains_only_selected_product_knowledge(tmp_path):
     assert "Moe Collagen Duo" in instruction
     assert "Venus BigOne" not in instruction
     assert "Combo 3" not in instruction
+    assert "Order confirmation template" in instruction
+    assert "cannot override the shared voice" in instruction
 
 
 def test_product_api_crud_and_outbound_rejects_unknown_product(tmp_path, monkeypatch):
@@ -399,9 +467,12 @@ def test_dashboard_includes_product_management_and_product_call_selection():
     assert 'id="outboundProduct"' in html
     assert 'id="productForm"' in products_html
     assert 'id="productList"' in products_html
+    assert 'id="applyProductPromptDefaultsButton"' in products_html
+    assert "Prompt lõi và xác nhận đơn đã được dùng chung" in products_html
     assert 'fetchJson("/api/products")' in source
     assert 'product_id: Number(productId)' in source
     assert 'fetchJson("/api/products")' in products_source
     assert "renderProductList" in products_source
+    assert "standardConversationDefaults" in products_source
     assert ".products-workspace" in styles
     assert "@media (max-width: 680px)" in styles

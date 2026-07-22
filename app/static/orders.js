@@ -3,11 +3,15 @@
  */
 
 let allOrders = [];
+let allProducts = [];
 let activeStatusFilter = "";
+let activeProductFilter = "";
 
 const ordersTableBody = document.querySelector("#ordersTableBody");
 const orderSearchInput = document.querySelector("#orderSearchInput");
 const orderResultCount = document.querySelector("#orderResultCount");
+const orderProductTabs = document.querySelector("#orderProductTabs");
+const exportOrdersCsv = document.querySelector("#exportOrdersCsv");
 const editOrderModal = document.querySelector("#editOrderModal");
 const editOrderForm = document.querySelector("#editOrderForm");
 const editOrderId = document.querySelector("#editOrderId");
@@ -66,20 +70,81 @@ async function fetchOrders() {
   }
 }
 
+async function fetchProducts() {
+  try {
+    const res = await fetch("/api/products");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Không thể tải sản phẩm");
+    allProducts = data.products || [];
+    renderProductTabs();
+  } catch (err) {
+    if (orderProductTabs) {
+      orderProductTabs.innerHTML = `<span class="order-product-load-error">${escapeHtml(err.message)}</span>`;
+    }
+  }
+}
+
+function orderProductKey(order) {
+  return order.product_id == null ? "unassigned" : String(order.product_id);
+}
+
+function ordersForActiveProduct() {
+  if (!activeProductFilter) return allOrders;
+  return allOrders.filter(order => orderProductKey(order) === activeProductFilter);
+}
+
+function renderProductTabs() {
+  if (!orderProductTabs) return;
+  const counts = new Map();
+  for (const order of allOrders) {
+    const key = orderProductKey(order);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const tabs = [
+    { id: "", name: "Tất cả sản phẩm", count: allOrders.length },
+    ...allProducts.map(product => ({
+      id: String(product.id),
+      name: product.name,
+      count: counts.get(String(product.id)) || 0,
+      active: product.active,
+    })),
+  ];
+  if (counts.get("unassigned")) {
+    tabs.push({ id: "unassigned", name: "Chưa phân loại", count: counts.get("unassigned") });
+  }
+  orderProductTabs.innerHTML = tabs.map(tab => `
+    <button class="order-product-tab ${activeProductFilter === tab.id ? "active" : ""}" data-product-filter="${escapeHtml(tab.id)}" type="button" role="tab" aria-selected="${activeProductFilter === tab.id}">
+      <span>${escapeHtml(tab.name)}${tab.active === false ? " (tạm ngưng)" : ""}</span>
+      <strong>${tab.count}</strong>
+    </button>
+  `).join("");
+}
+
+function updateExportLink() {
+  if (!exportOrdersCsv) return;
+  const params = new URLSearchParams();
+  if (activeProductFilter === "unassigned") params.set("unassigned", "true");
+  else if (activeProductFilter) params.set("product_id", activeProductFilter);
+  const query = params.toString();
+  exportOrdersCsv.href = `/api/orders/export${query ? `?${query}` : ""}`;
+}
+
 function updateStats() {
-  if (statTotal) statTotal.textContent = allOrders.length;
-  if (statConfirmed) statConfirmed.textContent = allOrders.filter(o => o.status === "confirmed" || o.status === "draft").length;
-  if (statPacked) statPacked.textContent = allOrders.filter(o => o.status === "packed").length;
-  if (statShipping) statShipping.textContent = allOrders.filter(o => o.status === "shipping").length;
-  if (statCompleted) statCompleted.textContent = allOrders.filter(o => o.status === "completed").length;
-  if (statCancelled) statCancelled.textContent = allOrders.filter(o => o.status === "cancelled").length;
+  const scopedOrders = ordersForActiveProduct();
+  if (statTotal) statTotal.textContent = scopedOrders.length;
+  if (statConfirmed) statConfirmed.textContent = scopedOrders.filter(o => o.status === "confirmed" || o.status === "draft").length;
+  if (statPacked) statPacked.textContent = scopedOrders.filter(o => o.status === "packed").length;
+  if (statShipping) statShipping.textContent = scopedOrders.filter(o => o.status === "shipping").length;
+  if (statCompleted) statCompleted.textContent = scopedOrders.filter(o => o.status === "completed").length;
+  if (statCancelled) statCancelled.textContent = scopedOrders.filter(o => o.status === "cancelled").length;
+  updateExportLink();
 }
 
 function renderOrders() {
   if (!ordersTableBody) return;
   const q = (orderSearchInput?.value || "").trim().toLowerCase();
 
-  const filtered = allOrders.filter(o => {
+  const filtered = ordersForActiveProduct().filter(o => {
     if (activeStatusFilter === "confirmed") {
       if (o.status !== "confirmed" && o.status !== "draft") return false;
     } else if (activeStatusFilter && o.status !== activeStatusFilter) {
@@ -106,6 +171,8 @@ function renderOrders() {
   }
 
   ordersTableBody.innerHTML = filtered.map(o => {
+    const productGroupName = o.product?.name || "Chưa phân loại";
+    const offerName = o.product_name || "Chưa có gói bán";
     let statusBadge = `<select class="status-select" data-order-id="${o.id}" style="padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 11px; border: 1px solid #cbd5e1;">
       <option value="draft" ${o.status === "draft" ? "selected" : ""}>Chờ đóng gói</option>
       <option value="confirmed" ${o.status === "confirmed" ? "selected" : ""}>Chờ đóng gói (Confirmed)</option>
@@ -121,8 +188,8 @@ function renderOrders() {
         <td style="white-space: nowrap; font-size: 12px; color: #64748b;">${formatDate(o.created_at)}</td>
         <td><strong>${escapeHtml(o.customer_name || "Chưa có tên")}</strong></td>
         <td><code>${escapeHtml(o.customer_phone || "—")}</code></td>
-        <td>${escapeHtml(o.product_name || "Venus BigOne")}</td>
-        <td><strong style="color: #2563eb;">x${o.quantity || 1}</strong></td>
+        <td><div class="order-product-cell"><strong>${escapeHtml(productGroupName)}</strong><small>${escapeHtml(offerName)}</small></div></td>
+        <td><strong style="color: #2563eb;">${Number(o.quantity) > 0 ? `x${Number(o.quantity)}` : "—"}</strong></td>
         <td><strong style="color: #16a34a;">${formatPrice(o.total_price)}</strong></td>
         <td style="max-width: 220px; word-break: break-word; font-size: 12px;">${escapeHtml(o.shipping_address || "Chưa có địa chỉ")}</td>
         <td>${statusBadge}</td>
@@ -151,6 +218,15 @@ function renderOrders() {
     });
   });
 }
+
+orderProductTabs?.addEventListener("click", event => {
+  const button = event.target.closest(".order-product-tab");
+  if (!button) return;
+  activeProductFilter = button.dataset.productFilter || "";
+  renderProductTabs();
+  updateStats();
+  renderOrders();
+});
 
 async function updateOrderStatus(orderId, payload) {
   try {
@@ -229,4 +305,8 @@ document.querySelectorAll(".funnel-item").forEach(item => {
 orderSearchInput?.addEventListener("input", renderOrders);
 
 // Initial fetch
-fetchOrders();
+Promise.all([fetchProducts(), fetchOrders()]).then(() => {
+  renderProductTabs();
+  updateStats();
+  renderOrders();
+});

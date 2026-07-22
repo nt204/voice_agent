@@ -460,10 +460,13 @@ async def api_calls(
 async def api_orders(
     status: str | None = None,
     product_id: int | None = None,
+    unassigned: bool = False,
     q: str = "",
     limit: int = 100,
 ) -> dict[str, object]:
     all_orders = call_history.list_orders(limit=limit, product_id=product_id)
+    if unassigned:
+        all_orders = [o for o in all_orders if o.get("product_id") is None]
     if status:
         all_orders = [o for o in all_orders if o.get("status") == status]
     if q.strip():
@@ -491,8 +494,14 @@ async def api_update_order(order_id: int, payload: dict) -> dict[str, object]:
 
 
 @app.get("/api/orders/export")
-async def api_export_orders(status: str | None = None, product_id: int | None = None) -> Response:
+async def api_export_orders(
+    status: str | None = None,
+    product_id: int | None = None,
+    unassigned: bool = False,
+) -> Response:
     orders = call_history.list_orders(limit=500, product_id=product_id)
+    if unassigned:
+        orders = [o for o in orders if o.get("product_id") is None]
     if status:
         orders = [o for o in orders if o.get("status") == status]
     
@@ -623,13 +632,6 @@ async def api_admin_summary(product_id: int | None = None) -> dict[str, object]:
         "recent_leads": recent_leads,
         "recent_calls": recent_calls,
     }
-
-
-@app.get("/api/orders")
-async def api_orders(
-    limit: int = 100, product_id: int | None = None
-) -> dict[str, object]:
-    return {"orders": call_history.list_orders(limit=limit, product_id=product_id)}
 
 
 @app.get("/api/outbound/requests")

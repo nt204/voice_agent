@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Quản lý đơn hàng & Đóng gói</title>
-  <link rel="stylesheet" href="/static/dashboard.css?v=layout-fix-v27">
+  <link rel="stylesheet" href="/static/dashboard.css?v=orders-by-product-v28">
 </head>
 <body class="products-page-body">
   <header class="navigation-bar">
@@ -38,6 +38,14 @@
         <button class="funnel-item" data-status="completed" type="button" style="border-left: 3px solid #16a34a;"><span>Hoàn thành</span><strong id="statCompleted">0</strong></button>
         <button class="funnel-item cold" data-status="cancelled" type="button"><span>Đã hủy</span><strong id="statCancelled">0</strong></button>
       </div>
+    </section>
+
+    <section class="order-product-manager" aria-labelledby="orderProductManagerTitle">
+      <div>
+        <h2 id="orderProductManagerTitle">Quản lý theo sản phẩm</h2>
+        <p>Chọn một sản phẩm để xem số liệu, xử lý đơn và xuất file đóng gói riêng.</p>
+      </div>
+      <div id="orderProductTabs" class="order-product-tabs" role="tablist" aria-label="Lọc đơn theo sản phẩm"></div>
     </section>
 
     <!-- Toolbar -->
@@ -143,6 +151,6 @@
     </div>
   </div>
 
-  <script src="/static/orders.js?v=layout-fix-v27" defer></script>
+  <script src="/static/orders.js?v=orders-by-product-v28" defer></script>
 </body>
 </html>

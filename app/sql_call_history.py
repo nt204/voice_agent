@@ -109,6 +109,7 @@ class SqlAlchemyCallHistoryStore:
                 connection.execute(text(index_sql))
             self._seed_default_product(connection)
             self._backfill_outbound_request_calls(connection)
+            self._backfill_order_product_ids(connection)
             connection.execute(
                 text(
                     """
@@ -169,6 +170,58 @@ class SqlAlchemyCallHistoryStore:
             )
         ).inserted_primary_key[0]
         self._replace_product_offers(connection, int(product_id), payload["offers"], now)
+
+    def _backfill_order_product_ids(self, connection: Connection) -> None:
+        """Associate legacy orders by call or an unambiguous product/offer name."""
+        call_product = (
+            select(calls_table.c.product_id)
+            .where(calls_table.c.id == orders_table.c.call_id)
+            .limit(1)
+            .scalar_subquery()
+        )
+        connection.execute(
+            orders_table.update()
+            .where(orders_table.c.product_id.is_(None))
+            .values(product_id=call_product)
+        )
+
+        product_ids_by_name: dict[str, set[int]] = {}
+        for product_id, name in connection.execute(
+            select(products_table.c.id, products_table.c.name)
+        ):
+            key = str(name or "").strip().casefold()
+            if key:
+                product_ids_by_name.setdefault(key, set()).add(int(product_id))
+        for product_id, name in connection.execute(
+            select(product_offers_table.c.product_id, product_offers_table.c.name)
+        ):
+            key = str(name or "").strip().casefold()
+            if key:
+                product_ids_by_name.setdefault(key, set()).add(int(product_id))
+
+        legacy_orders = connection.execute(
+            select(orders_table.c.id, orders_table.c.call_id, orders_table.c.product_name)
+            .where(orders_table.c.product_id.is_(None))
+        ).mappings().all()
+        for order in legacy_orders:
+            matches = product_ids_by_name.get(
+                str(order["product_name"] or "").strip().casefold(),
+                set(),
+            )
+            if len(matches) != 1:
+                continue
+            product_id = next(iter(matches))
+            connection.execute(
+                orders_table.update()
+                .where(orders_table.c.id == order["id"])
+                .values(product_id=product_id)
+            )
+            connection.execute(
+                calls_table.update()
+                .where(calls_table.c.id == order["call_id"])
+                .where(calls_table.c.product_id.is_(None))
+                .values(product_id=product_id)
+            )
 
     def _backfill_outbound_request_calls(self, connection: Connection) -> None:
         connection.execute(

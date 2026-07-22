@@ -5,6 +5,10 @@ const productForm = document.querySelector("#productForm");
 const offerList = document.querySelector("#offerList");
 const productFormStatus = document.querySelector("#productFormStatus");
 const productPageStatus = document.querySelector("#productPageStatus");
+const productNameInput = document.querySelector("#productName");
+const productInboundGreeting = document.querySelector("#productInboundGreeting");
+const productOutboundGreeting = document.querySelector("#productOutboundGreeting");
+const productSystemPrompt = document.querySelector("#productSystemPrompt");
 
 const escapeHtml = (value = "") => String(value).replace(
   /[&<>"']/g,
@@ -17,6 +21,22 @@ async function fetchJson(url) {
   return response.json();
 }
 
+function friendlyProductError(message = "") {
+  const rules = [
+    ["phone number is required", "Số điện thoại Telnyx là bắt buộc."],
+    ["valid international number", "Số điện thoại phải đúng định dạng quốc tế, ví dụ +959..."],
+    ["already uses this phone number", "Số điện thoại này đang được sản phẩm khác sử dụng."],
+    ["already uses this slug", "Mã nhận diện này đang được sản phẩm khác sử dụng."],
+    ["at least one offer", "Hãy thêm ít nhất một gói bán."],
+    ["at least one active offer", "Phải có ít nhất một gói đang bán."],
+    ["offer names must be unique", "Tên các gói bán không được trùng nhau."],
+    ["unique quantities", "Hai gói đang bán không được dùng cùng một số lượng."],
+    ["product knowledge is required", "Kiến thức sản phẩm là bắt buộc."],
+  ];
+  const normalized = String(message).toLowerCase();
+  return rules.find(([needle]) => normalized.includes(needle))?.[1] || message || "Không thể lưu sản phẩm";
+}
+
 async function writeJson(url, method, body) {
   const response = await fetch(url, {
     method,
@@ -24,7 +44,7 @@ async function writeJson(url, method, body) {
     body: JSON.stringify(body),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.detail || "Không thể lưu sản phẩm");
+  if (!response.ok) throw new Error(friendlyProductError(data.detail));
   return data;
 }
 
@@ -61,9 +81,9 @@ function renderOfferRows(offers = []) {
   offerList.innerHTML = offers.map((offer, index) => `
     <div class="offer-row" data-offer-index="${index}">
       <label class="offer-field"><span>Tên gói bán</span><input data-offer="name" value="${escapeHtml(offer.name || "")}" required></label>
-      <label class="offer-field"><span>Số lượng</span><input data-offer="quantity" type="number" min="1" value="${Number(offer.quantity || 1)}" required></label>
-      <label class="offer-field"><span>Đơn giá</span><input data-offer="unit_price" type="number" min="1" value="${Number(offer.unit_price || 1)}" required></label>
-      <label class="offer-field"><span>Tổng giá</span><input data-offer="total_price" type="number" min="1" value="${Number(offer.total_price || 1)}" required></label>
+      <label class="offer-field"><span>Số lượng</span><input data-offer="quantity" type="number" min="1" value="${offer.quantity ?? 1}" required></label>
+      <label class="offer-field"><span>Đơn giá</span><input data-offer="unit_price" type="number" min="1" value="${offer.unit_price ?? ""}" required></label>
+      <label class="offer-field"><span>Tổng giá</span><input data-offer="total_price" type="number" min="1" value="${offer.total_price ?? ""}" required></label>
       <label class="offer-field"><span>Vận chuyển</span><input data-offer="shipping_policy" value="${escapeHtml(offer.shipping_policy || "")}" placeholder="Miễn phí giao hàng"></label>
       <label class="offer-field offer-active-field"><span>Đang bán</span><input data-offer="active" type="checkbox" ${offer.active !== false ? "checked" : ""}></label>
       <button class="remove-offer-button" type="button" aria-label="Xóa ${escapeHtml(offer.name || "gói bán")}">&#10005;</button>
@@ -76,6 +96,47 @@ function renderOfferRows(offers = []) {
       if (!offerList.querySelector(".offer-row")) renderOfferRows([]);
     });
   });
+}
+
+function standardConversationDefaults(nameValue = "") {
+  const name = nameValue.trim() || "Sản phẩm";
+  return {
+    inbound: `မင်္ဂလာပါရှင်။ ${name} ကပါ။ ဘာအကြောင်း အကြံပြုပေးရမလဲရှင်။`,
+    outbound: `မင်္ဂလာပါရှင်။ ${name} က ဆက်သွယ်တာပါ။ အခု ခဏပြောလို့ရမလားရှင်။`,
+    system: `You are a phone sales consultant for ${name} in Myanmar. Consult and confirm orders only for ${name}. Use only the authorized product knowledge and active offers supplied by the system.`,
+  };
+}
+
+function applyConversationDefaults({ force = false } = {}) {
+  const defaults = standardConversationDefaults(productNameInput.value);
+  for (const [input, value] of [
+    [productInboundGreeting, defaults.inbound],
+    [productOutboundGreeting, defaults.outbound],
+    [productSystemPrompt, defaults.system],
+  ]) {
+    const previousDefault = input.dataset.generatedDefault || "";
+    if (force || !input.value.trim() || input.value === previousDefault) {
+      input.value = value;
+      input.dataset.generatedDefault = value;
+    }
+  }
+}
+
+function clearGeneratedDefaultMarkers() {
+  for (const input of [productInboundGreeting, productOutboundGreeting, productSystemPrompt]) {
+    delete input.dataset.generatedDefault;
+  }
+}
+
+function markMatchingConversationDefaults(name) {
+  const defaults = standardConversationDefaults(name);
+  for (const [input, value] of [
+    [productInboundGreeting, defaults.inbound],
+    [productOutboundGreeting, defaults.outbound],
+    [productSystemPrompt, defaults.system],
+  ]) {
+    if (input.value === value) input.dataset.generatedDefault = value;
+  }
 }
 
 function blankProductForm() {
@@ -91,6 +152,7 @@ function blankProductForm() {
   document.querySelector("#setDefaultProductButton").hidden = true;
   productFormStatus.textContent = "";
   productFormStatus.className = "form-status";
+  clearGeneratedDefaultMarkers();
   renderOfferRows([]);
   renderProductList();
   document.querySelector("#productName").focus();
@@ -121,6 +183,8 @@ function editProduct(productId) {
   document.querySelector("#setDefaultProductButton").hidden = Boolean(product.is_default || !product.active);
   productFormStatus.textContent = "";
   productFormStatus.className = "form-status";
+  clearGeneratedDefaultMarkers();
+  markMatchingConversationDefaults(product.name || "");
   renderOfferRows(product.offers || []);
   renderProductList();
 }
@@ -167,13 +231,27 @@ async function loadProducts({ selectId = null } = {}) {
 document.querySelector("#newProductButton").addEventListener("click", blankProductForm);
 document.querySelector("#addOfferButton").addEventListener("click", () => {
   const offers = collectOffers();
-  offers.push({ name: "", quantity: 1, unit_price: 1, total_price: 1, shipping_policy: "", active: true });
+  offers.push({ name: "", quantity: 1, unit_price: "", total_price: "", shipping_policy: "", active: true });
   renderOfferRows(offers);
   offerList.querySelector(".offer-row:last-child input")?.focus();
 });
 
+productNameInput.addEventListener("blur", () => applyConversationDefaults());
+document.querySelector("#applyProductPromptDefaultsButton").addEventListener("click", () => {
+  if (!productNameInput.value.trim()) {
+    productFormStatus.textContent = "Hãy nhập tên sản phẩm trước.";
+    productFormStatus.className = "form-status error";
+    productNameInput.focus();
+    return;
+  }
+  applyConversationDefaults();
+  productFormStatus.textContent = "Đã điền các mục còn trống bằng mẫu chuẩn; nội dung bạn đã nhập được giữ nguyên.";
+  productFormStatus.className = "form-status success";
+});
+
 productForm.addEventListener("submit", async event => {
   event.preventDefault();
+  if (!state.editingProductId) applyConversationDefaults();
   if (!productForm.reportValidity()) return;
   const saveButton = document.querySelector("#saveProductButton");
   saveButton.disabled = true;

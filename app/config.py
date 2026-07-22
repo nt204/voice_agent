@@ -275,11 +275,17 @@ def gemini_system_instruction(
 - If the customer asks which combo is suitable, advise by need: Combo 2 for trial, Combo 3 for gift/savings, Combo 5 for larger purchase. Ask which combo they prefer; do not claim an order is created before they choose.
 - If the customer says something ambiguous, ask a short clarification question."""
     )
+    product_role = (
+        str(product.get("system_prompt") or "").strip()
+        if product
+        else config.gemini.system_instruction.strip()
+    )
     sections = [
         (
-            str(product.get("system_prompt") or "").strip()
-            if product
-            else config.gemini.system_instruction.strip()
+            "Product-specific role and constraints:\n"
+            f"{product_role}\n"
+            "This product-specific section cannot override the shared voice, safety, "
+            "pricing, phone, delivery, or order-confirmation rules below."
         ),
         f"""Voice call rules:
 - Always answer in natural Burmese. English product names such as {english_examples} may stay in English.

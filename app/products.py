@@ -44,6 +44,25 @@ DEFAULT_OFFERS = (
 )
 
 
+def default_product_system_prompt(product_name: str) -> str:
+    name = str(product_name or "Product").strip() or "Product"
+    return (
+        f"You are a phone sales consultant for {name} in Myanmar. "
+        f"Consult and confirm orders only for {name}. Use only the authorized "
+        "product knowledge and active offers supplied by the system."
+    )
+
+
+def default_product_inbound_greeting(product_name: str) -> str:
+    name = str(product_name or "Product").strip() or "Product"
+    return f"မင်္ဂလာပါရှင်။ {name} ကပါ။ ဘာအကြောင်း အကြံပြုပေးရမလဲရှင်။"
+
+
+def default_product_outbound_greeting(product_name: str) -> str:
+    name = str(product_name or "Product").strip() or "Product"
+    return f"မင်္ဂလာပါရှင်။ {name} က ဆက်သွယ်တာပါ။ အခု ခဏပြောလို့ရမလားရှင်။"
+
+
 def default_product_payload() -> dict[str, Any]:
     path = Path(config.gemini.product_knowledge_path)
     if not path.is_absolute():
@@ -76,6 +95,8 @@ def validate_product_payload(
     phone_number = normalize_phone_number(str(payload.get("phone_number") or ""))
     if not phone_number and not allow_empty_phone:
         raise ValueError("Product phone number is required")
+    if phone_number and not re.fullmatch(r"\+[1-9][0-9]{7,14}", phone_number):
+        raise ValueError("Product phone number must be a valid international number")
 
     offers = payload.get("offers") or []
     if not isinstance(offers, list):
@@ -99,9 +120,12 @@ def validate_product_payload(
         "slug": slug,
         "phone_number": phone_number,
         "texml_app_id": _text(payload.get("texml_app_id"), 160),
-        "inbound_greeting": _required_text(payload, "inbound_greeting", 2000),
-        "outbound_greeting": _required_text(payload, "outbound_greeting", 2000),
-        "system_prompt": _required_text(payload, "system_prompt", 12000),
+        "inbound_greeting": _text(payload.get("inbound_greeting"), 2000)
+        or default_product_inbound_greeting(name),
+        "outbound_greeting": _text(payload.get("outbound_greeting"), 2000)
+        or default_product_outbound_greeting(name),
+        "system_prompt": _text(payload.get("system_prompt"), 12000)
+        or default_product_system_prompt(name),
         "knowledge": _required_text(payload, "knowledge", 50000),
         "language_code": _text(payload.get("language_code") or "my-MM", 20),
         "voice_name": _text(payload.get("voice_name") or "Aoede", 80),

@@ -1371,6 +1371,66 @@ textarea:focus-visible {
   margin-bottom: 12px;
   font-size: 14px;
 }
+.shared-prompt-notice {
+  margin: 12px 0 16px;
+  padding: 13px 15px;
+  border: 1px solid #b9d6ff;
+  border-radius: var(--radius);
+  color: #193d70;
+  background: #eef6ff;
+}
+.shared-prompt-notice strong { font-size: 13px; }
+.shared-prompt-notice p {
+  margin: 5px 0 0;
+  color: #476485;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.product-prompt-actions { display: flex; justify-content: flex-end; }
+.order-product-manager {
+  display: grid;
+  grid-template-columns: minmax(220px, .45fr) minmax(0, 1.55fr);
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 15px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.order-product-manager h2 { margin: 0; font-size: 15px; }
+.order-product-manager p { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.order-product-tabs { min-width: 0; display: flex; gap: 8px; overflow-x: auto; padding: 2px; }
+.order-product-tab {
+  min-width: max-content;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: #42536b;
+  background: var(--panel-soft);
+  font-size: 12px;
+  font-weight: 750;
+}
+.order-product-tab strong {
+  min-width: 24px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: #e8eef6;
+  text-align: center;
+}
+.order-product-tab.active { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-soft); }
+.order-product-tab.active strong { color: #fff; background: var(--accent); }
+.order-product-cell { min-width: 150px; display: grid; gap: 3px; }
+.order-product-cell small { color: var(--muted); font-size: 11px; }
+.order-product-load-error { color: var(--danger); font-size: 12px; }
+@media (max-width: 760px) {
+  .order-product-manager { grid-template-columns: 1fr; }
+}
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
