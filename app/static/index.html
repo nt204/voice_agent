@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cuộc gọi và đơn hàng</title>
-  <link rel="stylesheet" href="/static/dashboard.css?v=combo-qty-v28">
+  <link rel="stylesheet" href="/static/dashboard.css?v=call-filter-buttons-v37">
 </head>
 <body>
   <header class="navigation-bar">
@@ -147,9 +147,18 @@
           </label>
           <div class="toolbar-meta"><span id="resultCount">0 kết quả</span></div>
         </div>
+        <div class="call-result-bar">
+          <div class="call-result-filters" role="tablist" aria-label="Lọc theo kết quả cuộc gọi">
+            <button class="call-result-filter active" data-call-status="" type="button" role="tab" aria-selected="true">Tất cả <strong id="callStatusAll">0</strong></button>
+            <button class="call-result-filter completed" data-call-status="completed" type="button" role="tab" aria-selected="false">Đã kết nối <strong id="callStatusCompleted">0</strong></button>
+            <button class="call-result-filter no-answer" data-call-status="no_answer" type="button" role="tab" aria-selected="false">Không nghe <strong id="callStatusNoAnswer">0</strong></button>
+            <button class="call-result-filter busy" data-call-status="busy" type="button" role="tab" aria-selected="false">Bận / từ chối <strong id="callStatusBusy">0</strong></button>
+            <button class="call-result-filter failed" data-call-status="failed" type="button" role="tab" aria-selected="false">Lỗi / đã hủy <strong id="callStatusFailed">0</strong></button>
+          </div>
+        </div>
         <div class="lead-list-wrap">
           <div class="table-head">
-            <span>Khách hàng</span><span>Nhu cầu</span><span>Trạng thái</span><span>Thời gian</span><span>Loại gọi</span>
+            <span>Khách hàng</span><span>Nhu cầu</span><span>Kết quả</span><span>Thời gian</span><span>Loại gọi</span>
           </div>
           <div id="callList" class="lead-list" aria-live="polite"></div>
         </div>
@@ -209,6 +218,6 @@
 
   <template id="loadingTemplate"><div class="list-state">Đang tải dữ liệu...</div></template>
   <template id="emptyTemplate"><div class="list-state"><strong>Chưa có cuộc gọi</strong></div></template>
-  <script src="/static/dashboard.js?v=combo-qty-v28" defer></script>
+  <script src="/static/dashboard.js?v=call-outcomes-v36" defer></script>
 </body>
 </html>

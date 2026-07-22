@@ -34,6 +34,35 @@ def test_outbound_status_creates_call_when_stream_never_started(tmp_path):
     assert calls[0]["ended_at"] == "2026-07-13T04:57:21.029432Z"
 
 
+def test_outbound_terminal_outcomes_are_preserved_and_filterable(tmp_path):
+    store = CallHistoryStore(tmp_path / "call_outcomes.db")
+    terminal_statuses = (
+        "completed",
+        "no_answer",
+        "busy",
+        "canceled",
+        "timed_out",
+        "failed",
+    )
+
+    for index, status in enumerate(terminal_statuses):
+        request = store.create_outbound_request(to_number=f"+9597000000{index}")
+        call_sid = f"outcome-{status}"
+        store.mark_outbound_request_started(request["id"], call_sid)
+        store.update_outbound_request_by_call_sid(call_sid, status)
+        assert store.get_call(call_sid)["status"] == status
+
+    assert {call["status"] for call in store.list_calls(call_status="no_answer")} == {
+        "no_answer"
+    }
+    assert {call["status"] for call in store.list_calls(call_status="busy")} == {"busy"}
+    assert {call["status"] for call in store.list_calls(call_status="failed")} == {
+        "failed",
+        "timed_out",
+        "canceled",
+    }
+
+
 def test_outbound_status_does_not_overwrite_stream_call_phone_with_empty_value(tmp_path):
     store = CallHistoryStore(tmp_path / "call_history.db")
     request = store.create_outbound_request(
@@ -530,6 +559,36 @@ def test_campaign_sheet_quantity_is_persisted_as_combo_count_not_box_count() -> 
     assert result["order"]["quantity"] == 2
     assert result["order"]["total_price"] == 210000
     assert result["order"]["status"] == "ready_to_confirm"
+
+
+def test_campaign_final_order_acceptance_sets_confirmed_status() -> None:
+    result = {
+        "customer": {},
+        "order": {
+            "product_name": "Wrong",
+            "quantity": 1,
+            "unit_price": 1,
+            "total_price": 1,
+            "missing_fields": [],
+            "blocking_reasons": [],
+        },
+    }
+
+    apply_confirmed_order_facts(
+        result,
+        {
+            "offer_name": "Venus BigOne Combo 2",
+            "package_count": 1,
+            "units_per_package": 2,
+            "total_units": 2,
+            "unit_price": 105000,
+            "package_price": 210000,
+            "total_price": 210000,
+            "order_confirmed": True,
+        },
+    )
+
+    assert result["order"]["status"] == "confirmed"
 
 
 def test_campaign_multiple_combo_packages_multiply_packing_quantity_and_price() -> None:

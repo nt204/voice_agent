@@ -40,8 +40,10 @@ def delivery_state_tool() -> types.Tool:
                 description=(
                     "Store or confirm one campaign order/delivery field. Call this whenever "
                     "the customer provides, corrects, accepts, or rejects an offer, package "
-                    "count, recipient name, phone number, or shipping address. A set action "
-                    "always replaces the previous value for that field."
+                    "count, recipient name, phone number, shipping address, or the final "
+                    "complete order summary. A set action always replaces the previous value "
+                    "for that field. Use field=order, action=confirm only after the customer "
+                    "explicitly accepts the final complete order summary."
                 ),
                 parameters_json_schema={
                     "type": "object",
@@ -54,6 +56,7 @@ def delivery_state_tool() -> types.Tool:
                                 "customer_name",
                                 "phone",
                                 "shipping_address",
+                                "order",
                             ],
                         },
                         "action": {
@@ -124,6 +127,7 @@ class LiveDeliveryState:
     shipping_address: str = ""
     address_confirmed: bool = False
     sheet_address_default_active: bool = False
+    order_confirmed: bool = False
     phone_failures: int = 0
     phone_rejections: int = 0
     name_failures: int = 0
@@ -136,11 +140,14 @@ class LiveDeliveryState:
             "customer_name",
             "phone",
             "shipping_address",
+            "order",
         }:
             return self._response(False, "Unsupported delivery field.")
         if action not in {"set", "confirm", "reject"}:
             return self._response(False, "Unsupported delivery state action.")
 
+        if field == "order" and action == "set":
+            return self._response(False, "The final order cannot be set directly.")
         if action == "set":
             return self._set(field, value)
         if action == "confirm":
@@ -180,6 +187,7 @@ class LiveDeliveryState:
             "unit_price": self.unit_price,
             "package_price": self.package_price,
             "total_price": self.package_price * self.package_count,
+            "order_confirmed": self.order_confirmed,
         }
 
     def snapshot(self) -> dict[str, Any]:
@@ -199,12 +207,14 @@ class LiveDeliveryState:
             "shipping_address": self.shipping_address,
             "address_confirmed": self.address_confirmed,
             "sheet_address_default_active": self.sheet_address_default_active,
+            "order_confirmed": self.order_confirmed,
         }
 
     def status_response(self, *, ok: bool, message: str) -> dict[str, Any]:
         return self._response(ok, message)
 
     def _set(self, field: str, value: str) -> dict[str, Any]:
+        self.order_confirmed = False
         if field == "offer":
             self.offer_name = ""
             self.offer_confirmed = False
@@ -264,6 +274,15 @@ class LiveDeliveryState:
         return self._response(True, "Shipping address candidate replaced.")
 
     def _confirm(self, field: str) -> dict[str, Any]:
+        if field == "order":
+            if not self._all_required_fields_confirmed():
+                return self._response(
+                    False,
+                    "The final order cannot be confirmed before every required field is confirmed.",
+                )
+            self.order_confirmed = True
+            return self._response(True, "The complete order was explicitly confirmed by the customer.")
+
         if field == "offer":
             if not self.offer_name:
                 return self._response(False, "There is no configured offer to confirm.")
@@ -294,6 +313,12 @@ class LiveDeliveryState:
         return self._response(True, "Shipping address confirmed by the customer.")
 
     def _reject(self, field: str) -> dict[str, Any]:
+        self.order_confirmed = False
+        if field == "order":
+            return self._response(
+                True,
+                "The customer rejected the final order summary. Ask which single field is incorrect.",
+            )
         if field == "offer":
             self.offer_name = ""
             self.offer_confirmed = False
@@ -409,7 +434,26 @@ class LiveDeliveryState:
                 "confirm shipping_address. Reject it only when the customer explicitly says it is wrong "
                 "or provides a replacement.",
             )
+        if not self.order_confirmed:
+            return (
+                "read_back_order",
+                "The required delivery fields are confirmed. Read back the complete order once using only the latest values and ask for final order confirmation. If the customer explicitly accepts it, call the delivery-state tool with field=order and action=confirm.",
+            )
         return (
-            "read_back_order",
-            "The required delivery fields are confirmed. Read back the complete order once using only the latest values and ask for final order confirmation.",
+            "order_confirmed",
+            "The complete order is confirmed. Thank the customer briefly and end the confirmation flow without asking another sales question.",
+        )
+
+    def _all_required_fields_confirmed(self) -> bool:
+        if self.require_order_confirmation and not (
+            self.offer_confirmed and self.package_count_confirmed
+        ):
+            return False
+        if self.require_customer_name and not self.name_confirmed:
+            return False
+        return bool(
+            self.phone
+            and self.phone_confirmed
+            and self.shipping_address
+            and (self.address_confirmed or self.sheet_address_default_active)
         )

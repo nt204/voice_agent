@@ -126,7 +126,34 @@ def test_campaign_qty_is_package_count_and_offer_controls_units() -> None:
         "unit_price": 105000,
         "package_price": 210000,
         "total_price": 210000,
+        "order_confirmed": False,
     }
+
+
+def test_final_order_requires_all_fields_and_records_explicit_acceptance() -> None:
+    state = LiveDeliveryState()
+
+    rejected = state.apply(field="order", action="confirm")
+    assert rejected["ok"] is False
+    assert state.order_confirmed is False
+
+    state.apply(field="phone", action="set", value="09789119333")
+    state.apply(field="phone", action="confirm")
+    state.apply(
+        field="shipping_address",
+        action="set",
+        value="No. 12 Pyay Road, Hlaing Township, Yangon",
+    )
+    state.apply(field="shipping_address", action="confirm")
+
+    confirmed = state.apply(field="order", action="confirm")
+
+    assert confirmed["ok"] is True
+    assert confirmed["next_action"] == "order_confirmed"
+    assert state.order_confirmed is True
+
+    state.apply(field="shipping_address", action="reject")
+    assert state.order_confirmed is False
 
 
 def test_multiple_combo_packages_multiply_physical_units_and_price() -> None:

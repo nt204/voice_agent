@@ -30,6 +30,12 @@ from app.database import init_db
 from app.gemini_bridge import GeminiCallBridge
 from app.live_order_state import clean_recipient_name
 from app.logging_utils import log
+from app.order_export import (
+    EXCEL_CONTENT_TYPE,
+    STATUS_LABELS as ORDER_STATUS_LABELS,
+    build_packing_workbook,
+    packing_workbook_filename,
+)
 import re
 from app.google_sheets import fetch_and_parse_google_sheet, map_sheet_row
 from app.sheet_prompts import build_outbound_sheet_greeting, build_outbound_sheet_prompt
@@ -366,6 +372,27 @@ def _call_counts(product_id: int | None = None) -> dict[str, int]:
     }
 
 
+def _call_status_counts(product_id: int | None = None) -> dict[str, int]:
+    calls = call_history.list_calls(limit=500, product_id=product_id)
+    counts = {
+        status: 0
+        for status in (
+            "active",
+            "completed",
+            "no_answer",
+            "busy",
+            "canceled",
+            "timed_out",
+            "failed",
+        )
+    }
+    for call in calls:
+        status = str(call.get("status") or "")
+        if status in counts:
+            counts[status] += 1
+    return counts
+
+
 def _interest_counts(product_id: int | None = None) -> dict[str, int]:
     stats = call_history.sales_statistics(product_id=product_id)
     return stats["interest_counts"]
@@ -440,6 +467,7 @@ async def api_calls(
     direction: str | None = None,
     q: str = "",
     interest_status: str | None = None,
+    call_status: str | None = None,
     product_id: int | None = None,
     limit: int = 100,
 ) -> dict[str, object]:
@@ -448,11 +476,13 @@ async def api_calls(
             direction=direction,
             query=q,
             interest_status=interest_status,
+            call_status=call_status,
             product_id=product_id,
             limit=limit,
         ),
         "counts": _call_counts(product_id),
         "interest_counts": _interest_counts(product_id),
+        "status_counts": _call_status_counts(product_id),
     }
 
 
@@ -463,31 +493,42 @@ async def api_orders(
     unassigned: bool = False,
     q: str = "",
     limit: int = 100,
+    offset: int = 0,
 ) -> dict[str, object]:
-    all_orders = call_history.list_orders(limit=limit, product_id=product_id)
-    if unassigned:
-        all_orders = [o for o in all_orders if o.get("product_id") is None]
-    if status:
-        all_orders = [o for o in all_orders if o.get("status") == status]
-    if q.strip():
-        needle = q.strip().casefold()
-        all_orders = [
-            o for o in all_orders
-            if needle in str(o.get("customer_name") or "").casefold()
-            or needle in str(o.get("customer_phone") or "").casefold()
-            or needle in str(o.get("shipping_address") or "").casefold()
-            or needle in str(o.get("product_name") or "").casefold()
-        ]
+    all_orders = call_history.list_orders(
+        limit=limit,
+        product_id=product_id,
+        status=status,
+        query=q,
+        unassigned=unassigned,
+        offset=offset,
+    )
     return {
         "ok": True,
-        "count": len(all_orders),
+        "count": call_history.count_orders(
+            product_id=product_id,
+            status=status,
+            query=q,
+            unassigned=unassigned,
+        ),
         "orders": all_orders,
+        "stats": call_history.order_statistics(
+            product_id=product_id,
+            query=q,
+            unassigned=unassigned,
+        ),
+        "product_counts": call_history.order_product_counts(),
+        "offset": max(0, offset),
+        "limit": max(1, min(limit, 500)),
     }
 
 
 @app.put("/api/orders/{order_id}")
 async def api_update_order(order_id: int, payload: dict) -> dict[str, object]:
-    updated = call_history.update_order(order_id, payload)
+    try:
+        updated = call_history.update_order(order_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not updated:
         raise HTTPException(status_code=404, detail="Order not found")
     return {"ok": True, "order": updated}
@@ -498,16 +539,20 @@ async def api_export_orders(
     status: str | None = None,
     product_id: int | None = None,
     unassigned: bool = False,
+    q: str = "",
 ) -> Response:
-    orders = call_history.list_orders(limit=500, product_id=product_id)
-    if unassigned:
-        orders = [o for o in orders if o.get("product_id") is None]
-    if status:
-        orders = [o for o in orders if o.get("status") == status]
+    orders = call_history.list_orders(
+        limit=None,
+        product_id=product_id,
+        status=status,
+        query=q,
+        unassigned=unassigned,
+    )
     
     import csv
     import io
     output = io.StringIO()
+    output.write("\ufeff")
     writer = csv.writer(output)
     writer.writerow([
         "Mã Đơn", "Ngày tạo", "Họ tên khách", "SĐT", "Sản phẩm / Combo",
@@ -532,6 +577,41 @@ async def api_export_orders(
         content=output.getvalue(),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="orders-packing-manifest.csv"'},
+    )
+
+
+@app.get("/api/orders/export.xlsx")
+async def api_export_orders_excel(
+    status: str | None = None,
+    product_id: int | None = None,
+    unassigned: bool = False,
+    q: str = "",
+) -> Response:
+    orders = call_history.list_orders(
+        limit=None,
+        product_id=product_id,
+        status=status,
+        query=q,
+        unassigned=unassigned,
+    )
+    filter_parts = []
+    if unassigned:
+        filter_parts.append("Sản phẩm chưa phân loại")
+    elif product_id is not None:
+        filter_parts.append(f"Sản phẩm #{product_id}")
+    if status:
+        filter_parts.append(ORDER_STATUS_LABELS.get(status, status))
+    if q.strip():
+        filter_parts.append(f'Từ khóa: "{q.strip()}"')
+    workbook = build_packing_workbook(
+        orders,
+        filter_label=" • ".join(filter_parts) or "Tất cả đơn hàng",
+    )
+    filename = packing_workbook_filename()
+    return Response(
+        content=workbook,
+        media_type=EXCEL_CONTENT_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -1024,26 +1104,38 @@ async def _dispatch_sheet_campaign(
             call_history.update_campaign_run_status(campaign_run_id, "completed")
 
 
-def _sheet_campaign_phone_sets() -> tuple[set[str], set[str], set[str]]:
-    """Separate active, campaign-called, and unrelated historical phones."""
+def _sheet_campaign_phone_sets() -> tuple[set[str], set[str], set[str], dict[str, str]]:
+    """Separate blocked calls from outcomes that are safe to retry."""
     active: set[str] = set()
     campaign_called: set[str] = set()
     historical: set[str] = set()
+    retryable_outcomes: dict[str, str] = {}
+    seen_campaign_phones: set[str] = set()
     retry_resets = call_history.list_campaign_retry_resets()
     for request in call_history.list_outbound_requests(limit=2000):
         phone = normalize_phone_number(str(request.get("to_number") or ""))
         if not phone:
             continue
-        if request.get("status") in {"queued", "started"}:
+        request_status = str(request.get("status") or "")
+        is_campaign_request = bool(request.get("campaign_run_id"))
+        if is_campaign_request and phone in seen_campaign_phones:
+            continue
+        if is_campaign_request:
+            seen_campaign_phones.add(phone)
+        if request_status in {"queued", "started"}:
             active.add(phone)
-        elif request.get("campaign_run_id") and request.get("call_sid"):
-            if int(request.get("id") or 0) > int(retry_resets.get(phone, 0)):
+        elif is_campaign_request and request.get("call_sid"):
+            if request_status in {"completed", "busy"} and int(
+                request.get("id") or 0
+            ) > int(retry_resets.get(phone, 0)):
                 campaign_called.add(phone)
             else:
                 historical.add(phone)
-        elif request.get("campaign_run_id"):
+                if request_status in {"no_answer", "timed_out", "failed", "canceled"}:
+                    retryable_outcomes[phone] = request_status
+        elif is_campaign_request:
             continue
-        elif request.get("status") != "failed":
+        elif request_status != "failed":
             historical.add(phone)
     for call in call_history.list_calls(direction="outbound", limit=500):
         phone = normalize_phone_number(
@@ -1051,7 +1143,7 @@ def _sheet_campaign_phone_sets() -> tuple[set[str], set[str], set[str]]:
         )
         if phone:
             historical.add(phone)
-    return active, campaign_called, historical
+    return active, campaign_called, historical, retryable_outcomes
 
 
 def _classify_sheet_leads(
@@ -1059,7 +1151,12 @@ def _classify_sheet_leads(
     *,
     skip_sheet_called: bool,
 ) -> tuple[list[dict[str, object]], dict[str, int]]:
-    active_phones, campaign_called_phones, historical_phones = _sheet_campaign_phone_sets()
+    (
+        active_phones,
+        campaign_called_phones,
+        historical_phones,
+        retryable_outcomes,
+    ) = _sheet_campaign_phone_sets()
     counts = {
         "ready_count": 0,
         "duplicate_count": 0,
@@ -1067,6 +1164,7 @@ def _classify_sheet_leads(
         "campaign_called_count": 0,
         "in_progress_count": 0,
         "historical_count": 0,
+        "retryable_count": 0,
         "invalid_count": 0,
     }
     processed: list[dict[str, object]] = []
@@ -1091,8 +1189,21 @@ def _classify_sheet_leads(
             counts["called_count"] += 1
         elif clean_phone in campaign_called_phones:
             lead["status_tag"] = "campaign_called"
-            lead["status_label"] = "Đã gọi trong chiến dịch"
+            lead["status_label"] = "Đã kết nối / Bận · Chỉ gọi lại khi cho phép"
             counts["campaign_called_count"] += 1
+        elif clean_phone in retryable_outcomes:
+            outcome = retryable_outcomes[clean_phone]
+            lead["status_tag"] = "ready_previously_called"
+            lead["call_outcome"] = outcome
+            lead["status_label"] = {
+                "no_answer": "Không nghe · Có thể gọi lại",
+                "timed_out": "Hết thời gian · Có thể gọi lại",
+                "canceled": "Đã hủy · Có thể gọi lại",
+                "failed": "Lỗi cuộc gọi · Có thể gọi lại",
+            }.get(outcome, "Có thể gọi lại")
+            counts["ready_count"] += 1
+            counts["historical_count"] += 1
+            counts["retryable_count"] += 1
         elif clean_phone in historical_phones or lead.get("called"):
             lead["status_tag"] = "ready_previously_called"
             lead["status_label"] = "Sẵn sàng · Đã từng gọi"

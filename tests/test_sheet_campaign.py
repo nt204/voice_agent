@@ -533,6 +533,98 @@ def test_completed_campaign_call_blocks_future_campaign_preview(tmp_path, monkey
     assert blocked_again.json()["campaign_called_count"] == 1
 
 
+def test_unanswered_campaign_call_is_ready_to_retry_with_clear_reason(tmp_path, monkeypatch) -> None:
+    from app import main as main_module
+
+    store = CallHistoryStore(tmp_path / "sheet-campaign-no-answer.db")
+    product = store.create_product(_product_payload())
+    run_id = "noanswercampaignrun000000000000001"
+    store.create_campaign_run(
+        run_id,
+        sheet_url="https://docs.google.com/spreadsheets/d/test/edit",
+        product_id=product["id"],
+        delay_seconds=0,
+    )
+    request = store.create_outbound_request(
+        to_number="+959777111222",
+        from_number=product["phone_number"],
+        product_id=product["id"],
+        campaign_run_id=run_id,
+    )
+    store.mark_outbound_request_started(request["id"], "no-answer-campaign-call")
+    store.update_outbound_request_by_call_sid(
+        "no-answer-campaign-call",
+        "no_answer",
+        dialed_phone="+959777111222",
+    )
+    monkeypatch.setattr(main_module, "call_history", store)
+
+    async def fake_fetch(_sheet_url: str):
+        return [{"name": "Thaw Zin", "phone": "09 777 111 222", "called": False}]
+
+    monkeypatch.setattr(main_module, "fetch_and_parse_google_sheet", fake_fetch)
+    response = TestClient(main_module.app).post(
+        "/api/sheets/preview",
+        json={
+            "sheet_url": "https://docs.google.com/spreadsheets/d/test/edit",
+            "product_id": product["id"],
+        },
+    )
+
+    lead = response.json()["leads"][0]
+    assert response.status_code == 200
+    assert response.json()["ready_count"] == 1
+    assert response.json()["retryable_count"] == 1
+    assert response.json()["campaign_called_count"] == 0
+    assert lead["status_tag"] == "ready_previously_called"
+    assert lead["call_outcome"] == "no_answer"
+    assert lead["status_label"] == "Không nghe · Có thể gọi lại"
+
+
+def test_busy_campaign_call_requires_manual_retry_permission(tmp_path, monkeypatch) -> None:
+    from app import main as main_module
+
+    store = CallHistoryStore(tmp_path / "sheet-campaign-busy.db")
+    product = store.create_product(_product_payload())
+    run_id = "busycampaignrun000000000000000001"
+    store.create_campaign_run(
+        run_id,
+        sheet_url="https://docs.google.com/spreadsheets/d/test/edit",
+        product_id=product["id"],
+        delay_seconds=0,
+    )
+    request = store.create_outbound_request(
+        to_number="+959777111222",
+        from_number=product["phone_number"],
+        product_id=product["id"],
+        campaign_run_id=run_id,
+    )
+    store.mark_outbound_request_started(request["id"], "busy-campaign-call")
+    store.update_outbound_request_by_call_sid(
+        "busy-campaign-call",
+        "busy",
+        dialed_phone="+959777111222",
+    )
+    monkeypatch.setattr(main_module, "call_history", store)
+
+    async def fake_fetch(_sheet_url: str):
+        return [{"name": "Thaw Zin", "phone": "09 777 111 222", "called": False}]
+
+    monkeypatch.setattr(main_module, "fetch_and_parse_google_sheet", fake_fetch)
+    response = TestClient(main_module.app).post(
+        "/api/sheets/preview",
+        json={
+            "sheet_url": "https://docs.google.com/spreadsheets/d/test/edit",
+            "product_id": product["id"],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["ready_count"] == 0
+    assert response.json()["campaign_called_count"] == 1
+    assert response.json()["leads"][0]["status_tag"] == "campaign_called"
+
+
 def test_failed_campaign_request_without_call_sid_can_be_retried(tmp_path, monkeypatch) -> None:
     from app import main as main_module
 

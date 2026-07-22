@@ -4,11 +4,12 @@ from typing import Any, Mapping
 
 from app.logging_utils import log
 
-from sqlalchemy import create_engine, func, inspect, select, text
+from sqlalchemy import create_engine, func, inspect, or_, select, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
 from app.call_history import (
+    CALL_STATUS_FILTERS,
     INTEREST_STATUSES,
     OUTBOUND_REQUEST_STATUSES,
     SQLiteCallHistoryStore,
@@ -31,6 +32,10 @@ from app.call_history import (
     transcripts_table,
 )
 from app.order_extraction import analyze_call_with_gemini
+from app.order_workflow import (
+    order_statistics as build_order_statistics,
+    validate_order_update,
+)
 from app.phone_numbers import normalize_phone_number
 from app.products import default_product_payload, validate_product_payload
 
@@ -237,8 +242,7 @@ class SqlAlchemyCallHistoryStore:
                     'telnyx',
                     CASE
                         WHEN status IN ('queued', 'started') THEN 'active'
-                        WHEN status = 'completed' THEN 'completed'
-                        ELSE 'failed'
+                        ELSE status
                     END,
                 '',
                 to_number,
@@ -1054,6 +1058,7 @@ class SqlAlchemyCallHistoryStore:
         direction: str | None = None,
         query: str = "",
         interest_status: str | None = None,
+        call_status: str | None = None,
         product_id: int | None = None,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
@@ -1062,6 +1067,9 @@ class SqlAlchemyCallHistoryStore:
             statement = statement.where(calls_table.c.direction == direction)
         if interest_status in INTEREST_STATUSES:
             statement = statement.where(calls_table.c.interest_status == interest_status)
+        status_values = CALL_STATUS_FILTERS.get(str(call_status or ""))
+        if status_values:
+            statement = statement.where(calls_table.c.status.in_(status_values))
         if product_id is not None:
             statement = statement.where(calls_table.c.product_id == product_id)
         if query.strip():
@@ -1115,7 +1123,14 @@ class SqlAlchemyCallHistoryStore:
         return result
 
     def list_orders(
-        self, limit: int = 100, product_id: int | None = None
+        self,
+        limit: int | None = 100,
+        product_id: int | None = None,
+        *,
+        status: str | None = None,
+        query: str = "",
+        unassigned: bool = False,
+        offset: int = 0,
     ) -> list[dict[str, Any]]:
         statement = (
             select(
@@ -1127,46 +1142,113 @@ class SqlAlchemyCallHistoryStore:
             )
             .join(calls_table, calls_table.c.id == orders_table.c.call_id)
         )
-        if product_id is not None:
-            statement = statement.where(orders_table.c.product_id == product_id)
-        statement = (
-            statement.order_by(orders_table.c.created_at.desc(), orders_table.c.id.desc())
-            .limit(max(1, min(limit, 500)))
+        statement = self._filter_orders_statement(
+            statement,
+            product_id=product_id,
+            status=status,
+            query=query,
+            unassigned=unassigned,
         )
+        statement = statement.order_by(
+            orders_table.c.created_at.desc(), orders_table.c.id.desc()
+        ).offset(max(0, int(offset)))
+        if limit is not None:
+            statement = statement.limit(max(1, min(int(limit), 500)))
         with self.engine.connect() as connection:
             rows = connection.execute(statement).mappings().all()
         results = [self._order_summary(row) for row in rows]
         self._attach_product_briefs(results)
         return results
 
+    def count_orders(
+        self,
+        product_id: int | None = None,
+        *,
+        status: str | None = None,
+        query: str = "",
+        unassigned: bool = False,
+    ) -> int:
+        statement = self._filter_orders_statement(
+            select(func.count()).select_from(orders_table),
+            product_id=product_id,
+            status=status,
+            query=query,
+            unassigned=unassigned,
+        )
+        with self.engine.connect() as connection:
+            return int(connection.scalar(statement) or 0)
+
+    def order_statistics(
+        self,
+        product_id: int | None = None,
+        *,
+        query: str = "",
+        unassigned: bool = False,
+    ) -> dict[str, Any]:
+        statement = self._filter_orders_statement(
+            select(orders_table),
+            product_id=product_id,
+            query=query,
+            unassigned=unassigned,
+        )
+        with self.engine.connect() as connection:
+            rows = connection.execute(statement).mappings().all()
+        return build_order_statistics(rows)
+
+    def order_product_counts(self) -> dict[str, int]:
+        statement = select(
+            orders_table.c.product_id,
+            func.count().label("order_count"),
+        ).group_by(orders_table.c.product_id)
+        with self.engine.connect() as connection:
+            rows = connection.execute(statement).all()
+        return {
+            "unassigned" if product_id is None else str(product_id): int(order_count)
+            for product_id, order_count in rows
+        }
+
+    @staticmethod
+    def _filter_orders_statement(
+        statement,
+        *,
+        product_id: int | None = None,
+        status: str | None = None,
+        query: str = "",
+        unassigned: bool = False,
+    ):
+        if unassigned:
+            statement = statement.where(orders_table.c.product_id.is_(None))
+        elif product_id is not None:
+            statement = statement.where(orders_table.c.product_id == product_id)
+        if status == "needs_review":
+            statement = statement.where(orders_table.c.status.in_(("draft", "missing_info")))
+        elif status:
+            statement = statement.where(orders_table.c.status == status)
+        needle = query.strip()
+        if needle:
+            pattern = f"%{needle}%"
+            statement = statement.where(
+                or_(
+                    orders_table.c.customer_name.ilike(pattern),
+                    orders_table.c.customer_phone.ilike(pattern),
+                    orders_table.c.shipping_address.ilike(pattern),
+                    orders_table.c.product_name.ilike(pattern),
+                )
+            )
+        return statement
+
     def update_order(
         self, order_id: int, payload: dict[str, Any]
     ) -> dict[str, Any] | None:
         now = _now()
-        update_data = {"updated_at": now}
-        
-        for field in (
-            "customer_name",
-            "customer_phone",
-            "shipping_address",
-            "product_name",
-            "quantity",
-            "unit_price",
-            "total_price",
-            "status",
-            "missing_fields",
-        ):
-            if field in payload:
-                val = payload[field]
-                if field in ("quantity", "unit_price", "total_price") and val is not None:
-                    try:
-                        update_data[field] = int(val)
-                    except (ValueError, TypeError):
-                        pass
-                else:
-                    update_data[field] = str(val).strip()
-
         with self.engine.begin() as connection:
+            current = connection.execute(
+                select(orders_table).where(orders_table.c.id == order_id)
+            ).mappings().first()
+            if not current:
+                return None
+            update_data = validate_order_update(current, payload)
+            update_data["updated_at"] = now
             statement = (
                 orders_table.update()
                 .where(orders_table.c.id == order_id)

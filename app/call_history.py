@@ -39,6 +39,13 @@ OUTBOUND_REQUEST_STATUSES = (
     "timed_out",
     "failed",
 )
+CALL_STATUS_FILTERS = {
+    "active": ("active",),
+    "completed": ("completed",),
+    "no_answer": ("no_answer",),
+    "busy": ("busy",),
+    "failed": ("failed", "timed_out", "canceled"),
+}
 
 metadata = MetaData()
 products_table = Table(
@@ -347,6 +354,7 @@ def apply_confirmed_order_facts(
     total_units = int(facts.get("total_units") or 0)
     unit_price = int(facts.get("unit_price") or 0)
     total_price = int(facts.get("total_price") or 0)
+    order_confirmed = bool(facts.get("order_confirmed"))
     valid = bool(
         offer_name
         and package_count > 0
@@ -393,9 +401,10 @@ def apply_confirmed_order_facts(
 
     order["missing_fields"] = list(dict.fromkeys(missing_fields))
     order["blocking_reasons"] = list(dict.fromkeys(blocking_reasons))
-    order["status"] = (
-        "ready_to_confirm" if not order["blocking_reasons"] else "missing_info"
-    )
+    if order["blocking_reasons"]:
+        order["status"] = "missing_info"
+    else:
+        order["status"] = "confirmed" if order_confirmed else "ready_to_confirm"
     return sales_result
 
 
@@ -657,8 +666,7 @@ class SQLiteCallHistoryStore:
                 'telnyx',
                 CASE
                     WHEN status IN ('queued', 'started') THEN 'active'
-                    WHEN status = 'completed' THEN 'completed'
-                    ELSE 'failed'
+                    ELSE status
                 END,
                 '',
                 to_number,
@@ -809,10 +817,8 @@ class SQLiteCallHistoryStore:
     def _call_status_from_outbound_status(status: str) -> str | None:
         if status in {"started", "queued"}:
             return "active"
-        if status == "completed":
-            return "completed"
-        if status in {"no_answer", "busy", "canceled", "timed_out", "failed"}:
-            return "failed"
+        if status in {"completed", "no_answer", "busy", "canceled", "timed_out", "failed"}:
+            return status
         return None
 
     def start_call(
@@ -947,6 +953,7 @@ class SQLiteCallHistoryStore:
         direction: str | None = None,
         query: str = "",
         interest_status: str | None = None,
+        call_status: str | None = None,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         clauses: list[str] = []
@@ -957,6 +964,11 @@ class SQLiteCallHistoryStore:
         if interest_status in INTEREST_STATUSES:
             clauses.append("interest_status = ?")
             params.append(interest_status)
+        status_values = CALL_STATUS_FILTERS.get(str(call_status or ""))
+        if status_values:
+            placeholders = ", ".join("?" for _ in status_values)
+            clauses.append(f"status IN ({placeholders})")
+            params.extend(status_values)
         if query.strip():
             clauses.append(
                 "(id LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ? "

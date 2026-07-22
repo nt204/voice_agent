@@ -111,3 +111,48 @@ def test_quick_call_fields_do_not_overlap():
     assert 'product.phone_number || "Chưa có số"' not in source
     assert ".call-form label { min-width: 0;" in styles
     assert ".call-form select { width: 100%;" in styles
+
+
+def test_customer_overview_shows_full_status_names_in_compact_grid():
+    html = Path("app/static/index.html").read_text(encoding="utf-8")
+    styles = Path("app/static/dashboard.css").read_text(encoding="utf-8")
+
+    assert "dashboard.css?v=call-filter-buttons-v37" in html
+    assert ".funnel-card {\n  grid-area: funnel;\n  align-self: stretch;" in styles
+    assert ".funnel-card .funnel-list {\n  grid-template-columns: repeat(2, minmax(0, 1fr));" in styles
+    assert ".funnel-card .funnel-item span {\n  overflow: visible;" in styles
+    assert "text-overflow: clip;" in styles
+    assert "white-space: normal;" in styles
+
+
+def test_top_controls_use_balanced_filter_and_call_columns():
+    styles = Path("app/static/dashboard.css").read_text(encoding="utf-8")
+
+    assert 'grid-template-areas: "funnel channel call";' in styles
+    assert "align-items: stretch;" in styles
+    assert "grid-template-columns: minmax(260px, 1fr) auto auto;" in styles
+    assert '"funnel channel"\n      "call call"' in styles
+    assert ".call-card .form-status:empty {\n  display: none;" in styles
+    assert ".top-controls > .control-card {\n  height: 100%;" in styles
+    assert ".top-controls > .call-card > .call-form {\n  margin-top: auto;" in styles
+
+
+def test_call_outcomes_have_filters_badges_and_clear_labels():
+    html = Path("app/static/index.html").read_text(encoding="utf-8")
+    source = Path("app/static/dashboard.js").read_text(encoding="utf-8")
+    styles = Path("app/static/dashboard.css").read_text(encoding="utf-8")
+
+    assert 'data-call-status="no_answer"' in html
+    assert 'data-call-status="busy"' in html
+    assert 'data-call-status="failed"' in html
+    assert "Không nghe" in html
+    assert "Bận / từ chối" in html
+    assert 'params.set("call_status", state.callStatus)' in source
+    assert 'no_answer: "Không nghe"' in source
+    assert 'busy: "Bận / từ chối"' in source
+    assert "callOutcomeBadge(call)" in source
+    assert ".call-result-bar {" in styles
+    assert ".call-outcome.no_answer {" in styles
+    assert '<span class="call-result-title">' not in html
+    assert ".call-result-filter.active:hover {" in styles
+    assert "flex-wrap: wrap;" in styles

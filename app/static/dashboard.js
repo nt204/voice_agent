@@ -1,6 +1,7 @@
 const state = {
   direction: "",
   interest: "",
+  callStatus: "",
   query: "",
   selectedId: null,
   selectedDetailStatus: "",
@@ -116,10 +117,13 @@ function orderStatusLabel(status) {
   return {
     ready_to_confirm: "Chờ xác nhận",
     missing_info: "Thiếu thông tin",
-    draft: "Bản nháp",
-    confirmed: "Đã xác nhận",
+    draft: "Cần kiểm tra (cũ)",
+    confirmed: "Chờ đóng gói",
+    packed: "Đã đóng gói",
+    shipping: "Đang giao hàng",
+    completed: "Hoàn thành",
     cancelled: "Đã hủy",
-  }[status] || "Bản nháp";
+  }[status] || "Trạng thái chưa hỗ trợ";
 }
 
 function recordingStatusLabel(status) {
@@ -136,6 +140,23 @@ function directionLabel(direction) {
 
 function directionIcon(direction) {
   return direction === "outbound" ? "↗" : "↙";
+}
+
+function callOutcomeLabel(status) {
+  return {
+    active: "Đang gọi",
+    completed: "Đã kết nối",
+    no_answer: "Không nghe",
+    busy: "Bận / từ chối",
+    canceled: "Đã hủy",
+    timed_out: "Hết thời gian",
+    failed: "Lỗi cuộc gọi",
+  }[status] || "Chưa xác định";
+}
+
+function callOutcomeBadge(call) {
+  const status = String(call?.status || "failed");
+  return `<span class="call-outcome ${escapeHtml(status)}">${escapeHtml(callOutcomeLabel(status))}</span>`;
 }
 
 async function fetchJson(url) {
@@ -241,6 +262,7 @@ async function loadDashboard({ silent = false } = {}) {
   const params = new URLSearchParams();
   if (state.direction) params.set("direction", state.direction);
   if (state.interest) params.set("interest_status", state.interest);
+  if (state.callStatus) params.set("call_status", state.callStatus);
   if (state.query) params.set("q", state.query);
   if (state.productId) params.set("product_id", state.productId);
 
@@ -250,6 +272,7 @@ async function loadDashboard({ silent = false } = {}) {
       fetchJson(`/api/calls?${params}`),
     ]);
     renderSummary(summary.stats);
+    renderCallStatusCounts(listing.status_counts || {});
     state.calls = listing.calls;
     syncActiveCallControl(listing.calls);
     renderCalls(listing.calls);
@@ -338,6 +361,24 @@ function renderSummary(stats) {
   document.querySelector("#funnelUnknown").textContent = interest.unknown || 0;
 }
 
+function renderCallStatusCounts(counts) {
+  const all = Object.values(counts).reduce((total, value) => total + Number(value || 0), 0);
+  const failed = Number(counts.failed || 0)
+    + Number(counts.timed_out || 0)
+    + Number(counts.canceled || 0);
+  const values = {
+    callStatusAll: all,
+    callStatusCompleted: counts.completed || 0,
+    callStatusNoAnswer: counts.no_answer || 0,
+    callStatusBusy: counts.busy || 0,
+    callStatusFailed: failed,
+  };
+  Object.entries(values).forEach(([id, value]) => {
+    const element = document.querySelector(`#${id}`);
+    if (element) element.textContent = value;
+  });
+}
+
 function pageSlice(items, page, pageSize) {
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const currentPage = Math.min(Math.max(page, 1), totalPages);
@@ -399,7 +440,7 @@ function renderCalls(calls) {
           <small>${escapeHtml(displayPhone || call.id)}${call.product?.name ? ` | ${escapeHtml(call.product.name)}` : ""}</small>
         </span>
         <span class="lead-need" title="${escapeHtml(need)}">${escapeHtml(need)}</span>
-        <span class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</span>
+        ${callOutcomeBadge(call)}
         <span class="lead-time">
           <b>${formatTime(call.started_at)}</b>
           <small>${formatDay(call.started_at)}</small>
@@ -491,13 +532,18 @@ function renderOrderCard(call) {
 function renderRecordingCard(call) {
   const recording = call.recording || null;
   if (call.status !== "completed") {
+    const isActive = call.status === "active";
     return `
       <div class="recording-card empty-recording">
         <div class="recording-head">
           <h3>Bản ghi cuộc gọi</h3>
-          <span>${escapeHtml(recordingStatusLabel("active"))}</span>
+          ${isActive
+            ? `<span>${escapeHtml(recordingStatusLabel("active"))}</span>`
+            : callOutcomeBadge(call)}
         </div>
-        <p>Bản ghi sẽ xuất hiện sau khi cuộc gọi kết thúc.</p>
+        <p>${isActive
+          ? "Bản ghi sẽ xuất hiện sau khi cuộc gọi kết thúc."
+          : `Không có bản ghi vì cuộc gọi ở trạng thái “${escapeHtml(callOutcomeLabel(call.status))}”.`}</p>
       </div>`;
   }
 
@@ -600,7 +646,10 @@ function renderDetail(call, { scrollTop = 0, wasNearBottom = true } = {}) {
       <div class="detail-identity">
         <i class="detail-call-icon" aria-hidden="true">&#9742;</i>
         <div>
-          <span class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</span>
+          <div class="detail-statuses">
+            ${callOutcomeBadge(call)}
+            <span class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</span>
+          </div>
           <h2>${field(customer.name || customer.phone || dialedPhone || "Khách hàng")}</h2>
           <p>${directionLabel(call.direction)} | ${escapeHtml(call.provider)} | ${formatTime(call.started_at)} | ${formatDay(call.started_at)}</p>
         </div>
@@ -617,7 +666,7 @@ function renderDetail(call, { scrollTop = 0, wasNearBottom = true } = {}) {
       <div><span>Số khách cung cấp</span><strong>${field(customer.phone)}</strong></div>
       <div><span>Thời gian</span><strong>${formatTime(call.started_at)}<small>${formatDay(call.started_at)}</small></strong></div>
       <div><span>Loại cuộc gọi</span><strong>${directionLabel(call.direction)}</strong></div>
-      <div><span>Trạng thái</span><strong><em class="status-pill ${escapeHtml(call.interest_status)}">${interestLabel(call.interest_status)}</em></strong></div>
+      <div><span>Kết quả cuộc gọi</span><strong>${callOutcomeBadge(call)}</strong></div>
     </div>
 
     <div class="detail-tabs" role="tablist" aria-label="Chi tiết khách hàng">
@@ -809,6 +858,19 @@ document.querySelectorAll(".segment").forEach(button => {
     document.querySelectorAll(".segment").forEach(item => item.classList.remove("active"));
     button.classList.add("active");
     state.direction = button.dataset.direction;
+    state.callPage = 1;
+    loadDashboard();
+  });
+});
+
+document.querySelectorAll(".call-result-filter").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".call-result-filter").forEach(item => {
+      const selected = item === button;
+      item.classList.toggle("active", selected);
+      item.setAttribute("aria-selected", selected ? "true" : "false");
+    });
+    state.callStatus = button.dataset.callStatus || "";
     state.callPage = 1;
     loadDashboard();
   });
@@ -1012,11 +1074,14 @@ async function refreshActiveSheetCampaign() {
     const pending = Number(counts.queued || 0);
     const calling = Number(counts.started || 0);
     const failed = Number(counts.failed || 0) + Number(counts.timed_out || 0);
+    const noAnswer = Number(counts.no_answer || 0);
+    const busy = Number(counts.busy || 0);
+    const connected = Number(counts.completed || 0);
     const canceled = Number(counts.canceled || 0);
     if (campaign.can_cancel) {
       setActiveSheetCampaign(campaign.id);
       if (sheetCampaignStatus) {
-        sheetCampaignStatus.textContent = `Chiến dịch đang chạy: ${pending} chờ, ${calling} đang gọi, ${failed} lỗi.`;
+        sheetCampaignStatus.textContent = `Chiến dịch đang chạy: ${pending} chờ, ${calling} đang gọi, ${connected} kết nối, ${noAnswer} không nghe, ${busy} bận/từ chối, ${failed} lỗi.`;
         sheetCampaignStatus.className = failed ? "form-status error" : "form-status success";
       }
       return;
@@ -1030,7 +1095,7 @@ async function refreshActiveSheetCampaign() {
       sheetCampaignStatus.textContent = `Đã hủy chiến dịch (${canceled} cuộc gọi đã dừng).`;
       sheetCampaignStatus.className = "form-status success";
     } else {
-      sheetCampaignStatus.textContent = `Chiến dịch đã gửi ${campaign.called_count}/${campaign.total_count} cuộc gọi.`;
+      sheetCampaignStatus.textContent = `Đã gọi ${campaign.called_count}/${campaign.total_count}: ${connected} kết nối, ${noAnswer} không nghe, ${busy} bận/từ chối.`;
       sheetCampaignStatus.className = "form-status success";
     }
   } catch (_error) {
@@ -1069,6 +1134,7 @@ function openSheetPreviewModal(data = {}) {
   const campaignCalledCount = data.campaign_called_count !== undefined ? data.campaign_called_count : leads.filter(l => l.status_tag === "campaign_called").length;
   const inProgressCount = data.in_progress_count !== undefined ? data.in_progress_count : leads.filter(l => l.status_tag === "in_progress").length;
   const historicalCount = data.historical_count !== undefined ? data.historical_count : leads.filter(l => l.status_tag === "ready_previously_called").length;
+  const retryableCount = data.retryable_count !== undefined ? data.retryable_count : leads.filter(l => l.call_outcome).length;
   const invalidCount = data.invalid_count !== undefined ? data.invalid_count : leads.filter(l => l.status_tag === "invalid").length;
   state.sheetCampaignCalledPhones = leads
     .filter(lead => lead.status_tag === "campaign_called" && lead.phone)
@@ -1079,7 +1145,7 @@ function openSheetPreviewModal(data = {}) {
   }
 
   if (modalLeadSummary) {
-    modalLeadSummary.textContent = `Tổng ${leads.length} khách: ${readyCount} sẵn sàng (${historicalCount} có lịch sử khác), ${inProgressCount} đang chờ/gọi, ${campaignCalledCount} đã gọi chiến dịch, ${calledCount} Sheet đã đánh dấu, ${dupCount} trùng, ${invalidCount} SĐT lỗi.`;
+    modalLeadSummary.textContent = `Tổng ${leads.length} khách: ${readyCount} sẵn sàng (${retryableCount} có thể gọi lại, ${historicalCount} có lịch sử), ${inProgressCount} đang chờ/gọi, ${campaignCalledCount} cần cho phép gọi lại, ${calledCount} Sheet đã đánh dấu, ${dupCount} trùng, ${invalidCount} SĐT lỗi.`;
   }
   if (confirmLaunchCampaignButton) {
     confirmLaunchCampaignButton.textContent = `Gọi chiến dịch cho ${readyCount} khách sẵn sàng`;
@@ -1096,7 +1162,7 @@ function openSheetPreviewModal(data = {}) {
     } else if (lead.status_tag === "in_progress") {
       badgeHtml = '<span style="background:#ede9fe; color:#6d28d9; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🟣 Đang chờ / đang gọi</span>';
     } else if (lead.status_tag === "ready_previously_called") {
-      badgeHtml = '<span style="background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🟢 Sẵn sàng · Đã từng gọi</span>';
+      badgeHtml = `<span style="background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🟢 ${escapeHtml(lead.status_label || "Sẵn sàng · Đã từng gọi")}</span>`;
     } else if (lead.status_tag === "campaign_called") {
       badgeHtml = `<div><span style="background:#e0e7ff; color:#4338ca; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🔵 Đã gọi trong chiến dịch</span><br><button class="retry-phone-button" type="button" data-retry-phone="${escapeHtml(lead.phone || "")}">Cho phép gọi lại</button></div>`;
     }

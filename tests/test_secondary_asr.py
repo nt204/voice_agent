@@ -479,6 +479,7 @@ def test_campaign_finalization_passes_only_live_confirmed_delivery_facts() -> No
                 "unit_price": 105000,
                 "package_price": 210000,
                 "total_price": 210000,
+                "order_confirmed": True,
             }
 
     class Bridge:
@@ -515,6 +516,7 @@ def test_campaign_finalization_passes_only_live_confirmed_delivery_facts() -> No
                     "unit_price": 105000,
                     "package_price": 210000,
                     "total_price": 210000,
+                    "order_confirmed": True,
                 },
                 "require_confirmed_order": True,
             },

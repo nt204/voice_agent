@@ -187,6 +187,7 @@ ORDER_CONFIRMATION_TEMPLATE_RULES = """Order confirmation template:
 - Do not repeat or recalculate the total price in the final summary. The order backend computes it from the selected product and quantity.
 - Burmese sample: "{product_name} {quantity} ဘူး၊ [လက်ခံမယ့်နာမည် {customer_name}၊] ဖုန်းနံပါတ် အတည်ပြုပြီး၊ ပို့ရန်လိပ်စာ {shipping_address} ဖြစ်ပါတယ်။ အချက်အလက်တွေ မှန်ပါသလားရှင်။"
 - Say the order is confirmed only after the customer clearly says the information is correct or explicitly agrees.
+- When the delivery-state tool is available, record that explicit final acceptance with field=order and action=confirm. Never record final confirmation from silence, an unclear reply, or acceptance of only one field.
 - If the customer corrects any field, use the latest correction and read back the full template again.
 - If any required field is still missing, do not read the template; ask for only one missing field at a time."""
 
