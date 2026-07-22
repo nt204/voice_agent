@@ -3,7 +3,7 @@ import asyncio
 from google.genai import types
 
 import app.gemini_bridge as gemini_bridge
-from app.main import RealtimeInputGate
+from app.main import RealtimeInputGate, _telnyx_input_gate_options
 
 
 class _FakeBridge:
@@ -138,8 +138,8 @@ def test_campaign_confirmation_ignores_recent_output_echo() -> None:
 def test_dtmf_entry_blocks_key_tones_from_starting_a_speech_turn() -> None:
     async def run() -> _FakeBridge:
         bridge = _FakeBridge()
-        bridge.dtmf_digits = "0961"
-        bridge.phone_readback_active = False
+        bridge.dtmf_digits = ""
+        bridge.awaiting_keypad_phone = True
         gate = RealtimeInputGate(
             bridge,
             "dtmf-audio-block",
@@ -159,22 +159,23 @@ def test_dtmf_entry_blocks_key_tones_from_starting_a_speech_turn() -> None:
     assert bridge.frames == []
 
 
-def test_soft_yes_is_accepted_after_keypad_phone_readback() -> None:
+def test_campaign_uses_one_sensitive_vad_profile_for_soft_answers() -> None:
     class SoftConfirmationBridge(_FakeBridge):
-        def __init__(self) -> None:
-            super().__init__()
-            self.phone_readback_awaiting_confirmation = True
-
         def output_recent(self, seconds: float) -> bool:
             return False
 
     async def run() -> SoftConfirmationBridge:
         bridge = SoftConfirmationBridge()
+        options = _telnyx_input_gate_options(
+            "outbound",
+            campaign_confirmation_mode=True,
+        )
         gate = RealtimeInputGate(
             bridge,
             "soft-phone-confirmation",
-            speech_threshold=350,
-            speech_start_frames=5,
+            speech_threshold=options["speech_threshold"],
+            speech_start_frames=options["speech_start_frames"],
+            adaptive_threshold=options["adaptive_threshold"],
             campaign_confirmation_mode=True,
         )
 

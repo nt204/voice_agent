@@ -74,12 +74,16 @@ class _FakeSession:
     def __init__(self) -> None:
         self.tool_responses = []
         self.client_content = []
+        self.realtime_inputs = []
 
     async def send_tool_response(self, **kwargs) -> None:
         self.tool_responses.append(kwargs)
 
     async def send_client_content(self, **kwargs) -> None:
         self.client_content.append(kwargs)
+
+    async def send_realtime_input(self, **kwargs) -> None:
+        self.realtime_inputs.append(kwargs)
 
 
 class _FakeClient:
@@ -188,9 +192,24 @@ def test_dtmf_phone_requires_spoken_confirmation_after_readback(monkeypatch) -> 
             send_audio=send_audio,
             send_initial_greeting=False,
             on_transcript=record,
+            initial_phone="09793905153",
+            campaign_confirmation_mode=True,
         )
         session = _FakeSession()
         bridge.session = session
+        await bridge._handle_tool_call(
+            types.LiveServerToolCall(
+                function_calls=[
+                    types.FunctionCall(
+                        id="reject-sheet-phone",
+                        name=DELIVERY_STATE_FUNCTION,
+                        args={"field": "phone", "action": "reject"},
+                    )
+                ]
+            )
+        )
+        assert bridge.awaiting_keypad_phone is True
+        assert session.client_content == []
         for digit in "09789119333#":
             await bridge.handle_dtmf(digit)
         return bridge, session
@@ -206,9 +225,10 @@ def test_dtmf_phone_requires_spoken_confirmation_after_readback(monkeypatch) -> 
     assert len(session.client_content) == 1
     instruction = session.client_content[0]["turns"].parts[0].text
     assert "09789119333" in instruction
-    assert "read exactly these digits one by one" in instruction
-    assert "not confirmed yet" in instruction
-    assert "Do not ask for the address" in instruction
+    assert "SYSTEM DTMF EVENT" in instruction
+    assert "read every digit exactly once" in instruction
+    assert "authoritative, unconfirmed phone" in instruction
+    assert "Do not ask for name, address" in instruction
 
 
 def test_invalid_keypad_phone_prompts_for_complete_reentry(monkeypatch) -> None:
@@ -224,10 +244,22 @@ def test_invalid_keypad_phone_prompts_for_complete_reentry(monkeypatch) -> None:
             call_sample_rate=16000,
             send_audio=send_audio,
             send_initial_greeting=False,
+            initial_phone="09793905153",
             campaign_confirmation_mode=True,
         )
         session = _FakeSession()
         bridge.session = session
+        await bridge._handle_tool_call(
+            types.LiveServerToolCall(
+                function_calls=[
+                    types.FunctionCall(
+                        id="reject-phone-before-invalid-keypad",
+                        name=DELIVERY_STATE_FUNCTION,
+                        args={"field": "phone", "action": "reject"},
+                    )
+                ]
+            )
+        )
         for digit in "019648180#":
             await bridge.handle_dtmf(digit)
         return bridge, session
@@ -236,52 +268,45 @@ def test_invalid_keypad_phone_prompts_for_complete_reentry(monkeypatch) -> None:
 
     assert bridge.delivery_state.phone == ""
     assert bridge.authoritative_phone == ""
-    assert bridge.phone_readback_active is False
+    assert bridge.awaiting_keypad_phone is True
     assert len(session.client_content) == 1
     instruction = session.client_content[0]["turns"].parts[0].text
     assert "incomplete or not a valid delivery phone number" in instruction
     assert "again from the beginning and press #" in instruction
 
 
-def test_keypad_readback_ignores_completion_from_previous_model_turn(monkeypatch) -> None:
+def test_campaign_turn_opens_only_on_gemini_turn_complete(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
 
     async def send_audio(_: bytes) -> None:
         pass
 
-    async def run() -> tuple[GeminiCallBridge, bool, bool]:
+    async def run() -> tuple[GeminiCallBridge, bool]:
         bridge = GeminiCallBridge(
-            call_id="dtmf-stale-completion",
+            call_id="single-turn-completion",
             call_sample_rate=16000,
             send_audio=send_audio,
             send_initial_greeting=False,
             campaign_confirmation_mode=True,
         )
         bridge.session = _FakeSession()
-        bridge.turn_complete.clear()  # A previous model response is still active.
-        for digit in "0961984204#":
-            await bridge.handle_dtmf(digit)
-        bridge._cancel_phone_readback_watchdog()
+        bridge.turn_complete.clear()
+        bridge._track_phone_readback_transcript("၀ ၉ ၆ only a partial readback")
+        still_closed = not bridge.turn_complete.is_set()
+        completed = bridge._handle_model_turn_complete()
+        return bridge, still_closed and completed
 
-        stale_result = bridge._handle_model_turn_complete()
-        stale_event_state = bridge.turn_complete.is_set()
-        bridge._mark_phone_readback_started()
-        readback_result = bridge._handle_model_turn_complete()
-        return bridge, stale_result or stale_event_state, readback_result
+    bridge, completed_only_by_event = asyncio.run(run())
 
-    bridge, stale_completed, readback_completed = asyncio.run(run())
-
-    assert stale_completed is False
-    assert readback_completed is True
+    assert completed_only_by_event is True
     assert bridge.turn_complete.is_set() is True
-    assert bridge.phone_readback_active is False
 
 
-def test_keypad_readback_timeout_stops_runaway_audio_and_reopens_input(monkeypatch) -> None:
+def test_campaign_timeout_asks_customer_to_repeat_without_confirming_state(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
-    monkeypatch.setattr("app.gemini_bridge.PHONE_READBACK_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr("app.gemini_bridge.CAMPAIGN_RESPONSE_TIMEOUT_SECONDS", 0.01)
     cleared = []
 
     async def send_audio(_: bytes) -> None:
@@ -290,37 +315,43 @@ def test_keypad_readback_timeout_stops_runaway_audio_and_reopens_input(monkeypat
     async def clear_audio() -> None:
         cleared.append(True)
 
-    async def run() -> GeminiCallBridge:
+    async def interrupt_stalled(bridge: GeminiCallBridge) -> None:
+        await bridge._clear_pending_output_audio()
+        bridge.turn_complete.clear()
+
+    monkeypatch.setattr(
+        GeminiCallBridge,
+        "_interrupt_stalled_campaign_turn",
+        interrupt_stalled,
+    )
+
+    async def run() -> tuple[GeminiCallBridge, _FakeSession]:
         bridge = GeminiCallBridge(
-            call_id="dtmf-readback-timeout",
+            call_id="campaign-response-timeout",
             call_sample_rate=16000,
             send_audio=send_audio,
             clear_audio=clear_audio,
             send_initial_greeting=False,
             campaign_confirmation_mode=True,
         )
-        bridge.session = _FakeSession()
-        bridge.turn_complete.set()
-        for digit in "0961984204#":
-            await bridge.handle_dtmf(digit)
+        session = _FakeSession()
+        bridge.session = session
+        bridge.turn_complete.clear()
+        bridge._start_campaign_response_watchdog("test turn")
         await asyncio.sleep(0.03)
-        return bridge
+        return bridge, session
 
-    bridge = asyncio.run(run())
+    bridge, session = asyncio.run(run())
 
-    assert bridge.phone_readback_active is False
-    assert bridge.turn_complete.is_set() is True
-    assert bridge.drop_model_audio_until_customer_activity is True
+    assert bridge.turn_complete.is_set() is False
+    assert bridge.delivery_state.confirmed_facts()["phone"] == ""
+    assert "ask the customer to repeat" in session.client_content[0]["turns"].parts[0].text
     assert cleared
 
 
-def test_keypad_readback_waits_for_all_digits_and_confirmation_question(monkeypatch) -> None:
+def test_campaign_does_not_cut_phone_audio_from_output_transcript(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
-    monkeypatch.setattr(
-        "app.gemini_bridge.PHONE_READBACK_QUESTION_GRACE_SECONDS",
-        0.01,
-    )
     cleared = []
 
     async def send_audio(_: bytes) -> None:
@@ -338,34 +369,16 @@ def test_keypad_readback_waits_for_all_digits_and_confirmation_question(monkeypa
             send_initial_greeting=False,
             campaign_confirmation_mode=True,
         )
-        bridge.delivery_state.apply(
-            field="phone",
-            action="set",
-            value="0961984204",
-        )
-        bridge.authoritative_phone = "0961984204"
-        bridge.phone_readback_active = True
-        bridge.phone_readback_started = True
         bridge.turn_complete.clear()
         bridge._track_phone_readback_transcript(
-            "ဖုန်းနံပါတ်က ၀ ၉ ၆ ၁ ၉ ၈ ၄ ၂"
+            "ဖုန်းနံပါတ်က ၀ ၉ ၆ ၁ ၉ ၈ ၄ ၂ ၀ ၄ မှန်ပါသလား"
         )
-        assert bridge.phone_readback_active is True
-        assert bridge.phone_readback_question_generated is False
-        assert bridge.turn_complete.is_set() is False
-
-        bridge._track_phone_readback_transcript(
-            "၀ ၄ ဖြစ်ပါတယ်ရှင်။ အဲ့ဒီနံပါတ်က မှန်ပါသလားရှင်။"
-        )
-        await asyncio.wait_for(bridge.turn_complete.wait(), timeout=1)
         return bridge
 
     bridge = asyncio.run(run())
 
-    assert cleared == [True]
-    assert bridge.phone_readback_active is False
-    assert bridge.phone_readback_awaiting_confirmation is True
-    assert bridge.drop_model_audio_until_customer_activity is True
+    assert cleared == []
+    assert bridge.turn_complete.is_set() is False
 
 
 def test_keypad_phone_ignores_speech_but_can_be_rejected_for_new_keypad_entry(monkeypatch) -> None:
@@ -872,7 +885,7 @@ def test_equivalent_country_code_phone_does_not_conflict_with_server_asr(monkeyp
     assert response["message"] == "Phone candidate replaced."
 
 
-def test_campaign_seeded_phone_does_not_run_secondary_asr_on_other_turns(monkeypatch) -> None:
+def test_campaign_never_runs_secondary_asr_during_the_call(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
 
@@ -897,10 +910,10 @@ def test_campaign_seeded_phone_does_not_run_secondary_asr_on_other_turns(monkeyp
     product_turn, phone_turn = asyncio.run(run())
 
     assert product_turn is False
-    assert phone_turn is True
+    assert phone_turn is False
 
 
-def test_campaign_phone_confirmation_immediately_asks_seeded_address(monkeypatch) -> None:
+def test_campaign_phone_confirmation_continues_from_tool_response_only(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
     address = "အမှတ် 99 ဟံသာဝတီ လမ်း အရှေ့ဒဂုံ မြို့နယ် ရန်ကုန်"
@@ -908,7 +921,7 @@ def test_campaign_phone_confirmation_immediately_asks_seeded_address(monkeypatch
     async def send_audio(_: bytes) -> None:
         pass
 
-    async def run() -> tuple[GeminiCallBridge, _FakeSession, bool]:
+    async def run() -> tuple[GeminiCallBridge, _FakeSession]:
         bridge = GeminiCallBridge(
             call_id="campaign-phone-next-step",
             call_sample_rate=16000,
@@ -922,22 +935,29 @@ def test_campaign_phone_confirmation_immediately_asks_seeded_address(monkeypatch
         )
         session = _FakeSession()
         bridge.session = session
-        bridge._track_collection_focus("ဖုန်းနံပါတ် မှန်ပါသလားရှင်။")
-        confirmed = await bridge._confirm_authoritative_phone_from_text("ဟုတ်ကဲ့ မှန်ပါတယ်")
-        return bridge, session, confirmed
+        await bridge._handle_tool_call(
+            types.LiveServerToolCall(
+                function_calls=[
+                    types.FunctionCall(
+                        id="confirm-campaign-phone",
+                        name=DELIVERY_STATE_FUNCTION,
+                        args={"field": "phone", "action": "confirm"},
+                    )
+                ]
+            )
+        )
+        return bridge, session
 
-    bridge, session, confirmed = asyncio.run(run())
+    bridge, session = asyncio.run(run())
 
-    assert confirmed is True
     assert bridge.delivery_state.phone_confirmed is True
-    assert len(session.client_content) == 1
-    instruction = session.client_content[0]["turns"].parts[0].text
-    assert "Thaw Zin" in instruction
-    assert address in instruction
-    assert "do not omit the name" in instruction
+    assert session.client_content == []
+    response = session.tool_responses[0]["function_responses"][0].response
+    assert response["next_action"] == "confirm_customer_name"
+    assert "Thaw Zin" in response["instruction"]
 
 
-def test_campaign_address_correction_clears_old_and_confirms_latest(monkeypatch) -> None:
+def test_campaign_address_correction_is_stored_by_tool_without_audio_injection(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
     old_address = "အမှတ် 99 ဟံသာဝတီ လမ်း အရှေ့ဒဂုံ မြို့နယ် ရန်ကုန်"
@@ -946,7 +966,7 @@ def test_campaign_address_correction_clears_old_and_confirms_latest(monkeypatch)
     async def send_audio(_: bytes) -> None:
         pass
 
-    async def run() -> tuple[GeminiCallBridge, _FakeSession, bool]:
+    async def run() -> tuple[GeminiCallBridge, _FakeSession]:
         bridge = GeminiCallBridge(
             call_id="campaign-address-correction",
             call_sample_rate=16000,
@@ -957,14 +977,14 @@ def test_campaign_address_correction_clears_old_and_confirms_latest(monkeypatch)
         )
         session = _FakeSession()
         bridge.session = session
-        bridge._track_collection_focus("ဒီလိပ်စာ မှန်ပါသလားရှင်။")
-        handled = await bridge._handle_customer_delivery_correction(
-            "မမှန်ဘူး၊ လိပ်စာပြောင်းမယ်",
-            source="Gemini Live transcript",
-        )
         await bridge._handle_tool_call(
             types.LiveServerToolCall(
                 function_calls=[
+                    types.FunctionCall(
+                        id="reject-old-address",
+                        name=DELIVERY_STATE_FUNCTION,
+                        args={"field": "shipping_address", "action": "reject"},
+                    ),
                     types.FunctionCall(
                         id="set-new-address",
                         name=DELIVERY_STATE_FUNCTION,
@@ -982,16 +1002,13 @@ def test_campaign_address_correction_clears_old_and_confirms_latest(monkeypatch)
                 ]
             )
         )
-        return bridge, session, handled
+        return bridge, session
 
-    bridge, session, handled = asyncio.run(run())
+    bridge, session = asyncio.run(run())
 
-    assert handled is True
     assert old_address not in bridge.delivery_state.confirmed_facts().values()
     assert bridge.delivery_state.confirmed_facts()["shipping_address"] == new_address
-    assert "complete replacement Myanmar shipping address" in (
-        session.client_content[0]["turns"].parts[0].text
-    )
+    assert session.client_content == []
 
 
 def test_campaign_requires_real_recipient_name_when_sheet_has_only_honorific() -> None:

@@ -75,8 +75,6 @@ class RealtimeInputGate:
         confirmation_max_speech_frames: int = 1000,
         confirmation_phone_max_speech_frames: int = 750,
         confirmation_address_max_speech_frames: int = 1500,
-        phone_confirmation_speech_threshold: int = 140,
-        phone_confirmation_speech_start_frames: int = 2,
     ):
         self.bridge = bridge
         self.call_id = call_id
@@ -101,8 +99,6 @@ class RealtimeInputGate:
         self.confirmation_max_speech_frames = confirmation_max_speech_frames
         self.confirmation_phone_max_speech_frames = confirmation_phone_max_speech_frames
         self.confirmation_address_max_speech_frames = confirmation_address_max_speech_frames
-        self.phone_confirmation_speech_threshold = phone_confirmation_speech_threshold
-        self.phone_confirmation_speech_start_frames = phone_confirmation_speech_start_frames
         self.noise_floor = 0.0
         self.prebuffer: deque[bytes] = deque(maxlen=prebuffer_frames)
         self.speech_active = False
@@ -117,7 +113,7 @@ class RealtimeInputGate:
         self.last_frame_bytes = len(pcm)
         if (
             getattr(self.bridge, "dtmf_digits", "")
-            or getattr(self.bridge, "phone_readback_active", False)
+            or getattr(self.bridge, "awaiting_keypad_phone", False)
         ):
             # Key tones and handset sidetone are not customer speech. Feeding
             # them to Gemini creates a competing response before # finishes.
@@ -171,16 +167,7 @@ class RealtimeInputGate:
             self.prebuffer.clear()
             return
 
-        echo_suppression_seconds = (
-            min(self.echo_suppression_seconds, 0.2)
-            if getattr(
-                self.bridge,
-                "phone_readback_awaiting_confirmation",
-                False,
-            )
-            else self.echo_suppression_seconds
-        )
-        output_recent = self.bridge.output_recent(echo_suppression_seconds)
+        output_recent = self.bridge.output_recent(self.echo_suppression_seconds)
         if self.campaign_confirmation_mode and output_recent:
             # Campaign prompts are short and contain values the customer must hear
             # exactly. Do not let handset echo clear or mute them.
@@ -188,20 +175,6 @@ class RealtimeInputGate:
             self.prebuffer.clear()
             return
         threshold = self._effective_threshold(output_recent=output_recent)
-        awaiting_phone_confirmation = bool(
-            getattr(
-                self.bridge,
-                "phone_readback_awaiting_confirmation",
-                False,
-            )
-        )
-        if awaiting_phone_confirmation and not output_recent:
-            # The expected answer is often a very short, softly spoken yes/no.
-            # Use a narrow, temporary threshold only for this confirmation turn.
-            threshold = min(
-                threshold,
-                self.phone_confirmation_speech_threshold,
-            )
         self.prebuffer.append(pcm)
         if rms >= threshold:
             self.speech_frames += 1
@@ -209,12 +182,7 @@ class RealtimeInputGate:
             self.speech_frames = 0
             self._update_noise_floor(rms, output_recent=output_recent)
 
-        required_start_frames = (
-            self.phone_confirmation_speech_start_frames
-            if awaiting_phone_confirmation
-            else self.speech_start_frames
-        )
-        if self.speech_frames < required_start_frames:
+        if self.speech_frames < self.speech_start_frames:
             return
 
         self.speech_active = True
@@ -1695,10 +1663,23 @@ def _sheet_delivery_seed(
     }
 
 
-def _telnyx_input_gate_options(mode: str) -> dict[str, object]:
+def _telnyx_input_gate_options(
+    mode: str,
+    campaign_confirmation_mode: bool = False,
+) -> dict[str, object]:
+    speech_threshold = config.telnyx.speech_threshold
+    speech_start_frames = getattr(config.telnyx, "speech_start_frames", 2)
+    adaptive_threshold = getattr(config.telnyx, "adaptive_threshold", True)
+    if campaign_confirmation_mode:
+        # Use one stable, sensitive VAD profile for every campaign answer.  This
+        # catches short/soft Burmese acknowledgements without switching rules
+        # after a keypad readback.
+        speech_threshold = min(speech_threshold, 140)
+        speech_start_frames = min(speech_start_frames, 2)
+        adaptive_threshold = False
     return {
-        "speech_threshold": config.telnyx.speech_threshold,
-        "speech_start_frames": getattr(config.telnyx, "speech_start_frames", 2),
+        "speech_threshold": speech_threshold,
+        "speech_start_frames": speech_start_frames,
         "speech_end_silence_frames": getattr(config.telnyx, "speech_end_silence_frames", 30),
         "phone_speech_end_silence_frames": getattr(
             config.telnyx,
@@ -1712,7 +1693,7 @@ def _telnyx_input_gate_options(mode: str) -> dict[str, object]:
         ),
         "require_initial_turn": mode == "outbound",
         "wait_for_turn_before_commit": False,
-        "adaptive_threshold": getattr(config.telnyx, "adaptive_threshold", True),
+        "adaptive_threshold": adaptive_threshold,
         "noise_multiplier": getattr(config.telnyx, "noise_multiplier", 3.0),
         "noise_margin": getattr(config.telnyx, "noise_margin", 80),
         "barge_in_threshold": getattr(config.telnyx, "barge_in_threshold", 900),
@@ -1837,16 +1818,6 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     direction="outbound" if mode == "outbound" else "inbound",
                 )
 
-                input_gate_options = _telnyx_input_gate_options(mode)
-                speech_start_frames = input_gate_options["speech_start_frames"]
-                speech_end_silence_frames = input_gate_options["speech_end_silence_frames"]
-                log(
-                    f"[{call_id}] Telnyx VAD gate: "
-                    f"speech_start_frames={speech_start_frames} "
-                    f"speech_end_silence_frames={speech_end_silence_frames} "
-                    f"adaptive_threshold={config.telnyx.adaptive_threshold}"
-                )
-
                 async def clear_audio() -> None:
                     await websocket.send_json(
                         {
@@ -1867,6 +1838,19 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                 prompt_override = (outbound_req.get("prompt_override") or None) if outbound_req else None
                 campaign_confirmation_mode = bool(
                     prompt_override and str(prompt_override).strip()
+                )
+                input_gate_options = _telnyx_input_gate_options(
+                    mode,
+                    campaign_confirmation_mode,
+                )
+                speech_start_frames = input_gate_options["speech_start_frames"]
+                speech_end_silence_frames = input_gate_options["speech_end_silence_frames"]
+                log(
+                    f"[{call_id}] Telnyx VAD gate: "
+                    f"speech_threshold={input_gate_options['speech_threshold']} "
+                    f"speech_start_frames={speech_start_frames} "
+                    f"speech_end_silence_frames={speech_end_silence_frames} "
+                    f"adaptive_threshold={input_gate_options['adaptive_threshold']}"
                 )
                 sheet_seed = _sheet_delivery_seed(outbound_req)
                 campaign_customer_name = sheet_seed.get("customer_name", "")
@@ -1897,7 +1881,11 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     language_code=bridge_options["language_code"],
                     voice_name=bridge_options["voice_name"],
                     on_transcript=_store_transcript(call_id),
-                    on_audio_turn=_telnyx_audio_turn_handler(call_id),
+                    on_audio_turn=(
+                        None
+                        if campaign_confirmation_mode
+                        else _telnyx_audio_turn_handler(call_id)
+                    ),
                     connected_phone=cust_phone,
                     initial_customer_name=sheet_seed.get("customer_name", ""),
                     initial_phone=sheet_seed.get("phone", ""),

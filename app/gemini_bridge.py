@@ -39,6 +39,7 @@ DELIVERY_CORRECTION_RE = re.compile(
 )
 PHONE_READBACK_TIMEOUT_SECONDS = 12.0
 PHONE_READBACK_QUESTION_GRACE_SECONDS = 1.0
+CAMPAIGN_RESPONSE_TIMEOUT_SECONDS = 20.0
 
 
 def _automatic_activity_detection(explicit_vad: bool) -> types.AutomaticActivityDetection:
@@ -129,6 +130,9 @@ class GeminiCallBridge:
         self.output_frame_count = 0
         self.first_audio_sent = asyncio.Event()
         self.turn_complete = asyncio.Event()
+        # No model response is pending until start() sends the greeting.  Every
+        # normal turn after that is opened only by Gemini's turn_complete event.
+        self.turn_complete.set()
         self.audio_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.playback_task: asyncio.Task | None = None
         self.input_resample_state = None
@@ -171,8 +175,6 @@ class GeminiCallBridge:
         self.last_phone_capture_conflicted = False
         self.pending_authoritative_phone_readback = ""
         self.phone_keypad_prompted = False
-        self.phone_confirmation_followup_sent = False
-        self.replacement_prompted_fields: set[str] = set()
         self.phone_readback_active = False
         self.phone_readback_started = False
         self.phone_readback_waiting_for_prior_turn = False
@@ -182,6 +184,11 @@ class GeminiCallBridge:
         self.phone_readback_awaiting_confirmation = False
         self.phone_readback_transcript_parts: list[str] = []
         self.phone_readback_question_generated = False
+        self.awaiting_keypad_phone = False
+        self.campaign_response_watchdog_task: asyncio.Task | None = None
+        self.campaign_response_generation = 0
+        self.campaign_response_recoveries = 0
+        self.campaign_instruction_lock = asyncio.Lock()
 
     async def start(self) -> None:
         live = self.client.aio.live.connect(
@@ -214,6 +221,7 @@ class GeminiCallBridge:
         log(f"[{self.call_id}] Gemini Live connected")
         if not self.send_initial_greeting:
             return
+        self.turn_complete.clear()
         await self.session.send_client_content(
             turns=types.Content(
                 role="user",
@@ -228,6 +236,7 @@ class GeminiCallBridge:
             ),
             turn_complete=True,
         )
+        self._start_campaign_response_watchdog("initial greeting")
 
     async def send_input_audio(self, pcm: bytes) -> None:
         if not self.session:
@@ -329,11 +338,6 @@ class GeminiCallBridge:
         self.turn_complete.clear()
         self.input_resample_state = None
         await self.session.send_realtime_input(activity_start=types.ActivityStart())
-        # In campaign mode ActivityStart interrupts a readback generation that
-        # exceeded its safety timeout. New model audio may be accepted again
-        # only after that explicit customer activity starts.
-        self.drop_model_audio_until_customer_activity = False
-        self.phone_readback_awaiting_confirmation = False
         self.input_activity_active = True
         log(f"[{self.call_id}] Gemini input activity started")
 
@@ -346,15 +350,19 @@ class GeminiCallBridge:
         
         audio_bytes = bytes(self.current_turn_audio)
         live_candidate = " ".join(self.realtime_live_transcript_parts).strip()
-        correction_handled = await self._handle_customer_delivery_correction(
-            live_candidate,
-            source="Gemini Live transcript",
-        )
-        if not correction_handled:
-            self._capture_authoritative_phone(
+        # In a Sheet campaign Gemini owns the conversation and records changes
+        # through the delivery-state tool.  Do not inject competing prompts or
+        # rewrite state from a partial streaming transcript.
+        if not self.campaign_confirmation_mode:
+            correction_handled = await self._handle_customer_phone_rejection(
                 live_candidate,
                 source="Gemini Live transcript",
             )
+            if not correction_handled:
+                self._capture_authoritative_phone(
+                    live_candidate,
+                    source="Gemini Live transcript",
+                )
         if audio_bytes:
             turn_no = len(self.completed_turns_audio)
             self.completed_turns_audio.append((
@@ -374,6 +382,7 @@ class GeminiCallBridge:
                 
         self.current_turn_audio.clear()
         self.realtime_live_transcript_parts.clear()
+        self._start_campaign_response_watchdog("customer turn")
 
     async def end_input_audio(self) -> None:
         if not self.session:
@@ -388,6 +397,7 @@ class GeminiCallBridge:
         await self.commit_input_audio_turn()
 
     async def close(self) -> None:
+        self._cancel_campaign_response_watchdog()
         self._cancel_phone_readback_watchdog()
         self._cancel_phone_readback_question_finish()
         if self.playback_task:
@@ -485,19 +495,20 @@ class GeminiCallBridge:
                             live_customer_text = " ".join(
                                 self.realtime_live_transcript_parts
                             ).strip()
-                            correction_handled = await self._handle_customer_delivery_correction(
-                                live_customer_text,
-                                source="Gemini Live transcript",
-                            )
-                            if not correction_handled:
-                                self._capture_authoritative_phone(
+                            if not self.campaign_confirmation_mode:
+                                correction_handled = await self._handle_customer_phone_rejection(
                                     live_customer_text,
                                     source="Gemini Live transcript",
                                 )
-                                if not self.last_phone_capture_conflicted:
-                                    await self._confirm_authoritative_phone_from_text(
-                                        live_customer_text
+                                if not correction_handled:
+                                    self._capture_authoritative_phone(
+                                        live_customer_text,
+                                        source="Gemini Live transcript",
                                     )
+                                    if not self.last_phone_capture_conflicted:
+                                        await self._confirm_authoritative_phone_from_text(
+                                            live_customer_text
+                                        )
                         if content.output_transcription and content.output_transcription.text:
                             self._mark_phone_readback_started()
                             self._track_phone_readback_transcript(
@@ -556,7 +567,6 @@ class GeminiCallBridge:
 
         function_responses = []
         phone_rejected_by_tool = False
-        phone_confirmed_by_tool = False
         for function_call in tool_call.function_calls or []:
             if function_call.name != DELIVERY_STATE_FUNCTION:
                 result = {"ok": False, "message": "Unsupported tool."}
@@ -637,7 +647,8 @@ class GeminiCallBridge:
                         self.authoritative_phone_source = ""
                         self.pending_authoritative_phone_readback = ""
                         self.keypad_phone = ""
-                        self.phone_confirmation_followup_sent = False
+                        if self.campaign_confirmation_mode:
+                            self.awaiting_keypad_phone = True
                         self.confirmed_fact_values.pop("phone", None)
                     elif field == "customer_name" and action == "reject":
                         self.confirmed_fact_values.pop("customer_name", None)
@@ -648,15 +659,10 @@ class GeminiCallBridge:
                         action=action,
                         value=value,
                     )
-                    if result["ok"] and action == "set":
-                        self.replacement_prompted_fields.discard(field)
-                        if field == "phone":
-                            self.phone_confirmation_followup_sent = False
                 if result["ok"] and action == "confirm":
                     if field == "phone":
                         self.pending_authoritative_phone_readback = ""
                         self.phone_keypad_prompted = False
-                        phone_confirmed_by_tool = True
                     await self._record_confirmed_fact(field)
 
             function_responses.append(
@@ -671,10 +677,8 @@ class GeminiCallBridge:
             await self.session.send_tool_response(
                 function_responses=function_responses,
             )
-        if phone_rejected_by_tool:
+        if phone_rejected_by_tool and not self.campaign_confirmation_mode:
             await self._prompt_phone_keypad()
-        elif phone_confirmed_by_tool and self.campaign_confirmation_mode:
-            await self._prompt_after_phone_confirmation()
 
     def _track_collection_focus(self, text: str) -> None:
         clean_text = str(text or "").strip()
@@ -695,6 +699,10 @@ class GeminiCallBridge:
             self.collection_focus_until = now
 
     def _needs_in_call_phone_asr(self, live_candidate: str) -> bool:
+        if self.campaign_confirmation_mode:
+            # Campaign state comes from Gemini's delivery-state tool and lossless
+            # DTMF. Secondary ASR is intentionally deferred until after the call.
+            return False
         if (
             not self.campaign_confirmation_mode
             and self.authoritative_phone
@@ -785,6 +793,16 @@ class GeminiCallBridge:
             raise
 
     def _handle_model_turn_complete(self) -> bool:
+        if self.campaign_confirmation_mode:
+            # This is the only normal completion signal used by campaign calls.
+            # Do not infer completion from audio silence, transcript fragments,
+            # elapsed readback time, or the number of digits spoken.
+            self._cancel_campaign_response_watchdog()
+            self.campaign_response_recoveries = 0
+            self.completed_turn_count += 1
+            log(f"[{self.call_id}] Gemini campaign turn complete")
+            self.turn_complete.set()
+            return True
         if (
             self.phone_readback_active
             and self.phone_readback_waiting_for_prior_turn
@@ -801,6 +819,109 @@ class GeminiCallBridge:
         log(f"[{self.call_id}] Gemini turn complete")
         self.turn_complete.set()
         return True
+
+    def _cancel_campaign_response_watchdog(self) -> None:
+        task = self.campaign_response_watchdog_task
+        if task and task is not asyncio.current_task() and not task.done():
+            task.cancel()
+        self.campaign_response_watchdog_task = None
+
+    def _start_campaign_response_watchdog(self, reason: str, *, reset: bool = True) -> None:
+        if not self.campaign_confirmation_mode or not self.session:
+            return
+        self._cancel_campaign_response_watchdog()
+        self.campaign_response_generation += 1
+        if reset:
+            self.campaign_response_recoveries = 0
+        generation = self.campaign_response_generation
+        self.campaign_response_watchdog_task = asyncio.create_task(
+            self._campaign_response_watchdog(generation, reason)
+        )
+
+    async def _campaign_response_watchdog(self, generation: int, reason: str) -> None:
+        try:
+            await asyncio.sleep(CAMPAIGN_RESPONSE_TIMEOUT_SECONDS)
+            if generation != self.campaign_response_generation or self.turn_complete.is_set():
+                return
+            if self.campaign_response_recoveries >= 2:
+                log(
+                    f"[{self.call_id}] Campaign response remained unavailable after "
+                    "two recovery prompts"
+                )
+                return
+            self.campaign_response_recoveries += 1
+            log(
+                f"[{self.call_id}] Campaign response timeout after {reason}; "
+                "asking the customer to repeat"
+            )
+            async with self.campaign_instruction_lock:
+                if generation != self.campaign_response_generation or self.turn_complete.is_set():
+                    return
+                await self._interrupt_stalled_campaign_turn()
+                await self._send_campaign_content(
+                    "A technical audio delay occurred. Speak one short Burmese sentence: "
+                    "apologize briefly and ask the customer to repeat their last answer. "
+                    "Do not confirm, reject, or change any order or delivery field."
+                )
+                self._start_campaign_response_watchdog(
+                    "technical recovery prompt",
+                    reset=False,
+                )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            log(
+                f"[{self.call_id}] Campaign response recovery failed: "
+                f"{type(exc).__name__}: {exc}"
+            )
+
+    async def _interrupt_stalled_campaign_turn(self) -> None:
+        """Interrupt only a genuinely timed-out turn before sending a recovery."""
+        if not self.session:
+            return
+        self._cancel_campaign_response_watchdog()
+        with suppress(Exception):
+            await self.session.send_realtime_input(activity_start=types.ActivityStart())
+            await self.session.send_realtime_input(activity_end=types.ActivityEnd())
+            try:
+                await asyncio.wait_for(self.turn_complete.wait(), timeout=2.0)
+            except asyncio.TimeoutError:
+                pass
+        await self._clear_pending_output_audio()
+        self.turn_complete.clear()
+
+    async def _send_campaign_content(self, instruction: str) -> None:
+        if not self.session:
+            return
+        self.turn_complete.clear()
+        await self.session.send_client_content(
+            turns=types.Content(
+                role="user",
+                parts=[types.Part(text=instruction)],
+            ),
+            turn_complete=True,
+        )
+
+    async def _send_campaign_instruction(self, instruction: str, reason: str) -> None:
+        """Serialize a backend event after the previous official model turn."""
+        if not self.session:
+            return
+        async with self.campaign_instruction_lock:
+            if not self.turn_complete.is_set():
+                try:
+                    await asyncio.wait_for(
+                        self.turn_complete.wait(),
+                        timeout=CAMPAIGN_RESPONSE_TIMEOUT_SECONDS,
+                    )
+                except asyncio.TimeoutError:
+                    log(
+                        f"[{self.call_id}] Previous campaign turn stalled before {reason}; "
+                        "interrupting it once"
+                    )
+                    await self._interrupt_stalled_campaign_turn()
+            self._cancel_campaign_response_watchdog()
+            await self._send_campaign_content(instruction)
+            self._start_campaign_response_watchdog(reason)
 
     def _cancel_phone_readback_watchdog(self) -> None:
         task = self.phone_readback_watchdog_task
@@ -899,7 +1020,6 @@ class GeminiCallBridge:
         log(f"[{self.call_id}] Phone rejected; requested keypad entry ending in #")
 
     async def _prompt_invalid_keypad_phone(self, submitted_digits: str) -> None:
-        self._finish_phone_readback_guard()
         self.authoritative_phone = ""
         self.authoritative_phone_source = ""
         self.pending_authoritative_phone_readback = ""
@@ -907,6 +1027,24 @@ class GeminiCallBridge:
         self.confirmed_fact_values.pop("phone", None)
         if not self.session:
             return
+        instruction = (
+            "The keypad entry was incomplete or not a valid delivery phone number. "
+            "Never read it back and never reuse its digits. In one short Burmese "
+            "sentence, ask the customer to enter the complete phone number again "
+            "from the beginning and press #."
+        )
+        if self.campaign_confirmation_mode:
+            self.awaiting_keypad_phone = True
+            await self._send_campaign_instruction(
+                instruction,
+                "invalid keypad entry",
+            )
+            log(
+                f"[{self.call_id}] Rejected invalid keypad phone "
+                f"'{submitted_digits}'; requested complete re-entry"
+            )
+            return
+        self._finish_phone_readback_guard()
         self.turn_complete.clear()
         await self._clear_pending_output_audio()
         await self.session.send_client_content(
@@ -914,12 +1052,7 @@ class GeminiCallBridge:
                 role="user",
                 parts=[
                     types.Part(
-                        text=(
-                            "The keypad entry was incomplete or not a valid delivery "
-                            "phone number. Never read it back and never reuse its digits. "
-                            "In one short Burmese sentence, ask the customer to enter the "
-                            "complete phone number again from the beginning and press #."
-                        )
+                        text=instruction
                     )
                 ],
             ),
@@ -947,7 +1080,6 @@ class GeminiCallBridge:
         self.authoritative_phone_source = ""
         self.pending_authoritative_phone_readback = ""
         self.keypad_phone = ""
-        self.phone_confirmation_followup_sent = False
         self.confirmed_fact_values.pop("phone", None)
         log(
             f"[{self.call_id}] Customer rejected phone '{rejected_phone}' "
@@ -956,87 +1088,12 @@ class GeminiCallBridge:
         await self._prompt_phone_keypad()
         return True
 
-    def _correction_focus(self, text: str) -> str:
-        patterns = {
-            "customer_name": r"(?:လက်ခံမယ့်နာမည်|နာမည်|အမည်|recipient name|customer name)",
-            "phone": r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|mobile|နံပါတ်)",
-            "shipping_address": r"(?:လိပ်စာ|ပို့ရမယ့်|ပို့ရန်|address|delivery|ship)",
-        }
-        explicit: list[tuple[int, str]] = []
-        for field, pattern in patterns.items():
-            for match in re.finditer(pattern, text, flags=re.IGNORECASE):
-                explicit.append((match.end(), field))
-        if explicit:
-            return max(explicit)[1]
-        if self.collection_focus_recent("customer_name", seconds=10.0):
-            return "customer_name"
-        if self.collection_focus_recent("address", seconds=10.0):
-            return "shipping_address"
-        if self.collection_focus_recent("phone", seconds=10.0):
-            return "phone"
-        return ""
-
-    async def _prompt_replacement_field(self, field: str) -> None:
-        if field in self.replacement_prompted_fields or not self.session:
-            return
-        self.replacement_prompted_fields.add(field)
-        instruction = (
-            "The customer rejected the old recipient name. In one short Burmese "
-            "sentence, ask only for the complete new recipient name. Do not reuse "
-            "the Sheet name or any earlier name."
-            if field == "customer_name"
-            else (
-                "The customer rejected the old shipping address. In one short "
-                "Burmese sentence, ask only for the complete replacement Myanmar "
-                "shipping address. Never reuse the old address."
-            )
-        )
-        self.turn_complete.clear()
-        await self._clear_pending_output_audio()
-        await self.session.send_client_content(
-            turns=types.Content(
-                role="user",
-                parts=[types.Part(text=instruction)],
-            ),
-            turn_complete=True,
-        )
-
-    async def _handle_customer_delivery_correction(
-        self,
-        text: str,
-        *,
-        source: str,
-    ) -> bool:
-        if await self._handle_customer_phone_rejection(text, source=source):
-            return True
-        if not self.campaign_confirmation_mode:
-            return False
-        clean_text = str(text or "").strip()
-        if not clean_text or not DELIVERY_CORRECTION_RE.search(clean_text):
-            return False
-
-        field = self._correction_focus(clean_text)
-        if field == "phone":
-            return False
-        if field == "customer_name":
-            if not self.delivery_state.customer_name:
-                return field in self.replacement_prompted_fields
-            self.delivery_state.apply(field=field, action="reject")
-            self.confirmed_fact_values.pop(field, None)
-        elif field == "shipping_address":
-            if not self.delivery_state.shipping_address:
-                return field in self.replacement_prompted_fields
-            self.delivery_state.apply(field=field, action="reject")
-            self.confirmed_fact_values.pop(field, None)
-        else:
-            return False
-
-        log(f"[{self.call_id}] Customer rejected {field} from {source}; old value cleared")
-        await self._prompt_replacement_field(field)
-        return True
-
     async def handle_dtmf(self, digit: str) -> None:
         digit = str(digit or "").strip()
+        if self.campaign_confirmation_mode and not self.awaiting_keypad_phone:
+            # DTMF has exactly one campaign purpose: replace a rejected delivery
+            # phone while Gemini is explicitly waiting for keypad input.
+            return
         if digit == "*":
             self.dtmf_digits = ""
             return
@@ -1065,7 +1122,7 @@ class GeminiCallBridge:
         self.keypad_phone = self.authoritative_phone
         self.pending_authoritative_phone_readback = self.authoritative_phone
         self.phone_keypad_prompted = False
-        self.phone_confirmation_followup_sent = False
+        self.awaiting_keypad_phone = False
         self.confirmed_fact_values.pop("phone", None)
         await self._flush_authoritative_phone_readback()
 
@@ -1088,7 +1145,7 @@ class GeminiCallBridge:
             )
             self.secondary_asr_results[turn_no] = corrected_text
             if corrected_text:
-                if await self._handle_customer_delivery_correction(
+                if await self._handle_customer_phone_rejection(
                     corrected_text,
                     source="secondary ASR",
                 ):
@@ -1183,65 +1240,7 @@ class GeminiCallBridge:
             f"[{self.call_id}] Customer transcript confirmed authoritative phone "
             f"'{self.authoritative_phone}'"
         )
-        if self.campaign_confirmation_mode:
-            await self._prompt_after_phone_confirmation()
         return True
-
-    async def _prompt_after_phone_confirmation(self) -> None:
-        if self.phone_confirmation_followup_sent or not self.session:
-            return
-        self.phone_confirmation_followup_sent = True
-        self._finish_phone_readback_guard()
-        name = self.delivery_state.customer_name
-        address = self.delivery_state.shipping_address
-        if self.delivery_state.require_customer_name and not name:
-            next_step = (
-                "In one short Burmese sentence, say the phone is confirmed and ask "
-                "only for the complete recipient name. The Sheet did not contain a "
-                "real recipient name, so do not skip this question."
-            )
-            next_focus = "customer_name"
-        elif name and not self.delivery_state.name_confirmed and address:
-            next_step = (
-                "In one short Burmese sentence, say the phone is confirmed, then read "
-                f"the preliminary recipient name exactly as {name} and the preliminary "
-                f"delivery address exactly as {address}. Ask whether both are correct. "
-                "Do not answer with only an acknowledgement and do not omit the name."
-            )
-            next_focus = "address"
-        elif name and not self.delivery_state.name_confirmed:
-            next_step = (
-                "In one short Burmese sentence, say the phone is confirmed, read this "
-                f"preliminary recipient name exactly as {name}, and ask whether it is "
-                "correct. Do not omit the name."
-            )
-            next_focus = "customer_name"
-        elif address:
-            next_step = (
-                "In one short Burmese sentence, say the phone is confirmed, read "
-                f"this preliminary delivery address exactly once: {address}. Ask "
-                "whether the address is correct. Do not answer with only an "
-                "acknowledgement and do not skip the address question."
-            )
-            next_focus = "address"
-        else:
-            next_step = (
-                "In one short Burmese sentence, say the phone is confirmed and ask "
-                "only for the complete Myanmar delivery address. Do not answer with "
-                "only an acknowledgement."
-            )
-            next_focus = "address"
-        self.collection_focus = next_focus
-        self.collection_focus_until = asyncio.get_running_loop().time()
-        self.turn_complete.clear()
-        await self._clear_pending_output_audio()
-        await self.session.send_client_content(
-            turns=types.Content(
-                role="user",
-                parts=[types.Part(text=next_step)],
-            ),
-            turn_complete=True,
-        )
 
     def _capture_authoritative_phone(self, text: str, *, source: str) -> str:
         self.last_phone_capture_conflicted = False
@@ -1325,7 +1324,6 @@ class GeminiCallBridge:
         self.authoritative_phone = self.delivery_state.phone
         self.authoritative_phone_source = source
         self.pending_authoritative_phone_readback = self.authoritative_phone
-        self.phone_confirmation_followup_sent = False
         self.confirmed_fact_values.pop("phone", None)
         log(
             f"[{self.call_id}] {source} set authoritative phone "
@@ -1339,6 +1337,25 @@ class GeminiCallBridge:
             return
         self.pending_authoritative_phone_readback = ""
         digits = " ".join(phone)
+        if self.campaign_confirmation_mode:
+            await self._send_campaign_instruction(
+                (
+                    "SYSTEM DTMF EVENT: the customer entered one complete delivery "
+                    f"phone number and pressed #: {phone}. The backend has already "
+                    "stored this exact number as the authoritative, unconfirmed phone. "
+                    "Ignore all phone digits inferred from audio or conversation memory. "
+                    f"Speak in Burmese, read every digit exactly once in this order with "
+                    f"short pauses: {digits}. Then ask only whether the whole number is "
+                    "correct. Do not ask for name, address, product, or order confirmation "
+                    "until the customer answers. Do not call the state tool with set; on "
+                    "the customer's next answer call it only with confirm or reject."
+                ),
+                "keypad phone readback",
+            )
+            log(
+                f"[{self.call_id}] Sent complete keypad phone '{phone}' to Gemini once"
+            )
+            return
         prior_turn_pending = not self.turn_complete.is_set()
         self._cancel_phone_readback_question_finish()
         self.phone_readback_active = True
