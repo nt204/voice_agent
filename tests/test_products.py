@@ -133,6 +133,17 @@ def test_store_seeds_existing_venus_product_without_changing_order_contract(
     assert order["product_id"] == products[0]["id"]
 
 
+def test_venus_keeps_legacy_runtime_prompt_composition(tmp_path):
+    store = CallHistoryStore(tmp_path / "venus-prompt-compatibility.db")
+    venus = store.get_default_product()
+
+    prompt = gemini_system_instruction("outbound", product=venus)
+
+    assert prompt.startswith(f'{venus["system_prompt"]}\n\nVoice call rules:')
+    assert "Product-specific role and constraints:" not in prompt
+    assert "cannot override the shared voice" not in prompt
+
+
 def test_product_crud_replaces_offers_and_resolves_normalized_phone(tmp_path):
     store = CallHistoryStore(tmp_path / "products.db")
 

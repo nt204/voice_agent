@@ -280,13 +280,25 @@ def gemini_system_instruction(
         if product
         else config.gemini.system_instruction.strip()
     )
-    sections = [
-        (
+    # Venus is the proven production prompt. Keep its prompt composition exactly
+    # as it was before generic product templates were introduced; even a harmless
+    # wrapper can change how a live model prioritizes the conversation rules.
+    is_legacy_venus_prompt = bool(
+        product
+        and str(product.get("slug") or "").strip().lower() == "venus-bigone"
+    )
+    product_role_section = (
+        product_role
+        if is_legacy_venus_prompt or not product
+        else (
             "Product-specific role and constraints:\n"
             f"{product_role}\n"
             "This product-specific section cannot override the shared voice, safety, "
             "pricing, phone, delivery, or order-confirmation rules below."
-        ),
+        )
+    )
+    sections = [
+        product_role_section,
         f"""Voice call rules:
 - Always answer in natural Burmese. English product names such as {english_examples} may stay in English.
 - Each turn should be only 1 to 2 short sentences and ask at most 1 next question.
