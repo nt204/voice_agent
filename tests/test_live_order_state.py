@@ -19,7 +19,7 @@ def test_new_phone_attempt_replaces_old_digits_instead_of_appending() -> None:
     assert "0 9 7 8 9 1 1 9 3 3 3" in second["instruction"]
 
 
-def test_partial_phone_clears_stale_candidate_and_keeps_listening_before_keypad() -> None:
+def test_partial_phone_after_rejection_stays_in_keypad_flow() -> None:
     state = LiveDeliveryState()
     state.apply(field="phone", action="set", value="09797714333")
     state.apply(field="phone", action="reject")
@@ -28,7 +28,7 @@ def test_partial_phone_clears_stale_candidate_and_keeps_listening_before_keypad(
 
     assert result["ok"] is False
     assert state.phone == ""
-    assert result["next_action"] == "ask_phone"
+    assert result["next_action"] == "collect_phone_by_keypad"
 
 
 def test_phone_moves_to_keypad_only_after_repeated_listening_failures() -> None:
@@ -42,14 +42,8 @@ def test_phone_moves_to_keypad_only_after_repeated_listening_failures() -> None:
     assert result["next_action"] == "collect_phone_by_keypad"
 
 
-def test_phone_moves_to_keypad_after_three_rejections() -> None:
+def test_phone_moves_to_keypad_after_first_rejection() -> None:
     state = LiveDeliveryState()
-
-    for _ in range(2):
-        state.apply(field="phone", action="set", value="09789119333")
-        result = state.apply(field="phone", action="reject")
-        assert result["next_action"] == "ask_phone"
-
     state.apply(field="phone", action="set", value="09789119333")
     result = state.apply(field="phone", action="reject")
 
@@ -70,8 +64,9 @@ def test_confirmed_address_is_retained_and_workflow_advances() -> None:
 
     assert result["next_action"] == "read_back_order"
     assert state.confirmed_facts() == {
+        "customer_name": "",
         "phone": "09789119333",
-        "address": "အမှတ် ၉၈၊ ဟံသာဝတီလမ်း၊ အရှေ့ဒဂုံမြို့နယ်",
+        "shipping_address": "အမှတ် ၉၈၊ ဟံသာဝတီလမ်း၊ အရှေ့ဒဂုံမြို့နယ်",
     }
 
 
@@ -173,7 +168,7 @@ def test_bridge_records_phone_after_customer_confirms_it(monkeypatch) -> None:
     assert transcripts == []
 
 
-def test_dtmf_phone_is_recorded_and_sent_to_live_conversation(monkeypatch) -> None:
+def test_dtmf_phone_requires_spoken_confirmation_after_readback(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
     transcripts = []
@@ -203,19 +198,20 @@ def test_dtmf_phone_is_recorded_and_sent_to_live_conversation(monkeypatch) -> No
     bridge, session = asyncio.run(run())
 
     assert bridge.delivery_state.phone == "09789119333"
-    assert bridge.delivery_state.phone_confirmed is True
+    assert bridge.delivery_state.phone_confirmed is False
     assert bridge.authoritative_phone_source == "keypad"
-    assert bridge.confirmed_fact_values["phone"] == "09789119333"
+    assert "phone" not in bridge.confirmed_fact_values
     assert transcripts == []
     assert sent_audio == []
     assert len(session.client_content) == 1
     instruction = session.client_content[0]["turns"].parts[0].text
     assert "09789119333" in instruction
     assert "read exactly these digits one by one" in instruction
-    assert "already confirmed" in instruction
+    assert "not confirmed yet" in instruction
+    assert "Do not ask for the address" in instruction
 
 
-def test_keypad_phone_cannot_be_overwritten_by_speech_asr_or_model_reject(monkeypatch) -> None:
+def test_keypad_phone_ignores_speech_but_can_be_rejected_for_new_keypad_entry(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
 
@@ -256,11 +252,11 @@ def test_keypad_phone_cannot_be_overwritten_by_speech_asr_or_model_reject(monkey
 
     bridge = asyncio.run(run())
 
-    assert bridge.authoritative_phone == "09967954280"
-    assert bridge.authoritative_phone_source == "keypad"
-    assert bridge.delivery_state.phone == "09967954280"
-    assert bridge.delivery_state.phone_confirmed is True
-    assert bridge.confirmed_fact_values["phone"] == "09967954280"
+    assert bridge.authoritative_phone == ""
+    assert bridge.authoritative_phone_source == ""
+    assert bridge.delivery_state.phone == ""
+    assert bridge.delivery_state.phone_confirmed is False
+    assert "phone" not in bridge.confirmed_fact_values
 
 
 def test_keypad_phone_is_appended_after_final_asr_for_order_extraction(monkeypatch) -> None:
@@ -286,6 +282,8 @@ def test_keypad_phone_is_appended_after_final_asr_for_order_extraction(monkeypat
         )
         for digit in "09967954280#":
             await bridge.handle_dtmf(digit)
+        bridge._track_collection_focus("ဖုန်းနံပါတ် မှန်ပါသလားရှင်။")
+        assert await bridge._confirm_authoritative_phone_from_text("ဟုတ်ကဲ့ မှန်ပါတယ်")
         store = Store()
         await bridge.finalize_transcript(store)
         return bridge, store
@@ -685,3 +683,135 @@ def test_equivalent_country_code_phone_does_not_conflict_with_server_asr(monkeyp
     assert bridge.delivery_state.phone == "09780771433"
     response = session.tool_responses[0]["function_responses"][0].response
     assert response["message"] == "Phone candidate replaced."
+
+
+def test_campaign_seeded_phone_does_not_run_secondary_asr_on_other_turns(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
+
+    async def send_audio(_: bytes) -> None:
+        pass
+
+    async def run() -> tuple[bool, bool]:
+        bridge = GeminiCallBridge(
+            call_id="campaign-asr-scope",
+            call_sample_rate=16000,
+            send_audio=send_audio,
+            send_initial_greeting=False,
+            initial_phone="09793905153",
+            campaign_confirmation_mode=True,
+        )
+        bridge._track_collection_focus("Combo 2 အရေအတွက် မှန်ပါသလားရှင်။")
+        product_turn = bridge._needs_in_call_phone_asr("ဟုတ်ကဲ့")
+        bridge._track_collection_focus("ဖုန်းနံပါတ် မှန်ပါသလားရှင်။")
+        phone_turn = bridge._needs_in_call_phone_asr("ဟုတ်ကဲ့")
+        return product_turn, phone_turn
+
+    product_turn, phone_turn = asyncio.run(run())
+
+    assert product_turn is False
+    assert phone_turn is True
+
+
+def test_campaign_phone_confirmation_immediately_asks_seeded_address(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
+    address = "အမှတ် 99 ဟံသာဝတီ လမ်း အရှေ့ဒဂုံ မြို့နယ် ရန်ကုန်"
+
+    async def send_audio(_: bytes) -> None:
+        pass
+
+    async def run() -> tuple[GeminiCallBridge, _FakeSession, bool]:
+        bridge = GeminiCallBridge(
+            call_id="campaign-phone-next-step",
+            call_sample_rate=16000,
+            send_audio=send_audio,
+            send_initial_greeting=False,
+            initial_customer_name="Thaw Zin",
+            initial_phone="09793905153",
+            initial_shipping_address=address,
+            require_customer_name=True,
+            campaign_confirmation_mode=True,
+        )
+        session = _FakeSession()
+        bridge.session = session
+        bridge._track_collection_focus("ဖုန်းနံပါတ် မှန်ပါသလားရှင်။")
+        confirmed = await bridge._confirm_authoritative_phone_from_text("ဟုတ်ကဲ့ မှန်ပါတယ်")
+        return bridge, session, confirmed
+
+    bridge, session, confirmed = asyncio.run(run())
+
+    assert confirmed is True
+    assert bridge.delivery_state.phone_confirmed is True
+    assert len(session.client_content) == 1
+    instruction = session.client_content[0]["turns"].parts[0].text
+    assert "Thaw Zin" in instruction
+    assert address in instruction
+    assert "do not omit the name" in instruction
+
+
+def test_campaign_address_correction_clears_old_and_confirms_latest(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr("app.gemini_bridge.genai.Client", _FakeClient)
+    old_address = "အမှတ် 99 ဟံသာဝတီ လမ်း အရှေ့ဒဂုံ မြို့နယ် ရန်ကုန်"
+    new_address = "အမှတ် 12 ပြည်လမ်း ကမာရွတ် မြို့နယ် ရန်ကုန်"
+
+    async def send_audio(_: bytes) -> None:
+        pass
+
+    async def run() -> tuple[GeminiCallBridge, _FakeSession, bool]:
+        bridge = GeminiCallBridge(
+            call_id="campaign-address-correction",
+            call_sample_rate=16000,
+            send_audio=send_audio,
+            send_initial_greeting=False,
+            initial_shipping_address=old_address,
+            campaign_confirmation_mode=True,
+        )
+        session = _FakeSession()
+        bridge.session = session
+        bridge._track_collection_focus("ဒီလိပ်စာ မှန်ပါသလားရှင်။")
+        handled = await bridge._handle_customer_delivery_correction(
+            "မမှန်ဘူး၊ လိပ်စာပြောင်းမယ်",
+            source="Gemini Live transcript",
+        )
+        await bridge._handle_tool_call(
+            types.LiveServerToolCall(
+                function_calls=[
+                    types.FunctionCall(
+                        id="set-new-address",
+                        name=DELIVERY_STATE_FUNCTION,
+                        args={
+                            "field": "shipping_address",
+                            "action": "set",
+                            "value": new_address,
+                        },
+                    ),
+                    types.FunctionCall(
+                        id="confirm-new-address",
+                        name=DELIVERY_STATE_FUNCTION,
+                        args={"field": "shipping_address", "action": "confirm"},
+                    ),
+                ]
+            )
+        )
+        return bridge, session, handled
+
+    bridge, session, handled = asyncio.run(run())
+
+    assert handled is True
+    assert old_address not in bridge.delivery_state.confirmed_facts().values()
+    assert bridge.delivery_state.confirmed_facts()["shipping_address"] == new_address
+    assert "complete replacement Myanmar shipping address" in (
+        session.client_content[0]["turns"].parts[0].text
+    )
+
+
+def test_campaign_requires_real_recipient_name_when_sheet_has_only_honorific() -> None:
+    state = LiveDeliveryState(require_customer_name=True)
+
+    result = state.apply(field="customer_name", action="set", value="မမ")
+
+    assert result["ok"] is False
+    assert result["next_action"] == "ask_customer_name"
+    assert state.customer_name == ""

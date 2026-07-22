@@ -10,8 +10,9 @@ from urllib.parse import parse_qsl
 from urllib.parse import quote
 from urllib.parse import urlencode
 from urllib.parse import urljoin, urlparse, urlunparse
+from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect, status
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -26,10 +27,11 @@ from app.call_history import CallHistoryStore
 from app.config import config, gemini_initial_greeting, gemini_system_instruction
 from app.database import init_db
 from app.gemini_bridge import GeminiCallBridge
+from app.live_order_state import clean_recipient_name
 from app.logging_utils import log
 import re
-from app.google_sheets import fetch_and_parse_google_sheet
-from app.sheet_prompts import build_outbound_sheet_prompt
+from app.google_sheets import fetch_and_parse_google_sheet, map_sheet_row
+from app.sheet_prompts import build_outbound_sheet_greeting, build_outbound_sheet_prompt
 from app.admin import router as admin_router
 from app.phone_numbers import normalize_phone_number
 from app.recording_manager import latest_recording_for_call, recording_path_for_call
@@ -41,6 +43,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 init_db()
 
 call_history = CallHistoryStore(config.database_url)
+app.state.call_history = call_history
 legacy_call_history_path = BASE_DIR / "data" / "call_history.db"
 if not config.database_url.startswith("sqlite") and legacy_call_history_path.exists():
     migrated_counts = call_history.migrate_from_sqlite(legacy_call_history_path)
@@ -68,6 +71,10 @@ class RealtimeInputGate:
         barge_in_threshold: int | None = None,
         allow_barge_in: bool = False,
         echo_suppression_ms: int = 700,
+        campaign_confirmation_mode: bool = False,
+        confirmation_max_speech_frames: int = 1000,
+        confirmation_phone_max_speech_frames: int = 750,
+        confirmation_address_max_speech_frames: int = 1500,
     ):
         self.bridge = bridge
         self.call_id = call_id
@@ -88,22 +95,42 @@ class RealtimeInputGate:
         self.barge_in_threshold = barge_in_threshold or speech_threshold
         self.allow_barge_in = allow_barge_in
         self.echo_suppression_seconds = echo_suppression_ms / 1000
+        self.campaign_confirmation_mode = campaign_confirmation_mode
+        self.confirmation_max_speech_frames = confirmation_max_speech_frames
+        self.confirmation_phone_max_speech_frames = confirmation_phone_max_speech_frames
+        self.confirmation_address_max_speech_frames = confirmation_address_max_speech_frames
         self.noise_floor = 0.0
         self.prebuffer: deque[bytes] = deque(maxlen=prebuffer_frames)
         self.speech_active = False
         self.waiting_for_response = False
         self.speech_frames = 0
         self.silence_frames = 0
+        self.active_frames = 0
+        self.active_speech_threshold = speech_threshold
         self.last_frame_bytes = 0
 
     async def push(self, pcm: bytes, rms: int, timestamp_ms: int | None = None) -> None:
         self.last_frame_bytes = len(pcm)
         if self.speech_active:
             await self.bridge.send_input_audio(pcm)
-            if rms >= self.speech_threshold:
+            end_threshold = (
+                self.active_speech_threshold
+                if self.campaign_confirmation_mode
+                else self.speech_threshold
+            )
+            if rms >= end_threshold:
                 self.silence_frames = 0
             else:
                 self.silence_frames += 1
+
+            self.active_frames += 1
+            if (
+                self.campaign_confirmation_mode
+                and self.active_frames >= self._max_speech_frames()
+            ):
+                log(f"[{self.call_id}] Confirmation speech turn reached its maximum duration")
+                await self.force_end(timestamp_ms, flush_silence=False)
+                return
 
             if self.silence_frames >= self._speech_end_silence_frames():
                 await self.force_end(timestamp_ms, flush_silence=False)
@@ -131,6 +158,12 @@ class RealtimeInputGate:
             return
 
         output_recent = self.bridge.output_recent(self.echo_suppression_seconds)
+        if self.campaign_confirmation_mode and output_recent:
+            # Campaign prompts are short and contain values the customer must hear
+            # exactly. Do not let handset echo clear or mute them.
+            self.speech_frames = 0
+            self.prebuffer.clear()
+            return
         threshold = self._effective_threshold(output_recent=output_recent)
         self.prebuffer.append(pcm)
         if rms >= threshold:
@@ -144,6 +177,8 @@ class RealtimeInputGate:
 
         self.speech_active = True
         self.silence_frames = 0
+        self.active_frames = 0
+        self.active_speech_threshold = threshold
         if hasattr(self.bridge, "set_output_muted"):
             await self.bridge.set_output_muted(True)
         if timestamp_ms is None:
@@ -176,6 +211,8 @@ class RealtimeInputGate:
         self.speech_active = False
         self.speech_frames = 0
         self.silence_frames = 0
+        self.active_frames = 0
+        self.active_speech_threshold = self.speech_threshold
         self.prebuffer.clear()
         if flush_silence and self.last_frame_bytes:
             silence = b"\x00" * self.last_frame_bytes
@@ -216,6 +253,18 @@ class RealtimeInputGate:
         if collection_focus_recent("address"):
             return max(self.speech_end_silence_frames, self.address_speech_end_silence_frames)
         return self.speech_end_silence_frames
+
+    def _max_speech_frames(self) -> int:
+        collection_focus_recent = getattr(
+            self.bridge,
+            "collection_focus_recent",
+            lambda *_args, **_kwargs: False,
+        )
+        if collection_focus_recent("phone"):
+            return self.confirmation_phone_max_speech_frames
+        if collection_focus_recent("address"):
+            return self.confirmation_address_max_speech_frames
+        return self.confirmation_max_speech_frames
 
     def _update_noise_floor(self, rms: int, *, output_recent: bool) -> None:
         if not self.adaptive_threshold or output_recent:
@@ -322,7 +371,15 @@ async def _finalize_call(bridge, call_id: str, store=None) -> None:
     if call_id == "unknown-call":
         return
     log(f"[{call_id}] ASR stage complete; starting final sales extraction")
-    await asyncio.to_thread(target_store.finish_call, call_id)
+    if bridge and getattr(bridge, "campaign_confirmation_mode", False):
+        await asyncio.to_thread(
+            target_store.finish_call,
+            call_id,
+            confirmed_delivery_facts=bridge.delivery_state.confirmed_facts(),
+            require_confirmed_delivery=True,
+        )
+    else:
+        await asyncio.to_thread(target_store.finish_call, call_id)
 
 
 def _telnyx_audio_turn_handler(call_id: str):
@@ -716,131 +773,624 @@ async def telnyx_outbound_answer(request: Request) -> Response:
     return Response(content=texml, media_type="application/xml")
 
 
+async def _send_queued_outbound_request(
+    outbound_request: dict[str, object],
+    product: dict[str, object],
+) -> dict[str, object]:
+    """Send one already-persisted outbound request to Telnyx."""
+    request_id = int(outbound_request["id"])
+    to_number = _normalize_phone_number(str(outbound_request.get("to_number") or ""))
+    from_number = _normalize_phone_number(str(
+        outbound_request.get("from_number")
+        or product.get("phone_number")
+        or config.telnyx.outbound_from_number
+        or ""
+    ))
+    if not to_number:
+        detail = "Missing to_number"
+        call_history.mark_outbound_request_failed(request_id, detail)
+        raise HTTPException(status_code=400, detail=detail)
+    if not from_number:
+        detail = "Missing from_number or TELNYX_OUTBOUND_FROM_NUMBER"
+        call_history.mark_outbound_request_failed(request_id, detail)
+        raise HTTPException(status_code=400, detail=detail)
+
+    missing = [
+        name
+        for name, value in {
+            "TELNYX_API_KEY": config.telnyx.api_key,
+            "TELNYX_ACCOUNT_SID": config.telnyx.account_sid,
+            "TELNYX_TEXML_APP_ID": product.get("texml_app_id") or config.telnyx.texml_app_id,
+            "PUBLIC_BASE_URL": config.public_base_url,
+        }.items()
+        if not value
+    ]
+    if missing:
+        detail = f"Missing config: {', '.join(missing)}"
+        call_history.mark_outbound_request_failed(request_id, detail)
+        raise HTTPException(status_code=500, detail=detail)
+
+    product_query = urlencode({"product_id": product["id"], "request_id": request_id})
+    body = {
+        "ApplicationSid": product.get("texml_app_id") or config.telnyx.texml_app_id,
+        "To": to_number,
+        "From": from_number,
+        "Url": _public_http_url(f"/telnyx/outbound/answer?{product_query}"),
+        "UrlMethod": "POST",
+        "StatusCallback": _public_http_url(f"/telnyx/outbound/status?{product_query}"),
+        "StatusCallbackMethod": "POST",
+    }
+    url = f"https://api.telnyx.com/v2/texml/Accounts/{config.telnyx.account_sid}/Calls"
+    headers = {
+        "Authorization": f"Bearer {config.telnyx.api_key}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=config.telnyx.outbound_call_timeout_seconds) as client:
+            response = await client.post(url, json=body, headers=headers)
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        detail = _telnyx_error_detail(exc.response)
+        call_history.mark_outbound_request_failed(request_id, detail)
+        raise HTTPException(status_code=502, detail=detail) from exc
+    except httpx.HTTPError as exc:
+        detail = f"Telnyx request failed: {exc}"
+        call_history.mark_outbound_request_failed(request_id, detail)
+        raise HTTPException(status_code=502, detail=detail) from exc
+
+    data = response.json()
+    call_sid = data.get("sid") or data.get("call_sid") or (data.get("data") or {}).get("sid")
+    started = call_history.mark_outbound_request_started_if_queued(
+        request_id,
+        call_sid or "",
+    )
+    if not started:
+        call_history.mark_outbound_request_canceled(request_id, call_sid or "")
+        if call_sid:
+            try:
+                await _hangup_telnyx_call(call_sid)
+            except HTTPException as exc:
+                log(
+                    f"Canceled Sheet request {request_id} was accepted by Telnyx, "
+                    f"but hangup failed: {exc.detail}"
+                )
+        return {
+            "ok": False,
+            "canceled": True,
+            "call_sid": call_sid,
+            "request": call_history.get_outbound_request(request_id),
+        }
+    log(
+        f"Telnyx outbound call requested: request={request_id} "
+        f"to={to_number} from={from_number} sid={call_sid}"
+    )
+    return {
+        "ok": True,
+        "call_sid": call_sid,
+        "request": call_history.get_outbound_request(request_id),
+        "product": {"id": product["id"], "name": product["name"]},
+        "telnyx": data,
+    }
+
+
+CAMPAIGN_TERMINAL_REQUEST_STATUSES = {
+    "completed",
+    "no_answer",
+    "busy",
+    "canceled",
+    "timed_out",
+    "failed",
+}
+
+
+async def _wait_for_campaign_request_terminal(
+    request_id: int,
+    campaign_run_id: str,
+    timeout_seconds: int,
+) -> str:
+    deadline = asyncio.get_running_loop().time() + timeout_seconds
+    while True:
+        request = call_history.get_outbound_request(request_id)
+        if not request:
+            return "failed"
+        request_status = str(request.get("status") or "")
+        if request_status in CAMPAIGN_TERMINAL_REQUEST_STATUSES:
+            return request_status
+        run = call_history.get_campaign_run(campaign_run_id) if campaign_run_id else None
+        if run and run.get("status") == "canceled":
+            return "canceled"
+        remaining = deadline - asyncio.get_running_loop().time()
+        if remaining <= 0:
+            call_sid = str(request.get("call_sid") or "")
+            call_history.mark_outbound_request_timed_out(request_id)
+            if call_sid:
+                try:
+                    await _hangup_telnyx_call(call_sid)
+                except HTTPException as exc:
+                    log(
+                        f"Campaign request {request_id} timed out and hangup failed: "
+                        f"{exc.detail}"
+                    )
+                    return "timeout_hangup_failed"
+            return "timed_out"
+        await asyncio.sleep(min(1.0, remaining))
+
+
+async def _wait_campaign_gap(campaign_run_id: str, delay_seconds: int) -> bool:
+    deadline = asyncio.get_running_loop().time() + delay_seconds
+    while True:
+        run = call_history.get_campaign_run(campaign_run_id) if campaign_run_id else None
+        if run and run.get("status") == "canceled":
+            return False
+        remaining = deadline - asyncio.get_running_loop().time()
+        if remaining <= 0:
+            return True
+        await asyncio.sleep(min(1.0, remaining))
+
+
+async def _dispatch_sheet_campaign(
+    request_ids: list[int],
+    delay_seconds: int,
+    campaign_run_id: str = "",
+    call_timeout_seconds: int = 480,
+) -> None:
+    """Call one Sheet lead at a time, then wait for its terminal callback."""
+    if campaign_run_id:
+        run = call_history.get_campaign_run(campaign_run_id)
+        if run and run.get("status") == "canceled":
+            return
+        call_history.update_campaign_run_status(campaign_run_id, "running")
+    for index, request_id in enumerate(request_ids):
+        outbound_request = call_history.get_outbound_request(request_id)
+        if not outbound_request or outbound_request.get("status") != "queued":
+            continue
+        product_id = outbound_request.get("product_id")
+        product = call_history.get_product(int(product_id)) if product_id else None
+        if not product or not product.get("active"):
+            call_history.mark_outbound_request_failed(
+                request_id,
+                "Selected product is missing or inactive",
+            )
+        else:
+            try:
+                await _send_queued_outbound_request(outbound_request, product)
+            except HTTPException as exc:
+                log(
+                    f"Sheet campaign request {request_id} failed: "
+                    f"{exc.status_code} {exc.detail}"
+                )
+
+        terminal_status = await _wait_for_campaign_request_terminal(
+            request_id,
+            campaign_run_id,
+            call_timeout_seconds,
+        )
+        if terminal_status == "timeout_hangup_failed":
+            if campaign_run_id:
+                call_history.cancel_campaign_run(campaign_run_id)
+                call_history.update_campaign_run_status(campaign_run_id, "failed")
+            return
+        if terminal_status == "canceled":
+            return
+        if index < len(request_ids) - 1 and delay_seconds:
+            should_continue = await _wait_campaign_gap(
+                campaign_run_id,
+                delay_seconds,
+            )
+            if not should_continue:
+                return
+    if campaign_run_id:
+        run = call_history.get_campaign_run(campaign_run_id)
+        if run and run.get("status") != "canceled":
+            call_history.update_campaign_run_status(campaign_run_id, "completed")
+
+
+def _sheet_campaign_phone_sets() -> tuple[set[str], set[str], set[str]]:
+    """Separate active, campaign-called, and unrelated historical phones."""
+    active: set[str] = set()
+    campaign_called: set[str] = set()
+    historical: set[str] = set()
+    retry_resets = call_history.list_campaign_retry_resets()
+    for request in call_history.list_outbound_requests(limit=2000):
+        phone = normalize_phone_number(str(request.get("to_number") or ""))
+        if not phone:
+            continue
+        if request.get("status") in {"queued", "started"}:
+            active.add(phone)
+        elif request.get("campaign_run_id") and request.get("call_sid"):
+            if int(request.get("id") or 0) > int(retry_resets.get(phone, 0)):
+                campaign_called.add(phone)
+            else:
+                historical.add(phone)
+        elif request.get("campaign_run_id"):
+            continue
+        elif request.get("status") != "failed":
+            historical.add(phone)
+    for call in call_history.list_calls(direction="outbound", limit=500):
+        phone = normalize_phone_number(
+            str(call.get("dialed_phone") or call.get("customer_phone") or "")
+        )
+        if phone:
+            historical.add(phone)
+    return active, campaign_called, historical
+
+
+def _classify_sheet_leads(
+    leads: list[dict[str, object]],
+    *,
+    skip_sheet_called: bool,
+) -> tuple[list[dict[str, object]], dict[str, int]]:
+    active_phones, campaign_called_phones, historical_phones = _sheet_campaign_phone_sets()
+    counts = {
+        "ready_count": 0,
+        "duplicate_count": 0,
+        "called_count": 0,
+        "campaign_called_count": 0,
+        "in_progress_count": 0,
+        "historical_count": 0,
+        "invalid_count": 0,
+    }
+    processed: list[dict[str, object]] = []
+    for source in leads:
+        lead = dict(source)
+        clean_phone = normalize_phone_number(str(lead.get("phone") or ""))
+        if lead.get("is_valid_phone") is False or not clean_phone:
+            lead["status_tag"] = "invalid"
+            lead["status_label"] = "SĐT không hợp lệ"
+            counts["invalid_count"] += 1
+        elif lead.get("is_duplicate"):
+            lead["status_tag"] = "duplicate"
+            lead["status_label"] = "Trùng lặp trong Sheet"
+            counts["duplicate_count"] += 1
+        elif clean_phone in active_phones:
+            lead["status_tag"] = "in_progress"
+            lead["status_label"] = "Đang chờ hoặc đang gọi"
+            counts["in_progress_count"] += 1
+        elif lead.get("called") and skip_sheet_called:
+            lead["status_tag"] = "already_called"
+            lead["status_label"] = "Sheet đã đánh dấu đã gọi"
+            counts["called_count"] += 1
+        elif clean_phone in campaign_called_phones:
+            lead["status_tag"] = "campaign_called"
+            lead["status_label"] = "Đã gọi trong chiến dịch"
+            counts["campaign_called_count"] += 1
+        elif clean_phone in historical_phones or lead.get("called"):
+            lead["status_tag"] = "ready_previously_called"
+            lead["status_label"] = "Sẵn sàng · Đã từng gọi"
+            counts["ready_count"] += 1
+            counts["historical_count"] += 1
+        else:
+            lead["status_tag"] = "ready"
+            lead["status_label"] = "Sẵn sàng gọi"
+            counts["ready_count"] += 1
+        processed.append(lead)
+    return processed, counts
+
+
+def _campaign_status_summary(run_id: str) -> dict[str, object] | None:
+    run = call_history.get_campaign_run(run_id)
+    if not run:
+        return None
+    requests = call_history.list_campaign_run_requests(run_id)
+    status_counts: dict[str, int] = {}
+    for request in requests:
+        request_status = str(request.get("status") or "unknown")
+        status_counts[request_status] = status_counts.get(request_status, 0) + 1
+    errors = [
+        str(request.get("error") or "")
+        for request in requests
+        if request.get("error")
+    ]
+    return {
+        "id": run_id,
+        "status": run.get("status") or "preparing",
+        "product_id": run.get("product_id"),
+        "delay_seconds": int(run.get("delay_seconds") or 0),
+        "call_timeout_seconds": int(run.get("call_timeout_seconds") or 480),
+        "created_at": run.get("created_at"),
+        "updated_at": run.get("updated_at"),
+        "total_count": len(requests),
+        "status_counts": status_counts,
+        "called_count": sum(1 for request in requests if request.get("call_sid")),
+        "can_cancel": any(
+            request.get("status") in {"queued", "started"} for request in requests
+        ),
+        "last_error": errors[-1] if errors else "",
+    }
+
+
 @app.post("/api/sheets/preview")
 async def api_sheets_preview(payload: dict) -> dict:
     sheet_url = str(payload.get("sheet_url") or "").strip()
     if not sheet_url:
         raise HTTPException(status_code=400, detail="Missing sheet_url")
+    raw_product_id = payload.get("product_id")
+    try:
+        product = (
+            call_history.get_product(int(raw_product_id))
+            if raw_product_id not in (None, "")
+            else call_history.get_default_product()
+        )
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid product_id")
+    if not product or not product.get("active"):
+        raise HTTPException(status_code=400, detail="Select an active product")
+    skip_already_called = bool(payload.get("skip_already_called", True))
     try:
         leads = await fetch_and_parse_google_sheet(sheet_url)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    existing_calls = call_history.list_calls(limit=500)
-    existing_phones = {
-        re.sub(r"\D", "", str(c.get("customer_phone") or c.get("dialed_phone") or ""))
-        for c in existing_calls
-        if c.get("customer_phone") or c.get("dialed_phone")
-    }
-
-    processed_leads = []
-    ready_count = 0
-    duplicate_count = 0
-    called_count = 0
-    invalid_count = 0
-
-    for lead in leads:
-        clean_phone = re.sub(r"\D", "", lead.get("phone") or "")
-        if lead.get("is_valid_phone") is False or not clean_phone:
-            lead["status_tag"] = "invalid"
-            lead["status_label"] = "SĐT không hợp lệ"
-            invalid_count += 1
-        elif lead.get("is_duplicate"):
-            lead["status_tag"] = "duplicate"
-            lead["status_label"] = "Trùng lặp trong Sheet"
-            duplicate_count += 1
-        elif lead.get("called") or (clean_phone and clean_phone in existing_phones):
-            lead["status_tag"] = "already_called"
-            lead["status_label"] = "Đã gọi trước đó"
-            called_count += 1
-        else:
-            lead["status_tag"] = "ready"
-            lead["status_label"] = "Sẵn sàng gọi"
-            ready_count += 1
-        processed_leads.append(lead)
+    processed_leads, counts = _classify_sheet_leads(
+        leads,
+        skip_sheet_called=skip_already_called,
+    )
 
     return {
         "ok": True,
+        "campaign_run_id": uuid4().hex,
         "count": len(processed_leads),
-        "ready_count": ready_count,
-        "duplicate_count": duplicate_count,
-        "called_count": called_count,
-        "invalid_count": invalid_count,
+        **counts,
+        "product": {"id": product["id"], "name": product["name"]},
         "leads": processed_leads,
     }
 
 
 @app.post("/api/sheets/launch-campaign")
-async def api_sheets_launch_campaign(payload: dict) -> dict:
+async def api_sheets_launch_campaign(
+    payload: dict,
+    background_tasks: BackgroundTasks,
+) -> dict:
     sheet_url = str(payload.get("sheet_url") or "").strip()
     leads = payload.get("leads") or []
     product_id = payload.get("product_id")
     from_number = str(payload.get("from_number") or "").strip()
     skip_already_called = bool(payload.get("skip_already_called", True))
-    delay_seconds = int(payload.get("delay_seconds", 0) or 0)
+    requested_run_id = str(payload.get("campaign_run_id") or "").strip()
+    if requested_run_id and not re.fullmatch(r"[A-Za-z0-9_-]{16,80}", requested_run_id):
+        raise HTTPException(status_code=400, detail="Invalid campaign_run_id")
+    campaign_run_id = requested_run_id or uuid4().hex
+    try:
+        delay_seconds = max(0, min(1800, int(payload.get("delay_seconds", 0) or 0)))
+        call_timeout_seconds = max(
+            60,
+            min(1800, int(payload.get("call_timeout_seconds", 480) or 480)),
+        )
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid campaign timing")
 
     if not leads and sheet_url:
         try:
             leads = await fetch_and_parse_google_sheet(sheet_url)
-            existing_calls = call_history.list_calls(limit=500)
-            existing_phones = {
-                re.sub(r"\D", "", str(c.get("customer_phone") or c.get("dialed_phone") or ""))
-                for c in existing_calls
-                if c.get("customer_phone") or c.get("dialed_phone")
-            }
-            for lead in leads:
-                clean_phone = re.sub(r"\D", "", lead.get("phone") or "")
-                if lead.get("is_valid_phone") is False or not clean_phone:
-                    lead["status_tag"] = "invalid"
-                elif lead.get("is_duplicate"):
-                    lead["status_tag"] = "duplicate"
-                elif lead.get("called") or (clean_phone and clean_phone in existing_phones):
-                    lead["status_tag"] = "already_called"
-                else:
-                    lead["status_tag"] = "ready"
         except Exception as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if not leads:
+    if not isinstance(leads, list) or not leads:
         raise HTTPException(status_code=400, detail="No valid leads found in Google Sheet")
 
-    product = call_history.get_product(int(product_id)) if product_id else call_history.get_default_product()
+    try:
+        product = (
+            call_history.get_product(int(product_id))
+            if product_id not in (None, "")
+            else call_history.get_default_product()
+        )
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid product_id")
+    if not product:
+        raise HTTPException(status_code=400, detail="Product not found")
+    if not product.get("active"):
+        raise HTTPException(status_code=400, detail="Selected product is inactive")
+    campaign_from_num = normalize_phone_number(
+        from_number
+        or product.get("phone_number")
+        or config.telnyx.outbound_from_number
+        or ""
+    )
+    if not campaign_from_num:
+        raise HTTPException(
+            status_code=400,
+            detail="Selected product has no outbound phone number",
+        )
+
+    run, run_created = call_history.create_campaign_run(
+        campaign_run_id,
+        sheet_url=sheet_url,
+        product_id=int(product["id"]),
+        delay_seconds=delay_seconds,
+        call_timeout_seconds=call_timeout_seconds,
+    )
+    if not run_created:
+        if int(run.get("product_id") or 0) != int(product["id"]) or str(
+            run.get("sheet_url") or ""
+        ) != sheet_url:
+            raise HTTPException(
+                status_code=409,
+                detail="campaign_run_id already belongs to another campaign",
+            )
+        existing_requests = call_history.list_campaign_run_requests(campaign_run_id)
+        if not existing_requests:
+            raise HTTPException(
+                status_code=409,
+                detail="Campaign run was not queued; preview the Sheet again",
+            )
+        return {
+            "ok": True,
+            "reused": True,
+            "campaign_run_id": campaign_run_id,
+            "count": len(existing_requests),
+            "queued_count": len(existing_requests),
+            "skipped_count": 0,
+            "delay_seconds": int(run.get("delay_seconds") or 0),
+            "call_timeout_seconds": int(run.get("call_timeout_seconds") or 480),
+            "requests": existing_requests,
+        }
+
+    malformed_count = sum(1 for lead in leads if not isinstance(lead, dict))
+    leads, _lead_counts = _classify_sheet_leads(
+        [dict(lead) for lead in leads if isinstance(lead, dict)],
+        skip_sheet_called=skip_already_called,
+    )
 
     created_requests = []
-    skipped_count = 0
+    skipped_count = malformed_count + max(0, len(leads) - 500)
+    campaign_leads = leads[:500]
+    latest_phone_index: dict[str, int] = {}
+    for index, lead in enumerate(campaign_leads):
+        if isinstance(lead, dict):
+            normalized = normalize_phone_number(str(lead.get("phone") or ""))
+            if normalized:
+                latest_phone_index[normalized] = index
 
-    for lead in leads:
+    for index, lead in enumerate(campaign_leads):
+        if not isinstance(lead, dict):
+            skipped_count += 1
+            continue
         to_number = normalize_phone_number(str(lead.get("phone") or ""))
         if not to_number or lead.get("status_tag") == "invalid":
             skipped_count += 1
             continue
 
+        if latest_phone_index.get(to_number) != index:
+            skipped_count += 1
+            continue
+
         status_tag = lead.get("status_tag", "ready")
-        if skip_already_called and status_tag in {"duplicate", "already_called"}:
+        if status_tag in {
+            "invalid",
+            "duplicate",
+            "in_progress",
+            "already_called",
+            "campaign_called",
+        }:
             skipped_count += 1
             continue
 
         prompt_override = build_outbound_sheet_prompt(lead, product)
         cust_name = str(lead.get("name") or "").strip()
-        cust_json = str(lead.get("raw_row") or {})
+        raw_row = lead.get("raw_row")
+        customer_payload = dict(raw_row) if isinstance(raw_row, dict) else {}
+        customer_payload["lead"] = {
+            key: lead.get(key) or ""
+            for key in (
+                "name",
+                "phone",
+                "product",
+                "offer",
+                "quantity",
+                "address",
+                "notes",
+            )
+        }
+        cust_json = json.dumps(
+            customer_payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
 
-        from_num = normalize_phone_number(from_number or (product.get("phone_number") if product else "") or config.telnyx.outbound_from_number or "")
         outbound_req = call_history.create_outbound_request(
             to_number=to_number,
-            from_number=from_num,
-            product_id=product["id"] if product else None,
+            from_number=campaign_from_num,
+            product_id=product["id"],
             prompt_override=prompt_override,
             customer_name=cust_name,
             customer_data_json=str(cust_json),
+            campaign_run_id=campaign_run_id,
         )
         created_requests.append(outbound_req)
 
+    if not created_requests:
+        call_history.update_campaign_run_status(campaign_run_id, "failed")
+        raise HTTPException(
+            status_code=400,
+            detail="No ready leads remain after validation and duplicate filtering",
+        )
+
+    background_tasks.add_task(
+        _dispatch_sheet_campaign,
+        [int(item["id"]) for item in created_requests],
+        delay_seconds,
+        campaign_run_id,
+        call_timeout_seconds,
+    )
+
     return {
         "ok": True,
+        "reused": False,
+        "campaign_run_id": campaign_run_id,
         "count": len(created_requests),
+        "queued_count": len(created_requests),
         "skipped_count": skipped_count,
         "delay_seconds": delay_seconds,
+        "call_timeout_seconds": call_timeout_seconds,
         "requests": created_requests,
+    }
+
+
+@app.get("/api/sheets/campaigns/active")
+async def api_active_sheet_campaign() -> dict[str, object]:
+    for run in call_history.list_campaign_runs(limit=50):
+        summary = _campaign_status_summary(str(run["id"]))
+        if summary and summary["can_cancel"]:
+            return {"campaign": summary}
+    return {"campaign": None}
+
+
+@app.post("/api/sheets/campaigns/allow-retry")
+async def api_allow_sheet_campaign_retry(payload: dict) -> dict[str, object]:
+    raw_numbers = payload.get("phone_numbers")
+    if not isinstance(raw_numbers, list):
+        raw_numbers = [payload.get("phone_number")]
+    phone_numbers: list[str] = []
+    for raw_number in raw_numbers[:500]:
+        phone = normalize_phone_number(str(raw_number or ""))
+        if phone and phone not in phone_numbers:
+            phone_numbers.append(phone)
+    if not phone_numbers:
+        raise HTTPException(status_code=400, detail="No valid phone numbers")
+    resets = [
+        call_history.allow_campaign_phone_retry(phone) for phone in phone_numbers
+    ]
+    return {
+        "ok": True,
+        "reset_count": len(resets),
+        "resets": resets,
+    }
+
+
+@app.get("/api/sheets/campaigns/{run_id}")
+async def api_sheet_campaign_status(run_id: str) -> dict[str, object]:
+    summary = _campaign_status_summary(run_id)
+    if not summary:
+        raise HTTPException(status_code=404, detail="Campaign run not found")
+    return {"campaign": summary}
+
+
+@app.post("/api/sheets/campaigns/{run_id}/cancel")
+async def api_cancel_sheet_campaign(run_id: str) -> dict[str, object]:
+    if not call_history.get_campaign_run(run_id):
+        raise HTTPException(status_code=404, detail="Campaign run not found")
+    canceled = call_history.cancel_campaign_run(run_id)
+    hangup_errors: list[dict[str, str]] = []
+    semaphore = asyncio.Semaphore(5)
+
+    async def hangup(call_sid: str) -> None:
+        async with semaphore:
+            try:
+                await _hangup_telnyx_call(call_sid)
+            except HTTPException as exc:
+                hangup_errors.append({"call_sid": call_sid, "error": str(exc.detail)})
+
+    await asyncio.gather(
+        *(hangup(call_sid) for call_sid in canceled["call_sids"]),
+    )
+    summary = _campaign_status_summary(run_id)
+    return {
+        "ok": True,
+        "canceled_count": canceled["canceled_count"],
+        "hangup_requested_count": len(canceled["call_sids"]),
+        "hangup_errors": hangup_errors,
+        "campaign": summary,
     }
 
 
@@ -958,8 +1508,7 @@ async def telnyx_outbound_call(request: Request) -> dict[str, object]:
     }
 
 
-@app.post("/telnyx/outbound/call/{call_sid}/hangup")
-async def telnyx_hangup_outbound_call(call_sid: str) -> dict[str, object]:
+async def _hangup_telnyx_call(call_sid: str) -> dict[str, object]:
     missing = [
         name
         for name, value in {
@@ -994,6 +1543,11 @@ async def telnyx_hangup_outbound_call(call_sid: str) -> dict[str, object]:
     return {"ok": True, "call_sid": call_sid, "telnyx": data}
 
 
+@app.post("/telnyx/outbound/call/{call_sid}/hangup")
+async def telnyx_hangup_outbound_call(call_sid: str) -> dict[str, object]:
+    return await _hangup_telnyx_call(call_sid)
+
+
 @app.get("/telnyx/greeting.wav")
 async def telnyx_greeting() -> FileResponse:
     return FileResponse(_telnyx_greeting_audio_path(), media_type="audio/wav")
@@ -1013,18 +1567,77 @@ def _telnyx_bridge_options(
     mode: str,
     product: dict[str, object] | None = None,
     prompt_override: str | None = None,
+    customer_name: str = "",
 ) -> dict[str, object]:
-    system_instruction = (
-        prompt_override.strip()
-        if prompt_override and prompt_override.strip()
-        else gemini_system_instruction(mode, product=product)
+    system_instruction = gemini_system_instruction(mode, product=product)
+    is_sheet_campaign = bool(prompt_override and prompt_override.strip())
+    if is_sheet_campaign:
+        system_instruction = (
+            f"{system_instruction}\n\n"
+            "The Sheet campaign workflow below specializes the generic outbound "
+            "conversation for a pre-qualified order. It never overrides product "
+            "facts, safety, phone, address, or final order-confirmation rules.\n"
+            f"{prompt_override.strip()}"
+        )
+    initial_greeting = (
+        build_outbound_sheet_greeting(customer_name, product)
+        if mode == "outbound" and is_sheet_campaign
+        else gemini_initial_greeting(mode, product=product)
+    )
+    initial_greeting = initial_greeting.replace(
+        "{customer_name}",
+        customer_name.strip(),
     )
     return {
         "send_initial_greeting": True,
-        "initial_greeting": gemini_initial_greeting(mode, product=product),
+        "initial_greeting": initial_greeting,
         "system_instruction": system_instruction,
         "language_code": product.get("language_code") if product else None,
         "voice_name": product.get("voice_name") if product else None,
+    }
+
+
+def _sheet_delivery_seed(
+    outbound_request: dict[str, object] | None,
+) -> dict[str, str]:
+    if not outbound_request or not str(outbound_request.get("prompt_override") or "").strip():
+        return {}
+
+    raw_data: dict[str, object] = {}
+    serialized = str(outbound_request.get("customer_data_json") or "").strip()
+    if serialized:
+        try:
+            parsed = json.loads(serialized)
+            if isinstance(parsed, dict):
+                raw_data = parsed
+        except (TypeError, ValueError):
+            raw_data = {}
+
+    normalized: dict[str, object] = {}
+    embedded_lead = raw_data.get("lead")
+    if isinstance(embedded_lead, dict):
+        normalized = embedded_lead
+    elif raw_data:
+        normalized = map_sheet_row(
+            {
+                str(key): "" if value is None else str(value)
+                for key, value in raw_data.items()
+            }
+        )
+
+    raw_name = str(
+        normalized.get("name")
+        or outbound_request.get("customer_name")
+        or ""
+    ).strip()
+    return {
+        "customer_name": clean_recipient_name(raw_name),
+        "phone": str(
+            normalized.get("phone")
+            or outbound_request.get("to_number")
+            or ""
+        ).strip(),
+        "shipping_address": str(normalized.get("address") or "").strip(),
     }
 
 
@@ -1198,7 +1811,25 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                         outbound_req = None
 
                 prompt_override = (outbound_req.get("prompt_override") or None) if outbound_req else None
-                bridge_options = _telnyx_bridge_options(mode, product, prompt_override=prompt_override)
+                campaign_confirmation_mode = bool(
+                    prompt_override and str(prompt_override).strip()
+                )
+                sheet_seed = _sheet_delivery_seed(outbound_req)
+                campaign_customer_name = sheet_seed.get("customer_name", "")
+                bridge_options = _telnyx_bridge_options(
+                    mode,
+                    product,
+                    prompt_override=prompt_override,
+                    customer_name=(
+                        campaign_customer_name
+                        if campaign_confirmation_mode
+                        else (
+                            (outbound_req.get("customer_name") or "")
+                            if outbound_req
+                            else ""
+                        )
+                    ),
+                )
                 bridge = GeminiCallBridge(
                     call_id=call_id,
                     call_sample_rate=sample_rate,
@@ -1213,6 +1844,12 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     voice_name=bridge_options["voice_name"],
                     on_transcript=_store_transcript(call_id),
                     on_audio_turn=_telnyx_audio_turn_handler(call_id),
+                    connected_phone=cust_phone,
+                    initial_customer_name=sheet_seed.get("customer_name", ""),
+                    initial_phone=sheet_seed.get("phone", ""),
+                    initial_shipping_address=sheet_seed.get("shipping_address", ""),
+                    require_customer_name=campaign_confirmation_mode,
+                    campaign_confirmation_mode=campaign_confirmation_mode,
                 )
                 input_gate = RealtimeInputGate(
                     bridge,
@@ -1229,6 +1866,7 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     noise_margin=input_gate_options["noise_margin"],
                     barge_in_threshold=input_gate_options["barge_in_threshold"],
                     echo_suppression_ms=input_gate_options["echo_suppression_ms"],
+                    campaign_confirmation_mode=campaign_confirmation_mode,
                 )
                 await bridge.start()
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cuộc gọi và đơn hàng</title>
-  <link rel="stylesheet" href="/static/dashboard.css?v=layout-fix-v22">
+  <link rel="stylesheet" href="/static/dashboard.css?v=layout-fix-v27">
 </head>
 <body>
   <header class="navigation-bar">
@@ -82,7 +82,7 @@
         <form id="sheetCampaignForm" class="call-form" style="display: none;">
           <label class="product-field">
             <span>Sản phẩm</span>
-            <select id="sheetProduct" name="product_id"><option value="">Mặc định theo Sheet</option></select>
+            <select id="sheetProduct" name="product_id" required><option value="">Chọn sản phẩm</option></select>
           </label>
           <label class="phone-field">
             <span>Link Google Sheet</span>
@@ -91,19 +91,36 @@
           <div class="call-actions sheet-actions">
             <button id="previewSheetButton" class="call-button preview-sheet-button" type="button">Xem trước</button>
             <button id="launchSheetButton" class="call-button launch-sheet-button" type="submit">Gọi chiến dịch</button>
+            <button id="cancelSheetCampaignButton" class="call-button cancel-sheet-button" type="button" hidden>Hủy chiến dịch đang chạy</button>
           </div>
           <div class="sheet-options-bar">
             <label class="sheet-checkbox-label">
               <input id="skipAlreadyCalledCheck" type="checkbox" checked>
-              <span>Lọc trùng & khách đã gọi</span>
+              <span>Bỏ qua dòng Sheet đã đánh dấu gọi</span>
             </label>
             <label class="sheet-delay-label">
-              <span>Giãn cách:</span>
+              <span>Nghỉ sau mỗi cuộc:</span>
               <select id="sheetDelaySelect">
-                <option value="0">Ngay lập tức</option>
+                <option value="0">Không nghỉ</option>
                 <option value="5">5 giây</option>
                 <option value="10">10 giây</option>
                 <option value="15">15 giây</option>
+                <option value="30">30 giây</option>
+                <option value="60">1 phút</option>
+                <option value="120">2 phút</option>
+                <option value="300">5 phút</option>
+                <option value="600">10 phút</option>
+              </select>
+            </label>
+            <label class="sheet-delay-label">
+              <span>Tối đa mỗi cuộc:</span>
+              <select id="sheetCallTimeoutSelect">
+                <option value="180">3 phút</option>
+                <option value="300">5 phút</option>
+                <option value="480" selected>8 phút</option>
+                <option value="600">10 phút</option>
+                <option value="900">15 phút</option>
+                <option value="1800">30 phút</option>
               </select>
             </label>
           </div>
@@ -183,6 +200,7 @@
         </div>
       </div>
       <footer class="modal-footer">
+        <button id="allowRetryAllButton" class="secondary-button allow-retry-all-button" type="button" hidden>Cho phép gọi lại tất cả</button>
         <button id="cancelModalButton" class="secondary-button" type="button">Hủy bỏ</button>
         <button id="confirmLaunchCampaignButton" class="primary-button" type="button" style="background:#16a34a; border-color:#16a34a;">Gọi chiến dịch ngay</button>
       </footer>
@@ -191,6 +209,6 @@
 
   <template id="loadingTemplate"><div class="list-state">Đang tải dữ liệu...</div></template>
   <template id="emptyTemplate"><div class="list-state"><strong>Chưa có cuộc gọi</strong></div></template>
-  <script src="/static/dashboard.js?v=layout-fix-v22" defer></script>
+  <script src="/static/dashboard.js?v=layout-fix-v27" defer></script>
 </body>
 </html>

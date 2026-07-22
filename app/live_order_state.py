@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any
 
 from google.genai import types
@@ -16,6 +17,20 @@ DELIVERY_STATE_FUNCTION = "update_delivery_state"
 PHONE_KEYPAD_FALLBACK_FAILURES = 3
 
 
+AMBIGUOUS_RECIPIENT_NAMES = {
+    "မမ",
+    "customer",
+    "customer name",
+    "khach hang",
+    "khách hàng",
+    "chị",
+    "chi",
+    "cô",
+    "co",
+    "anh",
+}
+
+
 def delivery_state_tool() -> types.Tool:
     return types.Tool(
         function_declarations=[
@@ -23,15 +38,16 @@ def delivery_state_tool() -> types.Tool:
                 name=DELIVERY_STATE_FUNCTION,
                 description=(
                     "Store or confirm one delivery field. Call this whenever the customer "
-                    "provides, corrects, accepts, or rejects a phone number or shipping "
-                    "address. A set action always replaces the previous value."
+                    "provides, corrects, accepts, or rejects a recipient name, phone "
+                    "number, or shipping address. A set action always replaces the "
+                    "previous value."
                 ),
                 parameters_json_schema={
                     "type": "object",
                     "properties": {
                         "field": {
                             "type": "string",
-                            "enum": ["phone", "shipping_address"],
+                            "enum": ["customer_name", "phone", "shipping_address"],
                         },
                         "action": {
                             "type": "string",
@@ -68,18 +84,36 @@ def _clean_address(value: str) -> str:
     return str(value or "").strip(" \t\r\n,.;:-။၊")
 
 
+def clean_recipient_name(value: str) -> str:
+    candidate = str(value or "").strip(" \t\r\n,.;:-။၊")
+    folded = re.sub(r"\s+", " ", candidate.casefold())
+    if (
+        not 2 <= len(candidate) <= 80
+        or folded in AMBIGUOUS_RECIPIENT_NAMES
+        or re.search(r"\d", candidate)
+        or not re.search(r"[A-Za-zÀ-ỹ\u1000-\u109F]", candidate)
+    ):
+        return ""
+    return candidate
+
+
 @dataclass
 class LiveDeliveryState:
     connected_phone: str = ""
+    require_customer_name: bool = False
+    customer_name: str = ""
+    name_confirmed: bool = False
     phone: str = ""
     phone_confirmed: bool = False
     shipping_address: str = ""
     address_confirmed: bool = False
     phone_failures: int = 0
+    phone_rejections: int = 0
+    name_failures: int = 0
     address_failures: int = 0
 
     def apply(self, *, field: str, action: str, value: str = "") -> dict[str, Any]:
-        if field not in {"phone", "shipping_address"}:
+        if field not in {"customer_name", "phone", "shipping_address"}:
             return self._response(False, "Unsupported delivery field.")
         if action not in {"set", "confirm", "reject"}:
             return self._response(False, "Unsupported delivery state action.")
@@ -92,13 +126,19 @@ class LiveDeliveryState:
 
     def confirmed_facts(self) -> dict[str, str]:
         return {
+            "customer_name": self.customer_name if self.name_confirmed else "",
             "phone": self.phone if self.phone_confirmed else "",
-            "address": self.shipping_address if self.address_confirmed else "",
+            "shipping_address": (
+                self.shipping_address if self.address_confirmed else ""
+            ),
         }
 
     def snapshot(self) -> dict[str, Any]:
         return {
             "connected_phone": self.connected_phone,
+            "require_customer_name": self.require_customer_name,
+            "customer_name": self.customer_name,
+            "name_confirmed": self.name_confirmed,
             "phone": self.phone,
             "phone_confirmed": self.phone_confirmed,
             "shipping_address": self.shipping_address,
@@ -109,6 +149,16 @@ class LiveDeliveryState:
         return self._response(ok, message)
 
     def _set(self, field: str, value: str) -> dict[str, Any]:
+        if field == "customer_name":
+            self.customer_name = ""
+            self.name_confirmed = False
+            candidate = clean_recipient_name(value)
+            if not candidate:
+                self.name_failures += 1
+                return self._response(False, "The recipient name is missing or ambiguous.")
+            self.customer_name = candidate
+            return self._response(True, "Recipient name candidate replaced.")
+
         if field == "phone":
             # A new attempt invalidates the old candidate even when this attempt is partial.
             self.phone = ""
@@ -133,6 +183,12 @@ class LiveDeliveryState:
         return self._response(True, "Shipping address candidate replaced.")
 
     def _confirm(self, field: str) -> dict[str, Any]:
+        if field == "customer_name":
+            if not self.customer_name:
+                return self._response(False, "There is no recipient name to confirm.")
+            self.name_confirmed = True
+            return self._response(True, "Recipient name confirmed by the customer.")
+
         if field == "phone":
             if not self.phone:
                 return self._response(False, "There is no phone candidate to confirm.")
@@ -145,10 +201,17 @@ class LiveDeliveryState:
         return self._response(True, "Shipping address confirmed by the customer.")
 
     def _reject(self, field: str) -> dict[str, Any]:
+        if field == "customer_name":
+            self.customer_name = ""
+            self.name_confirmed = False
+            self.name_failures += 1
+            return self._response(True, "Rejected recipient name cleared.")
+
         if field == "phone":
             self.phone = ""
             self.phone_confirmed = False
             self.phone_failures += 1
+            self.phone_rejections += 1
             return self._response(True, "Rejected phone candidate cleared.")
 
         self.shipping_address = ""
@@ -167,7 +230,22 @@ class LiveDeliveryState:
         }
 
     def _next_action(self) -> tuple[str, str]:
+        if self.require_customer_name and not self.customer_name:
+            return (
+                "ask_customer_name",
+                "Ask only for the recipient's complete name. Do not reuse the rejected or ambiguous Sheet name.",
+            )
+        if self.require_customer_name and not self.name_confirmed:
+            return (
+                "confirm_customer_name",
+                f"Read back this recipient name exactly: {self.customer_name}. Ask only whether it is correct.",
+            )
         if not self.phone:
+            if self.phone_rejections >= 1:
+                return (
+                    "collect_phone_by_keypad",
+                    "The customer rejected the first phone readback. Ask them to enter the complete delivery phone number on the keypad and press #. Do not accept another spoken replacement.",
+                )
             if self.phone_failures >= PHONE_KEYPAD_FALLBACK_FAILURES:
                 return (
                     "collect_phone_by_keypad",
@@ -184,14 +262,9 @@ class LiveDeliveryState:
                 f"Read back these digits one by one: {digits}. Ask only whether they are correct.",
             )
         if not self.shipping_address:
-            if self.address_failures >= 2:
-                return (
-                    "address_follow_up_required",
-                    "Stop asking for the address. Explain briefly that staff will verify the delivery address later; do not confirm the order yet.",
-                )
             return (
                 "ask_shipping_address",
-                "Ask only for the complete Myanmar shipping address.",
+                "Ask only for the complete Myanmar shipping address again. The rejected address is invalid and must never be reused.",
             )
         if not self.address_confirmed:
             return (
@@ -200,5 +273,5 @@ class LiveDeliveryState:
             )
         return (
             "read_back_order",
-            "Both delivery fields are confirmed. Read back the complete order once and ask for final order confirmation.",
+            "The required delivery fields are confirmed. Read back the complete order once using only the latest values and ask for final order confirmation.",
         )

@@ -1395,13 +1395,20 @@ textarea:focus-visible {
 }
 .offer-row {
   display: grid;
-  grid-template-columns: minmax(160px, 1.5fr) repeat(3, minmax(100px, .65fr)) minmax(140px, 1fr) 38px;
+  grid-template-columns: minmax(160px, 1.5fr) repeat(3, minmax(100px, .65fr)) minmax(140px, 1fr) minmax(72px, .35fr) 38px;
   gap: 8px;
   align-items: end;
   padding: 11px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel-soft);
+}
+.offer-active-field input[type="checkbox"] {
+  width: 20px;
+  min-height: 20px;
+  margin: 10px auto;
+  padding: 0;
+  accent-color: var(--accent);
 }
 .remove-offer-button {
   width: 38px;
@@ -1797,6 +1804,7 @@ body {
 }
 .sheet-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   width: 100%;
 }
@@ -1821,9 +1829,53 @@ body {
   justify-content: center;
 }
 
+.cancel-sheet-button {
+  flex: 1 0 100%;
+  grid-column: 1 / -1;
+  background: #fff1f2;
+  border-color: #fda4af;
+  color: #be123c;
+}
+
+.cancel-sheet-button:hover {
+  background: #ffe4e6;
+}
+
+.cancel-sheet-button[hidden] {
+  display: none;
+}
+
+.retry-phone-button,
+.allow-retry-all-button {
+  border-color: #f59e0b;
+  color: #92400e;
+  background: #fffbeb;
+}
+
+.retry-phone-button {
+  margin-top: 5px;
+  padding: 3px 7px;
+  border: 1px solid #f59e0b;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.retry-phone-button:hover,
+.allow-retry-all-button:hover {
+  background: #fef3c7;
+}
+
+.allow-retry-all-button[hidden] {
+  display: none;
+}
+
 .sheet-options-bar {
   grid-column: 1 / -1;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 16px;

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Quản lý sản phẩm</title>
-  <link rel="stylesheet" href="/static/dashboard.css?v=layout-fix-v22">
+  <link rel="stylesheet" href="/static/dashboard.css?v=layout-fix-v27">
 </head>
 <body class="products-page-body">
   <header class="navigation-bar">
@@ -63,7 +63,7 @@
           <h3>Kịch bản hội thoại</h3>
           <div class="field-grid">
             <label class="wide-field"><span>Lời chào khi khách gọi đến</span><textarea id="productInboundGreeting" name="inbound_greeting" rows="3" required></textarea></label>
-            <label class="wide-field"><span>Lời chào khi gọi cho khách</span><textarea id="productOutboundGreeting" name="outbound_greeting" rows="3" required></textarea></label>
+            <label class="wide-field"><span>Lời chào khi gọi cho khách</span><textarea id="productOutboundGreeting" name="outbound_greeting" rows="3" required></textarea><small>Có thể dùng <code>{customer_name}</code>; khi gọi từ Sheet hệ thống sẽ thay bằng tên khách.</small></label>
             <label class="wide-field">
               <span>Hướng dẫn bán hàng</span>
               <textarea id="productSystemPrompt" name="system_prompt" rows="5" required></textarea>
@@ -95,6 +95,6 @@
       </form>
     </div>
   </main>
-  <script src="/static/products.js?v=layout-fix-v22" defer></script>
+  <script src="/static/products.js?v=layout-fix-v27" defer></script>
 </body>
 </html>

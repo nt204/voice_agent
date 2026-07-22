@@ -24,6 +24,7 @@ def test_map_sheet_row():
         "Họ tên": "Aung Ko",
         "Số điện thoại": "+95912345678",
         "Sản phẩm": "Venus BigOne",
+        "Combo": "Venus BigOne Combo 2",
         "Số lượng": "2",
         "Địa chỉ": "Yangon, Myanmar",
         "Ghi chú": "Giao giờ hành chính",
@@ -34,6 +35,7 @@ def test_map_sheet_row():
     assert lead["name"] == "Aung Ko"
     assert lead["phone"] == "+95912345678"
     assert lead["product"] == "Venus BigOne"
+    assert lead["offer"] == "Venus BigOne Combo 2"
     assert lead["quantity"] == "2"
     assert lead["address"] == "Yangon, Myanmar"
     assert lead["notes"] == "Giao giờ hành chính"
@@ -51,3 +53,9 @@ def test_map_sheet_row_called_status():
     assert lead["name"] == "Myat Thu"
     assert lead["phone"] == "9777706050"
     assert lead["called"] is True
+
+
+def test_map_sheet_row_does_not_default_missing_quantity_to_one():
+    lead = map_sheet_row({"Name": "Myat Thu", "Phone": "9777706050"})
+
+    assert lead["quantity"] == ""

@@ -36,6 +36,7 @@ OUTBOUND_REQUEST_STATUSES = (
     "no_answer",
     "busy",
     "canceled",
+    "timed_out",
     "failed",
 )
 
@@ -71,6 +72,25 @@ product_offers_table = Table(
     Column("shipping_policy", Text, nullable=False, server_default=""),
     Column("active", Boolean, nullable=False, server_default=sql_text("true")),
     Column("created_at", Text, nullable=False),
+    Column("updated_at", Text, nullable=False),
+)
+campaign_runs_table = Table(
+    "campaign_runs",
+    metadata,
+    Column("id", String(80), primary_key=True),
+    Column("sheet_url", Text, nullable=False, server_default=""),
+    Column("product_id", Integer, ForeignKey("products.id", ondelete="SET NULL")),
+    Column("status", String(30), nullable=False, server_default="preparing"),
+    Column("delay_seconds", Integer, nullable=False, server_default="0"),
+    Column("call_timeout_seconds", Integer, nullable=False, server_default="480"),
+    Column("created_at", Text, nullable=False),
+    Column("updated_at", Text, nullable=False),
+)
+campaign_retry_resets_table = Table(
+    "campaign_retry_resets",
+    metadata,
+    Column("phone_number", Text, primary_key=True),
+    Column("reset_after_request_id", Integer, nullable=False, server_default="0"),
     Column("updated_at", Text, nullable=False),
 )
 calls_table = Table(
@@ -119,6 +139,7 @@ outbound_requests_table = Table(
     Column("prompt_override", Text, nullable=False, server_default=""),
     Column("customer_name", Text, nullable=False, server_default=""),
     Column("customer_data_json", Text, nullable=False, server_default=""),
+    Column("campaign_run_id", String(80), ForeignKey("campaign_runs.id", ondelete="SET NULL")),
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
 )
@@ -164,6 +185,7 @@ Index("idx_calls_product_id", calls_table.c.product_id)
 Index("idx_transcripts_call_id", transcripts_table.c.call_id, transcripts_table.c.id)
 Index("idx_outbound_requests_created_at", outbound_requests_table.c.created_at)
 Index("idx_outbound_requests_product_id", outbound_requests_table.c.product_id)
+Index("idx_outbound_requests_campaign_run_id", outbound_requests_table.c.campaign_run_id)
 Index("idx_orders_call_id", orders_table.c.call_id)
 Index("idx_orders_product_id", orders_table.c.product_id)
 Index("idx_product_offers_product_id", product_offers_table.c.product_id)
@@ -256,6 +278,57 @@ def _phone_from_sales_result(
     if _sales_result_blocks_customer_phone(sales_result):
         return sales_phone
     return sales_phone or extracted["phone"] or current_phone
+
+
+def apply_confirmed_delivery_facts(
+    sales_result: dict[str, Any],
+    confirmed_delivery_facts: Mapping[str, str] | None,
+) -> dict[str, Any]:
+    """Make confirmed campaign fields authoritative for persistence.
+
+    Sheet values and post-call speech extraction are only candidates.  For a
+    confirmation campaign, an unconfirmed candidate must not reappear in the
+    customer profile or order after the live state has rejected/cleared it.
+    """
+    facts = confirmed_delivery_facts or {}
+    name = _clean(facts.get("customer_name", ""))
+    phone = _clean(facts.get("phone", ""))
+    address = _clean(facts.get("shipping_address", ""))
+
+    customer = sales_result.setdefault("customer", {})
+    customer["name"] = name
+    customer["phone"] = phone
+    customer["address"] = address
+
+    order = sales_result.get("order")
+    if not isinstance(order, dict):
+        return sales_result
+
+    order["customer_name"] = name
+    order["customer_phone"] = phone
+    order["shipping_address"] = address
+
+    missing_fields = _field_names(order.get("missing_fields"))
+    blocking_reasons = _field_names(order.get("blocking_reasons"))
+    for field, value in (
+        ("customer_phone", phone),
+        ("shipping_address", address),
+    ):
+        missing_fields = [item for item in missing_fields if item != field]
+        blocking_reasons = [item for item in blocking_reasons if item != field]
+        if not value:
+            missing_fields.append(field)
+            blocking_reasons.append(field)
+
+    order["missing_fields"] = list(dict.fromkeys(missing_fields))
+    if "blocking_reasons" in order or blocking_reasons:
+        order["blocking_reasons"] = list(dict.fromkeys(blocking_reasons))
+    order["status"] = (
+        "ready_to_confirm" if not order["missing_fields"] else "missing_info"
+    )
+    if order["status"] == "missing_info":
+        order["confidence"] = min(float(order.get("confidence") or 0.65), 0.65)
+    return sales_result
 
 
 def interest_status_from_intent(intent_status: str) -> str:
@@ -523,13 +596,13 @@ class SQLiteCallHistoryStore:
                 to_number,
                 created_at,
                 CASE
-                    WHEN status IN ('completed', 'no_answer', 'busy', 'canceled', 'failed')
+                        WHEN status IN ('completed', 'no_answer', 'busy', 'canceled', 'timed_out', 'failed')
                     THEN updated_at
                     ELSE NULL
                 END
             FROM outbound_call_requests
             WHERE call_sid <> ''
-              AND status IN ('queued', 'started', 'completed', 'no_answer', 'busy', 'canceled', 'failed')
+              AND status IN ('queued', 'started', 'completed', 'no_answer', 'busy', 'canceled', 'timed_out', 'failed')
               AND NOT EXISTS (
                   SELECT 1 FROM calls WHERE calls.id = outbound_call_requests.call_sid
               )
@@ -670,7 +743,7 @@ class SQLiteCallHistoryStore:
             return "active"
         if status == "completed":
             return "completed"
-        if status in {"no_answer", "busy", "canceled", "failed"}:
+        if status in {"no_answer", "busy", "canceled", "timed_out", "failed"}:
             return "failed"
         return None
 
@@ -747,7 +820,13 @@ class SQLiteCallHistoryStore:
                     (call_id, clean_text, _now()),
                 )
 
-    def finish_call(self, call_id: str) -> None:
+    def finish_call(
+        self,
+        call_id: str,
+        *,
+        confirmed_delivery_facts: Mapping[str, str] | None = None,
+        require_confirmed_delivery: bool = False,
+    ) -> None:
         call = self.get_call(call_id)
         if not call:
             return
@@ -757,6 +836,11 @@ class SQLiteCallHistoryStore:
             call["transcript"],
             fallback_phone=fallback_phone,
         )
+        if require_confirmed_delivery:
+            apply_confirmed_delivery_facts(
+                sales_result,
+                confirmed_delivery_facts,
+            )
         interest_status = interest_status_from_intent(
             sales_result["analysis"]["intent_status"]
         )
@@ -1064,6 +1148,8 @@ class SQLiteCallHistoryStore:
             result["customer_name"] = row["customer_name"]
         if "customer_data_json" in keys:
             result["customer_data_json"] = row["customer_data_json"]
+        if "campaign_run_id" in keys:
+            result["campaign_run_id"] = row["campaign_run_id"] or ""
         return result
 
     @staticmethod

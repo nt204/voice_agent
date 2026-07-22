@@ -18,6 +18,24 @@ def test_dashboard_is_fully_localized_for_vietnamese_staff():
     assert "Bản ghi cuộc gọi" in source
     assert "Sản phẩm mặc định" in products_source
     assert "Đã lưu sản phẩm" in products_source
+    assert "Bỏ qua dòng Sheet đã đánh dấu gọi" in html
+    assert "Sẵn sàng · Đã từng gọi" in source
+    assert "campaign_run_id: state.sheetCampaignRunId" in source
+    assert "lead.offer || lead.product || data.product?.name" in source
+    assert 'id="cancelSheetCampaignButton"' in html
+    assert "Hủy chiến dịch đang chạy" in html
+    assert "/api/sheets/campaigns/${encodeURIComponent(runId)}/cancel" in source
+    assert "Telnyx đã khóa tài khoản gọi đi (D17)" in source
+    assert "Đã gọi trong chiến dịch" in source
+    assert 'id="allowRetryAllButton"' in html
+    assert "Cho phép gọi lại tất cả" in html
+    assert "/api/sheets/campaigns/allow-retry" in source
+    assert 'data-retry-phone="${escapeHtml(lead.phone || "")}"' in source
+    assert 'id="sheetCallTimeoutSelect"' in html
+    assert "Nghỉ sau mỗi cuộc" in html
+    assert "Tối đa mỗi cuộc" in html
+    assert '<option value="600">10 phút</option>' in html
+    assert "call_timeout_seconds: callTimeoutSeconds" in source
 
     forbidden_labels = (
         "Voice AI Sales",

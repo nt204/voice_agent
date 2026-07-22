@@ -1,6 +1,6 @@
 import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from app.logging_utils import log
 
@@ -14,10 +14,13 @@ from app.call_history import (
     SQLiteCallHistoryStore,
     _now,
     analysis_table,
+    campaign_retry_resets_table,
+    campaign_runs_table,
     calls_table,
     extract_customer_info,
     _customer_name_from_sales_result,
     _phone_from_sales_result,
+    apply_confirmed_delivery_facts,
     interest_status_from_intent,
     metadata,
     orders_table,
@@ -80,14 +83,27 @@ class SqlAlchemyCallHistoryStore:
                 ("prompt_override", "TEXT NOT NULL DEFAULT ''"),
                 ("customer_name", "TEXT NOT NULL DEFAULT ''"),
                 ("customer_data_json", "TEXT NOT NULL DEFAULT ''"),
+                ("campaign_run_id", "VARCHAR(80) REFERENCES campaign_runs(id)"),
             ]:
                 if col_name not in outbound_cols:
                     connection.execute(text(f"ALTER TABLE outbound_call_requests ADD COLUMN {col_name} {col_type}"))
+            campaign_cols = {
+                col["name"] for col in inspect(connection).get_columns("campaign_runs")
+            }
+            if "call_timeout_seconds" not in campaign_cols:
+                connection.execute(
+                    text(
+                        "ALTER TABLE campaign_runs ADD COLUMN "
+                        "call_timeout_seconds INTEGER NOT NULL DEFAULT 480"
+                    )
+                )
             for index_sql in (
                 "CREATE INDEX IF NOT EXISTS idx_calls_product_id ON calls(product_id)",
                 "CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders(product_id)",
                 "CREATE INDEX IF NOT EXISTS idx_outbound_requests_product_id "
                 "ON outbound_call_requests(product_id)",
+                "CREATE INDEX IF NOT EXISTS idx_outbound_requests_campaign_run_id "
+                "ON outbound_call_requests(campaign_run_id)",
             ):
                 connection.execute(text(index_sql))
             self._seed_default_product(connection)
@@ -175,13 +191,13 @@ class SqlAlchemyCallHistoryStore:
                 product_id,
                 created_at,
                     CASE
-                        WHEN status IN ('completed', 'no_answer', 'busy', 'canceled', 'failed')
+                        WHEN status IN ('completed', 'no_answer', 'busy', 'canceled', 'timed_out', 'failed')
                         THEN updated_at
                         ELSE NULL
                     END
                 FROM outbound_call_requests AS request
                 WHERE call_sid <> ''
-                  AND status IN ('queued', 'started', 'completed', 'no_answer', 'busy', 'canceled', 'failed')
+                  AND status IN ('queued', 'started', 'completed', 'no_answer', 'busy', 'canceled', 'timed_out', 'failed')
                 ON CONFLICT(id) DO UPDATE SET
                     status=excluded.status,
                     dialed_phone=CASE
@@ -212,6 +228,8 @@ class SqlAlchemyCallHistoryStore:
 
             table_order = (
                 calls_table,
+                campaign_runs_table,
+                campaign_retry_resets_table,
                 outbound_requests_table,
                 transcripts_table,
                 analysis_table,
@@ -414,6 +432,7 @@ class SqlAlchemyCallHistoryStore:
         prompt_override: str = "",
         customer_name: str = "",
         customer_data_json: str = "",
+        campaign_run_id: str | None = None,
     ) -> dict[str, Any]:
         now = _now()
         with self._lock, self.engine.begin() as connection:
@@ -426,12 +445,202 @@ class SqlAlchemyCallHistoryStore:
                     prompt_override=prompt_override.strip(),
                     customer_name=customer_name.strip(),
                     customer_data_json=customer_data_json.strip(),
+                    campaign_run_id=campaign_run_id or None,
                     created_at=now,
                     updated_at=now,
                 )
             )
             request_id = int(result.inserted_primary_key[0])
         return self.get_outbound_request(request_id) or {}
+
+    def create_campaign_run(
+        self,
+        run_id: str,
+        *,
+        sheet_url: str,
+        product_id: int,
+        delay_seconds: int,
+        call_timeout_seconds: int = 480,
+    ) -> tuple[dict[str, Any], bool]:
+        now = _now()
+        created = True
+        try:
+            with self._lock, self.engine.begin() as connection:
+                connection.execute(
+                    campaign_runs_table.insert().values(
+                        id=run_id,
+                        sheet_url=sheet_url.strip(),
+                        product_id=product_id,
+                        status="preparing",
+                        delay_seconds=delay_seconds,
+                        call_timeout_seconds=call_timeout_seconds,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
+        except IntegrityError:
+            created = False
+        return self.get_campaign_run(run_id) or {}, created
+
+    def get_campaign_run(self, run_id: str) -> dict[str, Any] | None:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(campaign_runs_table).where(campaign_runs_table.c.id == run_id)
+            ).mappings().first()
+        return dict(row) if row else None
+
+    def update_campaign_run_status(self, run_id: str, status: str) -> None:
+        if status not in {
+            "preparing",
+            "running",
+            "dispatched",
+            "completed",
+            "canceled",
+            "failed",
+        }:
+            return
+        with self._lock, self.engine.begin() as connection:
+            connection.execute(
+                campaign_runs_table.update()
+                .where(campaign_runs_table.c.id == run_id)
+                .values(status=status, updated_at=_now())
+            )
+
+    def list_campaign_run_requests(self, run_id: str) -> list[dict[str, Any]]:
+        with self.engine.connect() as connection:
+            rows = connection.execute(
+                select(outbound_requests_table)
+                .where(outbound_requests_table.c.campaign_run_id == run_id)
+                .order_by(outbound_requests_table.c.id.asc())
+            ).mappings().all()
+        return [self._outbound_request_summary(row) for row in rows]
+
+    def list_campaign_runs(self, limit: int = 20) -> list[dict[str, Any]]:
+        with self.engine.connect() as connection:
+            rows = connection.execute(
+                select(campaign_runs_table)
+                .order_by(campaign_runs_table.c.created_at.desc())
+                .limit(max(1, min(limit, 200)))
+            ).mappings().all()
+        return [dict(row) for row in rows]
+
+    def cancel_campaign_run(self, run_id: str) -> dict[str, Any]:
+        now = _now()
+        with self._lock, self.engine.begin() as connection:
+            rows = connection.execute(
+                select(outbound_requests_table).where(
+                    outbound_requests_table.c.campaign_run_id == run_id,
+                    outbound_requests_table.c.status.in_(("queued", "started")),
+                )
+            ).mappings().all()
+            connection.execute(
+                outbound_requests_table.update()
+                .where(
+                    outbound_requests_table.c.campaign_run_id == run_id,
+                    outbound_requests_table.c.status.in_(("queued", "started")),
+                )
+                .values(status="canceled", updated_at=now)
+            )
+            connection.execute(
+                campaign_runs_table.update()
+                .where(campaign_runs_table.c.id == run_id)
+                .values(status="canceled", updated_at=now)
+            )
+        return {
+            "canceled_count": len(rows),
+            "call_sids": [str(row["call_sid"]) for row in rows if row["call_sid"]],
+        }
+
+    def allow_campaign_phone_retry(self, phone_number: str) -> dict[str, Any]:
+        phone = phone_number.strip()
+        now = _now()
+        with self._lock, self.engine.begin() as connection:
+            reset_after = connection.scalar(
+                select(func.max(outbound_requests_table.c.id)).where(
+                    outbound_requests_table.c.to_number == phone,
+                    outbound_requests_table.c.campaign_run_id.is_not(None),
+                    outbound_requests_table.c.call_sid != "",
+                )
+            )
+            reset_after_request_id = int(reset_after or 0)
+            existing = connection.scalar(
+                select(campaign_retry_resets_table.c.phone_number).where(
+                    campaign_retry_resets_table.c.phone_number == phone
+                )
+            )
+            if existing:
+                connection.execute(
+                    campaign_retry_resets_table.update()
+                    .where(campaign_retry_resets_table.c.phone_number == phone)
+                    .values(
+                        reset_after_request_id=reset_after_request_id,
+                        updated_at=now,
+                    )
+                )
+            else:
+                connection.execute(
+                    campaign_retry_resets_table.insert().values(
+                        phone_number=phone,
+                        reset_after_request_id=reset_after_request_id,
+                        updated_at=now,
+                    )
+                )
+        return {
+            "phone_number": phone,
+            "reset_after_request_id": reset_after_request_id,
+            "updated_at": now,
+        }
+
+    def list_campaign_retry_resets(self) -> dict[str, int]:
+        with self.engine.connect() as connection:
+            rows = connection.execute(select(campaign_retry_resets_table)).mappings().all()
+        return {
+            str(row["phone_number"]): int(row["reset_after_request_id"] or 0)
+            for row in rows
+        }
+
+    def mark_outbound_request_started_if_queued(
+        self,
+        request_id: int,
+        call_sid: str = "",
+    ) -> bool:
+        with self._lock, self.engine.begin() as connection:
+            result = connection.execute(
+                outbound_requests_table.update()
+                .where(
+                    outbound_requests_table.c.id == request_id,
+                    outbound_requests_table.c.status == "queued",
+                )
+                .values(
+                    status="started",
+                    call_sid=call_sid,
+                    error="",
+                    updated_at=_now(),
+                )
+            )
+        if not result.rowcount:
+            return False
+        request = self.get_outbound_request(request_id)
+        if call_sid and request:
+            self.update_outbound_request_by_call_sid(
+                call_sid,
+                "started",
+                dialed_phone=request["to_number"],
+                started_at=request["created_at"],
+                product_id=request.get("product_id"),
+            )
+        return True
+
+    def mark_outbound_request_canceled(
+        self,
+        request_id: int,
+        call_sid: str = "",
+    ) -> None:
+        self._update_outbound_request(
+            request_id,
+            status="canceled",
+            call_sid=call_sid or None,
+        )
 
     def mark_outbound_request_started(self, request_id: int, call_sid: str = "") -> None:
         self._update_outbound_request(request_id, status="started", call_sid=call_sid, error="")
@@ -447,6 +656,22 @@ class SqlAlchemyCallHistoryStore:
 
     def mark_outbound_request_failed(self, request_id: int, error: str) -> None:
         self._update_outbound_request(request_id, status="failed", error=error)
+
+    def mark_outbound_request_timed_out(self, request_id: int) -> None:
+        request = self.get_outbound_request(request_id)
+        self._update_outbound_request(
+            request_id,
+            status="timed_out",
+            error="Call exceeded the campaign timeout",
+        )
+        if request and request.get("call_sid"):
+            self.update_outbound_request_by_call_sid(
+                str(request["call_sid"]),
+                "timed_out",
+                dialed_phone=str(request.get("to_number") or ""),
+                ended_at=_now(),
+                product_id=request.get("product_id"),
+            )
 
     def update_outbound_request_by_call_sid(
         self,
@@ -523,7 +748,7 @@ class SqlAlchemyCallHistoryStore:
             rows = connection.execute(
                 select(outbound_requests_table)
                 .order_by(outbound_requests_table.c.created_at.desc())
-                .limit(max(1, min(limit, 200)))
+                .limit(max(1, min(limit, 2000)))
             ).mappings().all()
         return [self._outbound_request_summary(row) for row in rows]
 
@@ -654,7 +879,13 @@ class SqlAlchemyCallHistoryStore:
                     )
                 )
 
-    def finish_call(self, call_id: str) -> None:
+    def finish_call(
+        self,
+        call_id: str,
+        *,
+        confirmed_delivery_facts: Mapping[str, str] | None = None,
+        require_confirmed_delivery: bool = False,
+    ) -> None:
         call = self.get_call(call_id)
         if not call:
             return
@@ -667,6 +898,11 @@ class SqlAlchemyCallHistoryStore:
             call["transcript"],
             **extraction_options,
         )
+        if require_confirmed_delivery:
+            apply_confirmed_delivery_facts(
+                sales_result,
+                confirmed_delivery_facts,
+            )
         interest_status = interest_status_from_intent(
             sales_result["analysis"]["intent_status"]
         )

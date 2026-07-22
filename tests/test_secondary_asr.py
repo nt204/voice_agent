@@ -457,3 +457,45 @@ def test_call_finalization_waits_for_asr_before_sales_extraction() -> None:
     asyncio.run(main._finalize_call(Bridge(), "ordered-finalization", Store()))
 
     assert events == ["asr", "close", "extract:ordered-finalization"]
+
+
+def test_campaign_finalization_passes_only_live_confirmed_delivery_facts() -> None:
+    calls = []
+
+    class DeliveryState:
+        def confirmed_facts(self):
+            return {
+                "customer_name": "New Name",
+                "phone": "09793905153",
+                "shipping_address": "Yangon address",
+            }
+
+    class Bridge:
+        campaign_confirmation_mode = True
+        delivery_state = DeliveryState()
+
+        async def finalize_transcript(self, store) -> None:
+            pass
+
+        async def close(self) -> None:
+            pass
+
+    class Store:
+        def finish_call(self, call_id, **kwargs) -> None:
+            calls.append((call_id, kwargs))
+
+    asyncio.run(main._finalize_call(Bridge(), "campaign-finalization", Store()))
+
+    assert calls == [
+        (
+            "campaign-finalization",
+            {
+                "confirmed_delivery_facts": {
+                    "customer_name": "New Name",
+                    "phone": "09793905153",
+                    "shipping_address": "Yangon address",
+                },
+                "require_confirmed_delivery": True,
+            },
+        )
+    ]

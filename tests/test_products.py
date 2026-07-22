@@ -200,6 +200,35 @@ def test_product_rejects_duplicate_phone_and_cannot_disable_only_default(tmp_pat
     assert disabled_venus["active"] is False
 
 
+def test_product_requires_unambiguous_active_offer_configuration(tmp_path):
+    store = CallHistoryStore(tmp_path / "product-offer-validation.db")
+
+    with pytest.raises(ValueError, match="at least one offer"):
+        store.create_product(_product_payload(offers=[]))
+
+    inactive_offers = [
+        {**offer, "active": False}
+        for offer in _product_payload()["offers"]
+    ]
+    with pytest.raises(ValueError, match="at least one active offer"):
+        store.create_product(
+            _product_payload(slug="all-inactive", offers=inactive_offers)
+        )
+
+    duplicate_quantity = [
+        _product_payload()["offers"][0],
+        {
+            **_product_payload()["offers"][1],
+            "name": "Moe Collagen Alternate Single",
+            "quantity": 1,
+        },
+    ]
+    with pytest.raises(ValueError, match="unique quantities"):
+        store.create_product(
+            _product_payload(slug="duplicate-quantity", offers=duplicate_quantity)
+        )
+
+
 def test_calls_requests_and_orders_keep_product_association(tmp_path):
     store = CallHistoryStore(tmp_path / "products.db")
     product = store.create_product(_product_payload())

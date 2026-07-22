@@ -1,4 +1,9 @@
-from app.call_history import CallHistoryStore, SQLiteCallHistoryStore, extract_customer_info
+from app.call_history import (
+    CallHistoryStore,
+    SQLiteCallHistoryStore,
+    apply_confirmed_delivery_facts,
+    extract_customer_info,
+)
 import sqlite3
 
 
@@ -416,3 +421,72 @@ def test_final_asr_can_clear_an_unreliable_live_transcript(tmp_path):
     call = store.get_call("unclear-turn")
     assert call is not None
     assert call["transcript"][0]["text"] == ""
+
+
+def test_campaign_confirmed_delivery_facts_override_post_call_extraction() -> None:
+    result = {
+        "customer": {
+            "name": "Old Name",
+            "phone": "09999999999",
+            "address": "Old address",
+        },
+        "order": {
+            "customer_name": "Old Name",
+            "customer_phone": "09999999999",
+            "shipping_address": "Old address",
+            "status": "ready_to_confirm",
+            "missing_fields": [],
+            "blocking_reasons": [],
+            "confidence": 0.9,
+        },
+    }
+
+    apply_confirmed_delivery_facts(
+        result,
+        {
+            "customer_name": "New Name",
+            "phone": "09793905153",
+            "shipping_address": "New Yangon address",
+        },
+    )
+
+    assert result["customer"] == {
+        "name": "New Name",
+        "phone": "09793905153",
+        "address": "New Yangon address",
+    }
+    assert result["order"]["customer_phone"] == "09793905153"
+    assert result["order"]["shipping_address"] == "New Yangon address"
+    assert result["order"]["status"] == "ready_to_confirm"
+    assert result["order"]["missing_fields"] == []
+
+
+def test_campaign_unconfirmed_delivery_values_cannot_reappear_in_order() -> None:
+    result = {
+        "customer": {
+            "name": "Wrong Name",
+            "phone": "09999999999",
+            "address": "Rejected address",
+        },
+        "order": {
+            "customer_name": "Wrong Name",
+            "customer_phone": "09999999999",
+            "shipping_address": "Rejected address",
+            "status": "ready_to_confirm",
+            "missing_fields": [],
+            "blocking_reasons": [],
+            "confidence": 0.9,
+        },
+    }
+
+    apply_confirmed_delivery_facts(result, {})
+
+    assert result["customer"]["phone"] == ""
+    assert result["customer"]["address"] == ""
+    assert result["order"]["customer_phone"] == ""
+    assert result["order"]["shipping_address"] == ""
+    assert result["order"]["status"] == "missing_info"
+    assert result["order"]["missing_fields"] == [
+        "customer_phone",
+        "shipping_address",
+    ]

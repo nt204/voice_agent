@@ -37,14 +37,17 @@ def normalize_column_name(header: str) -> str:
 def map_sheet_row(row: dict[str, str]) -> dict[str, Any]:
     """
     Maps a CSV row dict (header -> val) to normalized lead fields:
-    phone, name, product, quantity, address, notes, called, status_raw.
+    phone, name, product, offer, quantity, address, notes, called, status_raw.
     """
     normalized_dict = {normalize_column_name(k): v.strip() for k, v in row.items() if k}
     
     phone = ""
     name = ""
     product = ""
-    quantity = "1"
+    offer = ""
+    # Missing quantity must stay unknown. Sheet campaigns confirm an existing
+    # order, but must never silently turn an empty quantity into one item.
+    quantity = ""
     address = ""
     notes = ""
     called = False
@@ -59,6 +62,10 @@ def map_sheet_row(row: dict[str, str]) -> dict[str, Any]:
         # Name
         elif any(term in key for term in ["name", "tên", "khách_hàng", "họ_tên", "customer"]):
             name = val
+        # Configured product and selected package/offer are separate concepts.
+        # A Sheet commonly stores "Combo" while the campaign selects Product.
+        elif any(term in key for term in ["combo", "offer", "package", "gói"]):
+            offer = val
         # Product
         elif any(term in key for term in ["product", "sản_phẩm", "sp", "item"]):
             product = val
@@ -93,6 +100,7 @@ def map_sheet_row(row: dict[str, str]) -> dict[str, Any]:
         "phone": phone,
         "name": name,
         "product": product,
+        "offer": offer,
         "quantity": quantity,
         "address": address,
         "notes": notes,

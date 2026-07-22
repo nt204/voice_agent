@@ -65,6 +65,7 @@ function renderOfferRows(offers = []) {
       <label class="offer-field"><span>Đơn giá</span><input data-offer="unit_price" type="number" min="1" value="${Number(offer.unit_price || 1)}" required></label>
       <label class="offer-field"><span>Tổng giá</span><input data-offer="total_price" type="number" min="1" value="${Number(offer.total_price || 1)}" required></label>
       <label class="offer-field"><span>Vận chuyển</span><input data-offer="shipping_policy" value="${escapeHtml(offer.shipping_policy || "")}" placeholder="Miễn phí giao hàng"></label>
+      <label class="offer-field offer-active-field"><span>Đang bán</span><input data-offer="active" type="checkbox" ${offer.active !== false ? "checked" : ""}></label>
       <button class="remove-offer-button" type="button" aria-label="Xóa ${escapeHtml(offer.name || "gói bán")}">&#10005;</button>
     </div>
   `).join("");
@@ -131,7 +132,7 @@ function collectOffers() {
     unit_price: Number(row.querySelector('[data-offer="unit_price"]').value),
     total_price: Number(row.querySelector('[data-offer="total_price"]').value),
     shipping_policy: row.querySelector('[data-offer="shipping_policy"]').value.trim(),
-    active: true,
+    active: row.querySelector('[data-offer="active"]').checked,
   }));
 }
 

@@ -109,3 +109,27 @@ def test_barge_in_can_be_disabled() -> None:
     assert bridge.muted == []
     assert bridge.started == 0
     assert bridge.frames == []
+
+
+def test_campaign_confirmation_ignores_recent_output_echo() -> None:
+    async def run() -> _FakeBridge:
+        bridge = _FakeBridge()
+        gate = RealtimeInputGate(
+            bridge,
+            "campaign-readback-echo",
+            speech_threshold=300,
+            speech_start_frames=2,
+            barge_in_threshold=900,
+            allow_barge_in=True,
+            campaign_confirmation_mode=True,
+        )
+
+        for _ in range(5):
+            await gate.push(b"\x01\x00" * 160, 1400)
+        return bridge
+
+    bridge = asyncio.run(run())
+
+    assert bridge.muted == []
+    assert bridge.started == 0
+    assert bridge.frames == []

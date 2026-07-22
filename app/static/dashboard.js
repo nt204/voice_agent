@@ -15,6 +15,9 @@ const state = {
   orderPageSize: 8,
   refreshing: false,
   activeCallSid: "",
+  sheetCampaignRunId: "",
+  activeSheetCampaignRunId: "",
+  sheetCampaignCalledPhones: [],
 };
 
 const callList = document.querySelector("#callList");
@@ -41,6 +44,7 @@ const sheetCampaignForm = document.querySelector("#sheetCampaignForm");
 const sheetUrlInput = document.querySelector("#sheetUrlInput");
 const previewSheetButton = document.querySelector("#previewSheetButton");
 const launchSheetButton = document.querySelector("#launchSheetButton");
+const cancelSheetCampaignButton = document.querySelector("#cancelSheetCampaignButton");
 const sheetCampaignStatus = document.querySelector("#sheetCampaignStatus");
 const modeQuickTab = document.querySelector("#modeQuickTab");
 const modeSheetTab = document.querySelector("#modeSheetTab");
@@ -184,6 +188,7 @@ async function writeJson(url, method, body) {
 async function loadProducts({ preserveSelection = true } = {}) {
   const previousFilter = preserveSelection ? state.productId : "";
   const previousOutbound = outboundProduct?.value || "";
+  const previousSheet = sheetProduct?.value || "";
   const data = await fetchJson("/api/products");
   state.products = data.products || [];
   const activeProducts = state.products.filter(product => product.active);
@@ -210,9 +215,13 @@ async function loadProducts({ preserveSelection = true } = {}) {
   }
 
   if (sheetProduct) {
-    sheetProduct.innerHTML = '<option value="">Mặc định theo Sheet</option>' + activeProducts.map(product => `
-      <option value="${product.id}">${escapeHtml(product.name)}</option>
-    `).join("");
+    sheetProduct.innerHTML = activeProducts.length
+      ? activeProducts.map(product => `<option value="${product.id}">${escapeHtml(product.name)}</option>`).join("")
+      : '<option value="">Chưa có sản phẩm hoạt động</option>';
+    const preferredSheet = activeProducts.some(product => String(product.id) === String(previousSheet))
+      ? previousSheet
+      : defaultProduct?.id || "";
+    sheetProduct.value = String(preferredSheet);
   }
 }
 
@@ -684,6 +693,7 @@ function renderOfferRows(offers = []) {
       <label class="offer-field"><span>Đơn giá</span><input data-offer="unit_price" type="number" min="1" value="${Number(offer.unit_price || 1)}" required></label>
       <label class="offer-field"><span>Tổng giá</span><input data-offer="total_price" type="number" min="1" value="${Number(offer.total_price || 1)}" required></label>
       <label class="offer-field"><span>Vận chuyển</span><input data-offer="shipping_policy" value="${escapeHtml(offer.shipping_policy || "")}" placeholder="Miễn phí giao hàng"></label>
+      <label class="offer-field offer-active-field"><span>Đang bán</span><input data-offer="active" type="checkbox" ${offer.active !== false ? "checked" : ""}></label>
       <button class="remove-offer-button" type="button" aria-label="Xóa ${escapeHtml(offer.name || "gói bán")}">&#10005;</button>
     </div>
   `).join("");
@@ -749,7 +759,7 @@ function collectOffers() {
     unit_price: Number(row.querySelector('[data-offer="unit_price"]').value),
     total_price: Number(row.querySelector('[data-offer="total_price"]').value),
     shipping_policy: row.querySelector('[data-offer="shipping_policy"]').value.trim(),
-    active: true,
+    active: row.querySelector('[data-offer="active"]').checked,
   }));
 }
 
@@ -949,9 +959,105 @@ const sheetPreviewTableBody = document.querySelector("#sheetPreviewTableBody");
 const closeModalButton = document.querySelector("#closeModalButton");
 const cancelModalButton = document.querySelector("#cancelModalButton");
 const confirmLaunchCampaignButton = document.querySelector("#confirmLaunchCampaignButton");
+const allowRetryAllButton = document.querySelector("#allowRetryAllButton");
 
 const skipAlreadyCalledCheck = document.querySelector("#skipAlreadyCalledCheck");
 const sheetDelaySelect = document.querySelector("#sheetDelaySelect");
+const sheetCallTimeoutSelect = document.querySelector("#sheetCallTimeoutSelect");
+
+[sheetUrlInput, sheetProduct, skipAlreadyCalledCheck].forEach(element => {
+  element?.addEventListener("change", () => {
+    state.sheetCampaignRunId = "";
+  });
+});
+
+function setActiveSheetCampaign(runId = "") {
+  state.activeSheetCampaignRunId = runId;
+  if (cancelSheetCampaignButton) cancelSheetCampaignButton.hidden = !runId;
+  try {
+    if (runId) localStorage.setItem("activeSheetCampaignRunId", runId);
+    else localStorage.removeItem("activeSheetCampaignRunId");
+  } catch (_error) {
+    // Storage can be disabled; in-memory tracking still works.
+  }
+}
+
+function conciseCampaignError(error = "") {
+  const message = String(error);
+  if (message.includes("D17") || message.includes("Account is disabled")) {
+    return "Telnyx đã khóa tài khoản gọi đi (D17).";
+  }
+  return message.length > 180 ? `${message.slice(0, 177)}...` : message;
+}
+
+async function refreshActiveSheetCampaign() {
+  let runId = state.activeSheetCampaignRunId;
+  if (!runId) {
+    try {
+      runId = localStorage.getItem("activeSheetCampaignRunId") || "";
+    } catch (_error) {
+      runId = "";
+    }
+  }
+  try {
+    const data = runId
+      ? await fetchJson(`/api/sheets/campaigns/${encodeURIComponent(runId)}`)
+      : await fetchJson("/api/sheets/campaigns/active");
+    const campaign = data.campaign;
+    if (!campaign) {
+      setActiveSheetCampaign();
+      return;
+    }
+    const counts = campaign.status_counts || {};
+    const pending = Number(counts.queued || 0);
+    const calling = Number(counts.started || 0);
+    const failed = Number(counts.failed || 0) + Number(counts.timed_out || 0);
+    const canceled = Number(counts.canceled || 0);
+    if (campaign.can_cancel) {
+      setActiveSheetCampaign(campaign.id);
+      if (sheetCampaignStatus) {
+        sheetCampaignStatus.textContent = `Chiến dịch đang chạy: ${pending} chờ, ${calling} đang gọi, ${failed} lỗi.`;
+        sheetCampaignStatus.className = failed ? "form-status error" : "form-status success";
+      }
+      return;
+    }
+    setActiveSheetCampaign();
+    if (!sheetCampaignStatus) return;
+    if (failed) {
+      sheetCampaignStatus.textContent = `Chiến dịch không gọi được ${failed}/${campaign.total_count} khách. ${conciseCampaignError(campaign.last_error)}`;
+      sheetCampaignStatus.className = "form-status error";
+    } else if (campaign.status === "canceled" || canceled) {
+      sheetCampaignStatus.textContent = `Đã hủy chiến dịch (${canceled} cuộc gọi đã dừng).`;
+      sheetCampaignStatus.className = "form-status success";
+    } else {
+      sheetCampaignStatus.textContent = `Chiến dịch đã gửi ${campaign.called_count}/${campaign.total_count} cuộc gọi.`;
+      sheetCampaignStatus.className = "form-status success";
+    }
+  } catch (_error) {
+    // Keep the current action message and retry on the next poll.
+  }
+}
+
+cancelSheetCampaignButton?.addEventListener("click", async () => {
+  const runId = state.activeSheetCampaignRunId;
+  if (!runId || !window.confirm("Dừng các số đang chờ và ngắt cuộc gọi đang chạy?")) return;
+  cancelSheetCampaignButton.disabled = true;
+  if (sheetCampaignStatus) {
+    sheetCampaignStatus.textContent = "Đang hủy chiến dịch...";
+    sheetCampaignStatus.className = "form-status";
+  }
+  try {
+    await postJson(`/api/sheets/campaigns/${encodeURIComponent(runId)}/cancel`, {});
+    await refreshActiveSheetCampaign();
+  } catch (error) {
+    if (sheetCampaignStatus) {
+      sheetCampaignStatus.textContent = error.message;
+      sheetCampaignStatus.className = "form-status error";
+    }
+  } finally {
+    cancelSheetCampaignButton.disabled = false;
+  }
+});
 
 function openSheetPreviewModal(data = {}) {
   const leads = data.leads || [];
@@ -960,10 +1066,20 @@ function openSheetPreviewModal(data = {}) {
   const readyCount = data.ready_count !== undefined ? data.ready_count : leads.filter(l => l.status_tag === "ready").length;
   const dupCount = data.duplicate_count !== undefined ? data.duplicate_count : leads.filter(l => l.status_tag === "duplicate").length;
   const calledCount = data.called_count !== undefined ? data.called_count : leads.filter(l => l.status_tag === "already_called").length;
+  const campaignCalledCount = data.campaign_called_count !== undefined ? data.campaign_called_count : leads.filter(l => l.status_tag === "campaign_called").length;
+  const inProgressCount = data.in_progress_count !== undefined ? data.in_progress_count : leads.filter(l => l.status_tag === "in_progress").length;
+  const historicalCount = data.historical_count !== undefined ? data.historical_count : leads.filter(l => l.status_tag === "ready_previously_called").length;
   const invalidCount = data.invalid_count !== undefined ? data.invalid_count : leads.filter(l => l.status_tag === "invalid").length;
+  state.sheetCampaignCalledPhones = leads
+    .filter(lead => lead.status_tag === "campaign_called" && lead.phone)
+    .map(lead => String(lead.phone));
+  if (allowRetryAllButton) {
+    allowRetryAllButton.hidden = state.sheetCampaignCalledPhones.length === 0;
+    allowRetryAllButton.textContent = `Cho phép gọi lại tất cả (${state.sheetCampaignCalledPhones.length})`;
+  }
 
   if (modalLeadSummary) {
-    modalLeadSummary.textContent = `Tổng ${leads.length} khách: ${readyCount} sẵn sàng, ${dupCount} trùng lặp, ${calledCount} đã gọi, ${invalidCount} SĐT lỗi.`;
+    modalLeadSummary.textContent = `Tổng ${leads.length} khách: ${readyCount} sẵn sàng (${historicalCount} có lịch sử khác), ${inProgressCount} đang chờ/gọi, ${campaignCalledCount} đã gọi chiến dịch, ${calledCount} Sheet đã đánh dấu, ${dupCount} trùng, ${invalidCount} SĐT lỗi.`;
   }
   if (confirmLaunchCampaignButton) {
     confirmLaunchCampaignButton.textContent = `Gọi chiến dịch cho ${readyCount} khách sẵn sàng`;
@@ -976,16 +1092,23 @@ function openSheetPreviewModal(data = {}) {
     } else if (lead.status_tag === "duplicate") {
       badgeHtml = '<span style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🟡 Trùng lặp trong Sheet</span>';
     } else if (lead.status_tag === "already_called") {
-      badgeHtml = '<span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🔵 Đã gọi trước đó</span>';
+      badgeHtml = '<span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🔵 Sheet đã đánh dấu đã gọi</span>';
+    } else if (lead.status_tag === "in_progress") {
+      badgeHtml = '<span style="background:#ede9fe; color:#6d28d9; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🟣 Đang chờ / đang gọi</span>';
+    } else if (lead.status_tag === "ready_previously_called") {
+      badgeHtml = '<span style="background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🟢 Sẵn sàng · Đã từng gọi</span>';
+    } else if (lead.status_tag === "campaign_called") {
+      badgeHtml = `<div><span style="background:#e0e7ff; color:#4338ca; padding:2px 8px; border-radius:12px; font-weight:600; font-size:11px;">🔵 Đã gọi trong chiến dịch</span><br><button class="retry-phone-button" type="button" data-retry-phone="${escapeHtml(lead.phone || "")}">Cho phép gọi lại</button></div>`;
     }
 
+    const isReady = ["ready", "ready_previously_called"].includes(lead.status_tag);
     return `
-      <tr style="${lead.status_tag !== 'ready' ? 'opacity: 0.7;' : ''}">
+      <tr style="${!isReady ? 'opacity: 0.7;' : ''}">
         <td><strong>${index + 1}</strong></td>
         <td><strong>${escapeHtml(lead.name || "Chưa có")}</strong></td>
         <td><code style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">${escapeHtml(lead.phone || "Thiếu SĐT")}</code></td>
-        <td>${escapeHtml(lead.product || "Mặc định")}</td>
-        <td>${escapeHtml(lead.quantity || "1")}</td>
+        <td>${escapeHtml(lead.offer || lead.product || data.product?.name || "Sản phẩm đã chọn")}</td>
+        <td>${escapeHtml(lead.quantity || "Chưa có")}</td>
         <td>${escapeHtml(lead.address || "Chưa có")}</td>
         <td>${badgeHtml}</td>
         <td><span style="color:#64748b;">${escapeHtml(lead.notes || "—")}</span></td>
@@ -1008,11 +1131,65 @@ sheetPreviewModal?.addEventListener("click", (e) => {
   if (e.target === sheetPreviewModal) closeSheetPreviewModal();
 });
 
+async function allowSheetCampaignRetry(phoneNumbers) {
+  const uniquePhones = [...new Set(phoneNumbers.filter(Boolean).map(String))];
+  if (!uniquePhones.length) return;
+  const data = await postJson("/api/sheets/campaigns/allow-retry", {
+    phone_numbers: uniquePhones,
+  });
+  if (sheetCampaignStatus) {
+    sheetCampaignStatus.textContent = `Đã cho phép gọi lại ${data.reset_count} khách. Đang cập nhật danh sách...`;
+    sheetCampaignStatus.className = "form-status success";
+  }
+  previewSheetButton?.click();
+}
+
+sheetPreviewTableBody?.addEventListener("click", async event => {
+  const button = event.target.closest?.("[data-retry-phone]");
+  if (!button) return;
+  const phone = button.dataset.retryPhone || "";
+  if (!phone || !window.confirm(`Cho phép gọi lại số ${phone}? Lịch sử cũ vẫn được giữ nguyên.`)) return;
+  button.disabled = true;
+  try {
+    await allowSheetCampaignRetry([phone]);
+  } catch (error) {
+    button.disabled = false;
+    if (sheetCampaignStatus) {
+      sheetCampaignStatus.textContent = error.message;
+      sheetCampaignStatus.className = "form-status error";
+    }
+  }
+});
+
+allowRetryAllButton?.addEventListener("click", async () => {
+  const phones = state.sheetCampaignCalledPhones;
+  if (!phones.length || !window.confirm(`Cho phép gọi lại ${phones.length} khách? Lịch sử cũ vẫn được giữ nguyên.`)) return;
+  allowRetryAllButton.disabled = true;
+  try {
+    await allowSheetCampaignRetry(phones);
+  } catch (error) {
+    if (sheetCampaignStatus) {
+      sheetCampaignStatus.textContent = error.message;
+      sheetCampaignStatus.className = "form-status error";
+    }
+  } finally {
+    allowRetryAllButton.disabled = false;
+  }
+});
+
 previewSheetButton?.addEventListener("click", async () => {
   const sheetUrl = sheetUrlInput?.value.trim();
+  const productId = sheetProduct?.value || "";
   if (!sheetUrl) {
     if (sheetCampaignStatus) {
       sheetCampaignStatus.textContent = "Hãy nhập đường dẫn Google Sheet.";
+      sheetCampaignStatus.className = "form-status error";
+    }
+    return;
+  }
+  if (!productId) {
+    if (sheetCampaignStatus) {
+      sheetCampaignStatus.textContent = "Hãy chọn sản phẩm cho chiến dịch.";
       sheetCampaignStatus.className = "form-status error";
     }
     return;
@@ -1023,7 +1200,12 @@ previewSheetButton?.addEventListener("click", async () => {
     sheetCampaignStatus.className = "form-status";
   }
   try {
-    const data = await postJson("/api/sheets/preview", { sheet_url: sheetUrl });
+    const data = await postJson("/api/sheets/preview", {
+      sheet_url: sheetUrl,
+      product_id: Number(productId),
+      skip_already_called: skipAlreadyCalledCheck ? skipAlreadyCalledCheck.checked : true,
+    });
+    state.sheetCampaignRunId = data.campaign_run_id || "";
     if (sheetCampaignStatus) {
       sheetCampaignStatus.textContent = `Đã kết nối ${data.count} khách hàng (${data.ready_count} sẵn sàng gọi). Đang mở bảng xem trước...`;
       sheetCampaignStatus.className = "form-status success";
@@ -1044,10 +1226,22 @@ async function triggerLaunchCampaign() {
   const productId = sheetProduct?.value || "";
   const skipAlreadyCalled = skipAlreadyCalledCheck ? skipAlreadyCalledCheck.checked : true;
   const delaySeconds = sheetDelaySelect ? Number(sheetDelaySelect.value) || 0 : 0;
+  const callTimeoutSeconds = sheetCallTimeoutSelect ? Number(sheetCallTimeoutSelect.value) || 480 : 480;
+  if (!state.sheetCampaignRunId) {
+    state.sheetCampaignRunId = globalThis.crypto?.randomUUID?.()
+      || `campaign-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
 
   if (!sheetUrl) {
     if (sheetCampaignStatus) {
       sheetCampaignStatus.textContent = "Hãy nhập đường dẫn Google Sheet.";
+      sheetCampaignStatus.className = "form-status error";
+    }
+    return;
+  }
+  if (!productId) {
+    if (sheetCampaignStatus) {
+      sheetCampaignStatus.textContent = "Hãy chọn sản phẩm cho chiến dịch.";
       sheetCampaignStatus.className = "form-status error";
     }
     return;
@@ -1064,14 +1258,21 @@ async function triggerLaunchCampaign() {
       product_id: productId ? Number(productId) : null,
       skip_already_called: skipAlreadyCalled,
       delay_seconds: delaySeconds,
+      call_timeout_seconds: callTimeoutSeconds,
+      campaign_run_id: state.sheetCampaignRunId || null,
     });
     closeSheetPreviewModal();
     if (sheetCampaignStatus) {
-      const delayInfo = data.delay_seconds > 0 ? ` (giãn cách ${data.delay_seconds}s)` : "";
-      sheetCampaignStatus.textContent = `Đã thêm ${data.count} cuộc gọi từ Google Sheet vào hàng chờ${delayInfo}!`;
+      const delayInfo = data.delay_seconds > 0 ? ` (nghỉ ${data.delay_seconds}s sau mỗi cuộc)` : "";
+      sheetCampaignStatus.textContent = data.reused
+        ? `Chiến dịch này đã được khởi tạo trước đó (${data.count} cuộc gọi), hệ thống không tạo trùng.`
+        : `Đã thêm ${data.count} cuộc gọi từ Google Sheet vào hàng chờ${delayInfo}!`;
       sheetCampaignStatus.className = "form-status success";
     }
+    setActiveSheetCampaign(data.campaign_run_id || "");
+    state.sheetCampaignRunId = "";
     await loadDashboard();
+    window.setTimeout(refreshActiveSheetCampaign, 500);
   } catch (error) {
     if (sheetCampaignStatus) {
       sheetCampaignStatus.textContent = error.message;
@@ -1097,6 +1298,9 @@ const refreshDashboardSilently = () => {
   if (!document.hidden) loadDashboard({ silent: true });
 };
 setInterval(refreshDashboardSilently, 3000);
+setInterval(() => {
+  if (!document.hidden) refreshActiveSheetCampaign();
+}, 3000);
 document.addEventListener("visibilitychange", refreshDashboardSilently);
 window.addEventListener("focus", refreshDashboardSilently);
 async function bootDashboard() {
@@ -1106,6 +1310,7 @@ async function bootDashboard() {
     if (syncStatus) syncStatus.textContent = "Lỗi tải sản phẩm";
   }
   await loadDashboard();
+  await refreshActiveSheetCampaign();
 }
 
 bootDashboard();

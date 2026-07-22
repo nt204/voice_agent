@@ -17,6 +17,7 @@ from app.live_order_state import (
 )
 from app.logging_utils import log
 from app.sales_analysis import (
+    PHONE_CORRECTION_RE,
     _extract_phone_precise,
     _phone_comparison_digits,
     _turn_confirms_phone,
@@ -29,6 +30,11 @@ TranscriptHandler = Callable[[str, str], Awaitable[None] | None]
 PHONE_REPLACEMENT_RE = re.compile(
     r"(?:ဖုန်းနံပါတ်အသစ်|နံပါတ်အသစ်|ဖုန်းအသစ်|အသစ်ပေး|အသစ်ပြော|"
     r"new\s+(?:phone|number)|different\s+(?:phone|number)|another\s+(?:phone|number))",
+    flags=re.IGNORECASE,
+)
+DELIVERY_CORRECTION_RE = re.compile(
+    r"(?:မဟုတ်|မှား|မမှန်|ပြင်|ပြောင်း|အသစ်|wrong|incorrect|not\s+correct|"
+    r"change|update|replace|edit|sai|không\s+đúng|khong\s+dung|sửa|sua|đổi|doi)",
     flags=re.IGNORECASE,
 )
 
@@ -85,6 +91,12 @@ class GeminiCallBridge:
         voice_name: str | None = None,
         on_transcript: TranscriptHandler | None = None,
         on_audio_turn: Callable[[bytes, int, int, str], Awaitable[str]] | None = None,
+        connected_phone: str = "",
+        initial_customer_name: str = "",
+        initial_phone: str = "",
+        initial_shipping_address: str = "",
+        require_customer_name: bool = False,
+        campaign_confirmation_mode: bool = False,
     ):
         self.call_id = call_id
         self.call_sample_rate = call_sample_rate
@@ -99,6 +111,7 @@ class GeminiCallBridge:
         self.voice_name = voice_name
         self.on_transcript = on_transcript
         self.on_audio_turn = on_audio_turn
+        self.campaign_confirmation_mode = campaign_confirmation_mode
         self.current_turn_audio = bytearray()
         self.completed_turns_audio = []
         self.realtime_live_transcript_parts = []
@@ -123,17 +136,41 @@ class GeminiCallBridge:
         self.completed_turn_count = 0
         self.last_output_at = 0.0
         self.last_model_activity_at = 0.0
-        self.delivery_state = LiveDeliveryState()
+        self.delivery_state = LiveDeliveryState(
+            connected_phone=connected_phone,
+            require_customer_name=require_customer_name,
+        )
+        if initial_customer_name:
+            self.delivery_state.apply(
+                field="customer_name",
+                action="set",
+                value=initial_customer_name,
+            )
+        if initial_phone:
+            self.delivery_state.apply(
+                field="phone",
+                action="set",
+                value=initial_phone,
+            )
+        if initial_shipping_address:
+            self.delivery_state.apply(
+                field="shipping_address",
+                action="set",
+                value=initial_shipping_address,
+            )
         self.dtmf_digits = ""
         self.recorded_confirmed_facts: set[tuple[str, str]] = set()
         self.confirmed_fact_values: dict[str, str] = {}
         self.keypad_phone = ""
         self.collection_focus = ""
         self.collection_focus_until = 0.0
-        self.authoritative_phone = ""
-        self.authoritative_phone_source = ""
+        self.authoritative_phone = self.delivery_state.phone
+        self.authoritative_phone_source = "sheet" if self.authoritative_phone else ""
         self.last_phone_capture_conflicted = False
         self.pending_authoritative_phone_readback = ""
+        self.phone_keypad_prompted = False
+        self.phone_confirmation_followup_sent = False
+        self.replacement_prompted_fields: set[str] = set()
 
     async def start(self) -> None:
         live = self.client.aio.live.connect(
@@ -269,7 +306,7 @@ class GeminiCallBridge:
         if self.collection_focus != focus or not self.collection_focus_until:
             return False
         now = asyncio.get_running_loop().time()
-        return now <= self.collection_focus_until + seconds
+        return now - self.collection_focus_until <= seconds
 
     async def start_input_activity(self) -> None:
         if not self.session or not self.explicit_vad or self.input_activity_active:
@@ -291,10 +328,15 @@ class GeminiCallBridge:
         
         audio_bytes = bytes(self.current_turn_audio)
         live_candidate = " ".join(self.realtime_live_transcript_parts).strip()
-        self._capture_authoritative_phone(
+        correction_handled = await self._handle_customer_delivery_correction(
             live_candidate,
             source="Gemini Live transcript",
         )
+        if not correction_handled:
+            self._capture_authoritative_phone(
+                live_candidate,
+                source="Gemini Live transcript",
+            )
         if audio_bytes:
             turn_no = len(self.completed_turns_audio)
             self.completed_turns_audio.append((
@@ -419,14 +461,19 @@ class GeminiCallBridge:
                             live_customer_text = " ".join(
                                 self.realtime_live_transcript_parts
                             ).strip()
-                            self._capture_authoritative_phone(
+                            correction_handled = await self._handle_customer_delivery_correction(
                                 live_customer_text,
                                 source="Gemini Live transcript",
                             )
-                            if not self.last_phone_capture_conflicted:
-                                await self._confirm_authoritative_phone_from_text(
-                                    live_customer_text
+                            if not correction_handled:
+                                self._capture_authoritative_phone(
+                                    live_customer_text,
+                                    source="Gemini Live transcript",
                                 )
+                                if not self.last_phone_capture_conflicted:
+                                    await self._confirm_authoritative_phone_from_text(
+                                        live_customer_text
+                                    )
                         if content.output_transcription and content.output_transcription.text:
                             self.last_model_activity_at = asyncio.get_running_loop().time()
                             log(f"[{self.call_id}] Gemini: {content.output_transcription.text}")
@@ -478,6 +525,8 @@ class GeminiCallBridge:
             return
 
         function_responses = []
+        phone_rejected_by_tool = False
+        phone_confirmed_by_tool = False
         for function_call in tool_call.function_calls or []:
             if function_call.name != DELIVERY_STATE_FUNCTION:
                 result = {"ok": False, "message": "Unsupported tool."}
@@ -492,9 +541,10 @@ class GeminiCallBridge:
                     else ""
                 )
                 authoritative_phone = _phone_comparison_digits(self.authoritative_phone)
+                had_phone = bool(self.authoritative_phone or self.delivery_state.phone)
                 if (
                     field == "phone"
-                    and action in {"set", "reject"}
+                    and action == "set"
                     and self.authoritative_phone_source == "keypad"
                 ):
                     result = self.delivery_state.status_response(
@@ -508,6 +558,20 @@ class GeminiCallBridge:
                     log(
                         f"[{self.call_id}] Ignored model phone {action}; "
                         f"keypad phone remains '{self.authoritative_phone}'"
+                    )
+                elif (
+                    self.campaign_confirmation_mode
+                    and field == "phone"
+                    and action == "set"
+                    and self.delivery_state.phone_rejections >= 1
+                    and self.authoritative_phone_source != "keypad"
+                ):
+                    result = self.delivery_state.status_response(
+                        ok=False,
+                        message=(
+                            "A rejected campaign phone can only be replaced by a complete "
+                            "keypad entry ending in #. Ignore spoken replacement digits."
+                        ),
                     )
                 elif (
                     field == "phone"
@@ -538,10 +602,15 @@ class GeminiCallBridge:
                     )
                 else:
                     if field == "phone" and action == "reject":
+                        phone_rejected_by_tool = phone_rejected_by_tool or had_phone
                         self.authoritative_phone = ""
                         self.authoritative_phone_source = ""
                         self.pending_authoritative_phone_readback = ""
+                        self.keypad_phone = ""
+                        self.phone_confirmation_followup_sent = False
                         self.confirmed_fact_values.pop("phone", None)
+                    elif field == "customer_name" and action == "reject":
+                        self.confirmed_fact_values.pop("customer_name", None)
                     elif field == "shipping_address" and action == "reject":
                         self.confirmed_fact_values.pop("shipping_address", None)
                     result = self.delivery_state.apply(
@@ -549,9 +618,15 @@ class GeminiCallBridge:
                         action=action,
                         value=value,
                     )
+                    if result["ok"] and action == "set":
+                        self.replacement_prompted_fields.discard(field)
+                        if field == "phone":
+                            self.phone_confirmation_followup_sent = False
                 if result["ok"] and action == "confirm":
                     if field == "phone":
                         self.pending_authoritative_phone_readback = ""
+                        self.phone_keypad_prompted = False
+                        phone_confirmed_by_tool = True
                     await self._record_confirmed_fact(field)
 
             function_responses.append(
@@ -566,22 +641,35 @@ class GeminiCallBridge:
             await self.session.send_tool_response(
                 function_responses=function_responses,
             )
+        if phone_rejected_by_tool:
+            await self._prompt_phone_keypad()
+        elif phone_confirmed_by_tool and self.campaign_confirmation_mode:
+            await self._prompt_after_phone_confirmation()
 
     def _track_collection_focus(self, text: str) -> None:
         clean_text = str(text or "").strip()
         if not clean_text:
             return
         now = asyncio.get_running_loop().time()
-        if re.search(r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|mobile|keypad|ခလုတ်|#|hash)", clean_text, flags=re.IGNORECASE):
-            self.collection_focus = "phone"
-            self.collection_focus_until = now + 20.0
-            return
-        if re.search(r"(?:လိပ်စာ|ပို့ရမယ့်|ပို့ရန်|address|delivery|ship)", clean_text, flags=re.IGNORECASE):
-            self.collection_focus = "address"
-            self.collection_focus_until = now + 20.0
+        matches: list[tuple[int, str]] = []
+        patterns = {
+            "customer_name": r"(?:လက်ခံမယ့်နာမည်|နာမည်|အမည်|recipient name|customer name)",
+            "phone": r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|mobile|keypad|ခလုတ်|#|hash)",
+            "address": r"(?:လိပ်စာ|ပို့ရမယ့်|ပို့ရန်|address|delivery|ship)",
+        }
+        for focus, pattern in patterns.items():
+            for match in re.finditer(pattern, clean_text, flags=re.IGNORECASE):
+                matches.append((match.end(), focus))
+        if matches:
+            self.collection_focus = max(matches)[1]
+            self.collection_focus_until = now
 
     def _needs_in_call_phone_asr(self, live_candidate: str) -> bool:
-        if self.authoritative_phone and not self.delivery_state.phone_confirmed:
+        if (
+            not self.campaign_confirmation_mode
+            and self.authoritative_phone
+            and not self.delivery_state.phone_confirmed
+        ):
             return True
         if self.collection_focus_recent("phone"):
             return True
@@ -605,6 +693,157 @@ class GeminiCallBridge:
             return
         self.recorded_confirmed_facts.add(marker)
 
+    def _phone_rejected_in_context(self, text: str) -> bool:
+        clean_text = str(text or "").strip()
+        if not clean_text:
+            return False
+        if _turn_rejects_latest_phone(clean_text):
+            return True
+        explicit_phone_context = bool(
+            re.search(
+                r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|mobile|နံပါတ်)",
+                clean_text,
+                flags=re.IGNORECASE,
+            )
+        )
+        return bool(
+            (explicit_phone_context or self.collection_focus_recent("phone", seconds=10.0))
+            and (
+                PHONE_CORRECTION_RE.search(clean_text)
+                or DELIVERY_CORRECTION_RE.search(clean_text)
+            )
+        )
+
+    async def _prompt_phone_keypad(self) -> None:
+        if self.phone_keypad_prompted or not self.session:
+            return
+        self.phone_keypad_prompted = True
+        self.turn_complete.clear()
+        await self._clear_pending_output_audio()
+        await self.session.send_client_content(
+            turns=types.Content(
+                role="user",
+                parts=[
+                    types.Part(
+                        text=(
+                            "The customer rejected the first phone-number readback. "
+                            "The old number is invalid and has been cleared. In one short "
+                            "Burmese sentence, ask the customer to enter the complete "
+                            "delivery phone number on the keypad and press #. Do not ask "
+                            "for another spoken phone number, the name, or the address yet."
+                        )
+                    )
+                ],
+            ),
+            turn_complete=True,
+        )
+        log(f"[{self.call_id}] Phone rejected; requested keypad entry ending in #")
+
+    async def _handle_customer_phone_rejection(
+        self,
+        text: str,
+        *,
+        source: str,
+    ) -> bool:
+        if not (self.authoritative_phone or self.delivery_state.phone):
+            return False
+        if not self._phone_rejected_in_context(text):
+            return False
+
+        rejected_phone = self.authoritative_phone or self.delivery_state.phone
+        self.delivery_state.apply(field="phone", action="reject")
+        self.authoritative_phone = ""
+        self.authoritative_phone_source = ""
+        self.pending_authoritative_phone_readback = ""
+        self.keypad_phone = ""
+        self.phone_confirmation_followup_sent = False
+        self.confirmed_fact_values.pop("phone", None)
+        log(
+            f"[{self.call_id}] Customer rejected phone '{rejected_phone}' "
+            f"from {source}; old phone cleared"
+        )
+        await self._prompt_phone_keypad()
+        return True
+
+    def _correction_focus(self, text: str) -> str:
+        patterns = {
+            "customer_name": r"(?:လက်ခံမယ့်နာမည်|နာမည်|အမည်|recipient name|customer name)",
+            "phone": r"(?:ဖုန်းနံပါတ်|ဖုန်း|phone|mobile|နံပါတ်)",
+            "shipping_address": r"(?:လိပ်စာ|ပို့ရမယ့်|ပို့ရန်|address|delivery|ship)",
+        }
+        explicit: list[tuple[int, str]] = []
+        for field, pattern in patterns.items():
+            for match in re.finditer(pattern, text, flags=re.IGNORECASE):
+                explicit.append((match.end(), field))
+        if explicit:
+            return max(explicit)[1]
+        if self.collection_focus_recent("customer_name", seconds=10.0):
+            return "customer_name"
+        if self.collection_focus_recent("address", seconds=10.0):
+            return "shipping_address"
+        if self.collection_focus_recent("phone", seconds=10.0):
+            return "phone"
+        return ""
+
+    async def _prompt_replacement_field(self, field: str) -> None:
+        if field in self.replacement_prompted_fields or not self.session:
+            return
+        self.replacement_prompted_fields.add(field)
+        instruction = (
+            "The customer rejected the old recipient name. In one short Burmese "
+            "sentence, ask only for the complete new recipient name. Do not reuse "
+            "the Sheet name or any earlier name."
+            if field == "customer_name"
+            else (
+                "The customer rejected the old shipping address. In one short "
+                "Burmese sentence, ask only for the complete replacement Myanmar "
+                "shipping address. Never reuse the old address."
+            )
+        )
+        self.turn_complete.clear()
+        await self._clear_pending_output_audio()
+        await self.session.send_client_content(
+            turns=types.Content(
+                role="user",
+                parts=[types.Part(text=instruction)],
+            ),
+            turn_complete=True,
+        )
+
+    async def _handle_customer_delivery_correction(
+        self,
+        text: str,
+        *,
+        source: str,
+    ) -> bool:
+        if await self._handle_customer_phone_rejection(text, source=source):
+            return True
+        if not self.campaign_confirmation_mode:
+            return False
+        clean_text = str(text or "").strip()
+        if not clean_text or not DELIVERY_CORRECTION_RE.search(clean_text):
+            return False
+
+        field = self._correction_focus(clean_text)
+        if field == "phone":
+            return False
+        if field == "customer_name":
+            if not self.delivery_state.customer_name:
+                return field in self.replacement_prompted_fields
+            self.delivery_state.apply(field=field, action="reject")
+            self.confirmed_fact_values.pop(field, None)
+        elif field == "shipping_address":
+            if not self.delivery_state.shipping_address:
+                return field in self.replacement_prompted_fields
+            self.delivery_state.apply(field=field, action="reject")
+            self.confirmed_fact_values.pop(field, None)
+        else:
+            return False
+
+        log(f"[{self.call_id}] Customer rejected {field} from {source}; old value cleared")
+        await self._prompt_replacement_field(field)
+        return True
+
     async def handle_dtmf(self, digit: str) -> None:
         digit = str(digit or "").strip()
         if digit == "*":
@@ -627,13 +866,15 @@ class GeminiCallBridge:
         if not result["ok"]:
             return
         # A complete keypad sequence terminated by # is lossless customer
-        # input. Keep it above every probabilistic speech transcript.
-        self.delivery_state.apply(field="phone", action="confirm")
+        # input, but it still needs one explicit customer confirmation after
+        # Gemini reads it back.  Pressing # means "input complete", not "yes".
         self.authoritative_phone = self.delivery_state.phone
         self.authoritative_phone_source = "keypad"
         self.keypad_phone = self.authoritative_phone
         self.pending_authoritative_phone_readback = self.authoritative_phone
-        await self._record_confirmed_fact("phone")
+        self.phone_keypad_prompted = False
+        self.phone_confirmation_followup_sent = False
+        self.confirmed_fact_values.pop("phone", None)
         await self._flush_authoritative_phone_readback()
 
     async def _process_audio_turn_correction(
@@ -655,6 +896,11 @@ class GeminiCallBridge:
             )
             self.secondary_asr_results[turn_no] = corrected_text
             if corrected_text:
+                if await self._handle_customer_delivery_correction(
+                    corrected_text,
+                    source="secondary ASR",
+                ):
+                    return
                 was_confirmed = self.delivery_state.phone_confirmed
                 phone_synced = await self._sync_phone_from_customer_text(corrected_text)
                 phone_confirmed = False
@@ -663,27 +909,38 @@ class GeminiCallBridge:
                         corrected_text
                     )
                 if phone_confirmed and not was_confirmed:
-                    if self.clear_audio:
-                        await self.clear_audio()
-                    if self.session:
-                        await self.session.send_client_content(
-                            turns=types.Content(
-                                role="user",
-                                parts=[
-                                    types.Part(
-                                        text=(
-                                            "Server ASR confirms that the previously played phone "
-                                            "number is correct. Do not repeat its digits. "
-                                            "Acknowledge briefly and ask only for the shipping address."
+                    if not self.campaign_confirmation_mode:
+                        if self.clear_audio:
+                            await self.clear_audio()
+                        if self.session:
+                            await self.session.send_client_content(
+                                turns=types.Content(
+                                    role="user",
+                                    parts=[
+                                        types.Part(
+                                            text=(
+                                                "Server ASR confirms that the previously played phone "
+                                                "number is correct. Do not repeat its digits. "
+                                                "Acknowledge briefly and ask only for the shipping address."
+                                            )
                                         )
-                                    )
-                                ],
-                            ),
-                            turn_complete=True,
-                        )
+                                    ],
+                                ),
+                                turn_complete=True,
+                            )
                     return
                 if phone_synced:
                     return
+            if self.campaign_confirmation_mode:
+                # Gemini Live has already received this audio. Secondary ASR is
+                # used only to protect phone/correction state in confirmation
+                # calls; replaying its text creates duplicate, delayed replies.
+                if corrected_text and corrected_text != live_candidate:
+                    log(
+                        f"[{self.call_id}] Campaign ASR retained for transcript only: "
+                        f"'{live_candidate}' -> '{corrected_text}'"
+                    )
+                return
             if corrected_text and corrected_text != live_candidate:
                 log(f"[{self.call_id}] In-call corrected turn {turn_no}: '{live_candidate}' -> '{corrected_text}'")
                 if self.clear_audio:
@@ -713,7 +970,7 @@ class GeminiCallBridge:
         if (
             not self.authoritative_phone
             or self.delivery_state.phone_confirmed
-            or _turn_rejects_latest_phone(text)
+            or self._phone_rejected_in_context(text)
             or not _turn_confirms_phone(text)
         ):
             return False
@@ -734,10 +991,78 @@ class GeminiCallBridge:
             f"[{self.call_id}] Customer transcript confirmed authoritative phone "
             f"'{self.authoritative_phone}'"
         )
+        if self.campaign_confirmation_mode:
+            await self._prompt_after_phone_confirmation()
         return True
+
+    async def _prompt_after_phone_confirmation(self) -> None:
+        if self.phone_confirmation_followup_sent or not self.session:
+            return
+        self.phone_confirmation_followup_sent = True
+        name = self.delivery_state.customer_name
+        address = self.delivery_state.shipping_address
+        if self.delivery_state.require_customer_name and not name:
+            next_step = (
+                "In one short Burmese sentence, say the phone is confirmed and ask "
+                "only for the complete recipient name. The Sheet did not contain a "
+                "real recipient name, so do not skip this question."
+            )
+            next_focus = "customer_name"
+        elif name and not self.delivery_state.name_confirmed and address:
+            next_step = (
+                "In one short Burmese sentence, say the phone is confirmed, then read "
+                f"the preliminary recipient name exactly as {name} and the preliminary "
+                f"delivery address exactly as {address}. Ask whether both are correct. "
+                "Do not answer with only an acknowledgement and do not omit the name."
+            )
+            next_focus = "address"
+        elif name and not self.delivery_state.name_confirmed:
+            next_step = (
+                "In one short Burmese sentence, say the phone is confirmed, read this "
+                f"preliminary recipient name exactly as {name}, and ask whether it is "
+                "correct. Do not omit the name."
+            )
+            next_focus = "customer_name"
+        elif address:
+            next_step = (
+                "In one short Burmese sentence, say the phone is confirmed, read "
+                f"this preliminary delivery address exactly once: {address}. Ask "
+                "whether the address is correct. Do not answer with only an "
+                "acknowledgement and do not skip the address question."
+            )
+            next_focus = "address"
+        else:
+            next_step = (
+                "In one short Burmese sentence, say the phone is confirmed and ask "
+                "only for the complete Myanmar delivery address. Do not answer with "
+                "only an acknowledgement."
+            )
+            next_focus = "address"
+        self.collection_focus = next_focus
+        self.collection_focus_until = asyncio.get_running_loop().time()
+        self.turn_complete.clear()
+        await self._clear_pending_output_audio()
+        await self.session.send_client_content(
+            turns=types.Content(
+                role="user",
+                parts=[types.Part(text=next_step)],
+            ),
+            turn_complete=True,
+        )
 
     def _capture_authoritative_phone(self, text: str, *, source: str) -> str:
         self.last_phone_capture_conflicted = False
+        if (
+            self.campaign_confirmation_mode
+            and self.delivery_state.phone_rejections >= 1
+            and source != "keypad"
+        ):
+            if _extract_phone_precise(text):
+                log(
+                    f"[{self.call_id}] Ignored spoken campaign phone after rejection; "
+                    "waiting for keypad entry ending in #"
+                )
+            return ""
         phone = _extract_phone_precise(text)
         if not phone:
             return ""
@@ -807,6 +1132,8 @@ class GeminiCallBridge:
         self.authoritative_phone = self.delivery_state.phone
         self.authoritative_phone_source = source
         self.pending_authoritative_phone_readback = self.authoritative_phone
+        self.phone_confirmation_followup_sent = False
+        self.confirmed_fact_values.pop("phone", None)
         log(
             f"[{self.call_id}] {source} set authoritative phone "
             f"'{self.authoritative_phone}'"
@@ -819,13 +1146,13 @@ class GeminiCallBridge:
             return
         self.pending_authoritative_phone_readback = ""
         digits = " ".join(phone)
+        self.turn_complete.clear()
         await self._clear_pending_output_audio()
         if self.session:
             next_instruction = (
                 "The customer submitted this complete number on the keypad and pressed #, "
-                "so it is already confirmed. Read the digits exactly once, acknowledge receipt, "
-                "then ask only for the shipping address. Do not ask the customer to say or "
-                "confirm the phone again."
+                "but it is not confirmed yet. Read the digits exactly once and ask only whether "
+                "they are correct. Do not ask for the address until the customer confirms."
                 if self.authoritative_phone_source == "keypad"
                 else (
                     "Ask only whether this exact number is correct. Do not change, omit, "
@@ -918,15 +1245,19 @@ class GeminiCallBridge:
         # Append server-confirmed facts only after ASR replacement. Synthetic
         # tool/DTMF rows must never shift the audio-turn indexes, and keypad
         # digits must remain the final, lossless evidence used for extraction.
-        for field in ("phone", "shipping_address"):
+        labels = {
+            "customer_name": "လက်ခံသူအမည်",
+            "phone": "ဖုန်းနံပါတ်",
+            "shipping_address": "လိပ်စာ",
+        }
+        for field in ("customer_name", "phone", "shipping_address"):
             value = self.confirmed_fact_values.get(field, "")
             if not value:
                 continue
-            label = "ဖုန်းနံပါတ်" if field == "phone" else "လိပ်စာ"
             store.add_transcript(
                 self.call_id,
                 "customer",
-                f"{label} {value} မှန်ပါတယ်",
+                f"{labels[field]} {value} မှန်ပါတယ်",
             )
         self.transcript_finalized = True
 

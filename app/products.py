@@ -80,6 +80,19 @@ def validate_product_payload(
     offers = payload.get("offers") or []
     if not isinstance(offers, list):
         raise ValueError("Product offers must be a list")
+    validated_offers = [validate_offer_payload(offer) for offer in offers]
+    if not validated_offers:
+        raise ValueError("Product must have at least one offer")
+    if not any(offer["active"] for offer in validated_offers):
+        raise ValueError("Product must have at least one active offer")
+    offer_names = [offer["name"].casefold() for offer in validated_offers]
+    if len(offer_names) != len(set(offer_names)):
+        raise ValueError("Product offer names must be unique")
+    active_quantities = [
+        offer["quantity"] for offer in validated_offers if offer["active"]
+    ]
+    if len(active_quantities) != len(set(active_quantities)):
+        raise ValueError("Active product offers must use unique quantities")
 
     return {
         "name": name,
@@ -93,7 +106,7 @@ def validate_product_payload(
         "language_code": _text(payload.get("language_code") or "my-MM", 20),
         "voice_name": _text(payload.get("voice_name") or "Aoede", 80),
         "active": bool(payload.get("active", True)),
-        "offers": [validate_offer_payload(offer) for offer in offers],
+        "offers": validated_offers,
     }
 
 
