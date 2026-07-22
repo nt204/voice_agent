@@ -100,6 +100,10 @@ class GeminiCallBridge:
         initial_shipping_address: str = "",
         require_customer_name: bool = False,
         campaign_confirmation_mode: bool = False,
+        product_offers: list[dict] | None = None,
+        initial_offer: str = "",
+        initial_package_count: int | None = None,
+        require_order_confirmation: bool = False,
     ):
         self.call_id = call_id
         self.call_sample_rate = call_sample_rate
@@ -145,7 +149,21 @@ class GeminiCallBridge:
         self.delivery_state = LiveDeliveryState(
             connected_phone=connected_phone,
             require_customer_name=require_customer_name,
+            require_order_confirmation=require_order_confirmation,
+            configured_offers=[dict(offer) for offer in product_offers or []],
         )
+        if initial_offer:
+            self.delivery_state.apply(
+                field="offer",
+                action="set",
+                value=initial_offer,
+            )
+        if initial_package_count:
+            self.delivery_state.apply(
+                field="package_count",
+                action="set",
+                value=str(initial_package_count),
+            )
         if initial_customer_name:
             self.delivery_state.apply(
                 field="customer_name",

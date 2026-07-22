@@ -21,6 +21,7 @@ from app.call_history import (
     _customer_name_from_sales_result,
     _phone_from_sales_result,
     apply_confirmed_delivery_facts,
+    apply_confirmed_order_facts,
     interest_status_from_intent,
     metadata,
     orders_table,
@@ -885,6 +886,8 @@ class SqlAlchemyCallHistoryStore:
         *,
         confirmed_delivery_facts: Mapping[str, str] | None = None,
         require_confirmed_delivery: bool = False,
+        confirmed_order_facts: Mapping[str, Any] | None = None,
+        require_confirmed_order: bool = False,
     ) -> None:
         call = self.get_call(call_id)
         if not call:
@@ -903,6 +906,8 @@ class SqlAlchemyCallHistoryStore:
                 sales_result,
                 confirmed_delivery_facts,
             )
+        if require_confirmed_order:
+            apply_confirmed_order_facts(sales_result, confirmed_order_facts)
         interest_status = interest_status_from_intent(
             sales_result["analysis"]["intent_status"]
         )

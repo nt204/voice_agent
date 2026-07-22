@@ -331,6 +331,74 @@ def apply_confirmed_delivery_facts(
     return sales_result
 
 
+def apply_confirmed_order_facts(
+    sales_result: dict[str, Any],
+    confirmed_order_facts: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Make the confirmed configured offer/package mapping authoritative."""
+    order = sales_result.get("order")
+    if not isinstance(order, dict):
+        return sales_result
+
+    facts = confirmed_order_facts or {}
+    offer_name = _clean(facts.get("offer_name", ""))
+    package_count = int(facts.get("package_count") or 0)
+    units_per_package = int(facts.get("units_per_package") or 0)
+    total_units = int(facts.get("total_units") or 0)
+    unit_price = int(facts.get("unit_price") or 0)
+    total_price = int(facts.get("total_price") or 0)
+    valid = bool(
+        offer_name
+        and package_count > 0
+        and units_per_package > 0
+        and total_units == package_count * units_per_package
+        and total_price > 0
+    )
+
+    missing_fields = _field_names(order.get("missing_fields"))
+    blocking_reasons = _field_names(order.get("blocking_reasons"))
+    for field in ("product_name", "quantity"):
+        missing_fields = [item for item in missing_fields if item != field]
+        blocking_reasons = [item for item in blocking_reasons if item != field]
+    blocking_reasons = [item for item in blocking_reasons if item != "total_price"]
+
+    if valid:
+        order.update(
+            {
+                "product_name": offer_name,
+                "purchase_type": "combo",
+                "combo": offer_name,
+                # Orders store physical product units for packing. Sheet Qty is
+                # kept as package_count and must never overwrite this value.
+                "quantity": total_units,
+                "unit_price": unit_price,
+                "total_price": total_price,
+                "package_count": package_count,
+                "units_per_package": units_per_package,
+            }
+        )
+    else:
+        order.update(
+            {
+                "product_name": "",
+                "purchase_type": "",
+                "combo": "",
+                "quantity": 0,
+                "unit_price": 0,
+                "total_price": 0,
+            }
+        )
+        missing_fields.extend(["product_name", "quantity"])
+        blocking_reasons.extend(["product_name", "quantity", "total_price"])
+
+    order["missing_fields"] = list(dict.fromkeys(missing_fields))
+    order["blocking_reasons"] = list(dict.fromkeys(blocking_reasons))
+    order["status"] = (
+        "ready_to_confirm" if not order["blocking_reasons"] else "missing_info"
+    )
+    return sales_result
+
+
 def interest_status_from_intent(intent_status: str) -> str:
     if intent_status == "no_need":
         return "no_need"
@@ -826,6 +894,8 @@ class SQLiteCallHistoryStore:
         *,
         confirmed_delivery_facts: Mapping[str, str] | None = None,
         require_confirmed_delivery: bool = False,
+        confirmed_order_facts: Mapping[str, Any] | None = None,
+        require_confirmed_order: bool = False,
     ) -> None:
         call = self.get_call(call_id)
         if not call:
@@ -841,6 +911,8 @@ class SQLiteCallHistoryStore:
                 sales_result,
                 confirmed_delivery_facts,
             )
+        if require_confirmed_order:
+            apply_confirmed_order_facts(sales_result, confirmed_order_facts)
         interest_status = interest_status_from_intent(
             sales_result["analysis"]["intent_status"]
         )

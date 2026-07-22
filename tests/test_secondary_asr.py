@@ -470,6 +470,17 @@ def test_campaign_finalization_passes_only_live_confirmed_delivery_facts() -> No
                 "shipping_address": "Yangon address",
             }
 
+        def confirmed_order_facts(self):
+            return {
+                "offer_name": "Venus BigOne Combo 2",
+                "package_count": 1,
+                "units_per_package": 2,
+                "total_units": 2,
+                "unit_price": 105000,
+                "package_price": 210000,
+                "total_price": 210000,
+            }
+
     class Bridge:
         campaign_confirmation_mode = True
         delivery_state = DeliveryState()
@@ -496,6 +507,16 @@ def test_campaign_finalization_passes_only_live_confirmed_delivery_facts() -> No
                     "shipping_address": "Yangon address",
                 },
                 "require_confirmed_delivery": True,
+                "confirmed_order_facts": {
+                    "offer_name": "Venus BigOne Combo 2",
+                    "package_count": 1,
+                    "units_per_package": 2,
+                    "total_units": 2,
+                    "unit_price": 105000,
+                    "package_price": 210000,
+                    "total_price": 210000,
+                },
+                "require_confirmed_order": True,
             },
         )
     ]

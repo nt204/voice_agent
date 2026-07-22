@@ -172,6 +172,7 @@ def test_sheet_preview_marks_queued_phone_as_in_progress(tmp_path, monkeypatch) 
                 "name": "Thaw Zin",
                 "phone": "09 777 111 222",
                 "product": "Moe Collagen",
+                "offer": "Moe Collagen Duo",
                 "quantity": "1",
                 "address": "Mandalay",
                 "notes": "",
@@ -196,6 +197,15 @@ def test_sheet_preview_marks_queued_phone_as_in_progress(tmp_path, monkeypatch) 
     assert response.json()["called_count"] == 0
     assert response.json()["in_progress_count"] == 1
     assert response.json()["leads"][0]["status_tag"] == "in_progress"
+    assert response.json()["leads"][0]["resolved_order"] == {
+        "offer_name": "Moe Collagen Duo",
+        "package_count": 1,
+        "units_per_package": 2,
+        "total_units": 2,
+        "unit_price": 80000,
+        "package_price": 160000,
+        "total_price": 160000,
+    }
     assert len(response.json()["campaign_run_id"]) == 32
     assert response.json()["product"] == {"id": product["id"], "name": product["name"]}
 

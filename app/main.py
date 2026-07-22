@@ -24,6 +24,7 @@ from app.audio import (
     telnyx_payload_to_pcm16,
 )
 from app.call_history import CallHistoryStore
+from app.campaign_order import positive_package_count, resolved_campaign_order
 from app.config import config, gemini_initial_greeting, gemini_system_instruction
 from app.database import init_db
 from app.gemini_bridge import GeminiCallBridge
@@ -399,6 +400,8 @@ async def _finalize_call(bridge, call_id: str, store=None) -> None:
             call_id,
             confirmed_delivery_facts=bridge.delivery_state.confirmed_facts(),
             require_confirmed_delivery=True,
+            confirmed_order_facts=bridge.delivery_state.confirmed_order_facts(),
+            require_confirmed_order=True,
         )
     else:
         await asyncio.to_thread(target_store.finish_call, call_id)
@@ -1148,6 +1151,8 @@ async def api_sheets_preview(payload: dict) -> dict:
         leads,
         skip_sheet_called=skip_already_called,
     )
+    for lead in processed_leads:
+        lead["resolved_order"] = resolved_campaign_order(lead, product)
 
     return {
         "ok": True,
@@ -1619,9 +1624,9 @@ def _telnyx_bridge_options(
     }
 
 
-def _sheet_delivery_seed(
+def _sheet_campaign_lead(
     outbound_request: dict[str, object] | None,
-) -> dict[str, str]:
+) -> dict[str, object]:
     if not outbound_request or not str(outbound_request.get("prompt_override") or "").strip():
         return {}
 
@@ -1647,6 +1652,15 @@ def _sheet_delivery_seed(
             }
         )
 
+    return normalized
+
+
+def _sheet_delivery_seed(
+    outbound_request: dict[str, object] | None,
+) -> dict[str, str]:
+    if not outbound_request or not str(outbound_request.get("prompt_override") or "").strip():
+        return {}
+    normalized = _sheet_campaign_lead(outbound_request)
     raw_name = str(
         normalized.get("name")
         or outbound_request.get("customer_name")
@@ -1660,6 +1674,22 @@ def _sheet_delivery_seed(
             or ""
         ).strip(),
         "shipping_address": str(normalized.get("address") or "").strip(),
+    }
+
+
+def _sheet_order_seed(
+    outbound_request: dict[str, object] | None,
+    product: dict[str, object] | None,
+) -> dict[str, object]:
+    lead = _sheet_campaign_lead(outbound_request)
+    resolved = resolved_campaign_order(lead, product)
+    return {
+        "offer_name": str(resolved.get("offer_name") or ""),
+        "package_count": (
+            resolved.get("package_count")
+            or positive_package_count(lead.get("quantity"))
+        ),
+        "resolved_order": resolved,
     }
 
 
@@ -1853,6 +1883,7 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     f"adaptive_threshold={input_gate_options['adaptive_threshold']}"
                 )
                 sheet_seed = _sheet_delivery_seed(outbound_req)
+                sheet_order_seed = _sheet_order_seed(outbound_req, product)
                 campaign_customer_name = sheet_seed.get("customer_name", "")
                 bridge_options = _telnyx_bridge_options(
                     mode,
@@ -1892,6 +1923,10 @@ async def _telnyx_ws(websocket: WebSocket, mode: str = "inbound") -> None:
                     initial_shipping_address=sheet_seed.get("shipping_address", ""),
                     require_customer_name=campaign_confirmation_mode,
                     campaign_confirmation_mode=campaign_confirmation_mode,
+                    product_offers=(product.get("offers") or []) if product else [],
+                    initial_offer=str(sheet_order_seed.get("offer_name") or ""),
+                    initial_package_count=sheet_order_seed.get("package_count"),
+                    require_order_confirmation=campaign_confirmation_mode,
                 )
                 input_gate = RealtimeInputGate(
                     bridge,

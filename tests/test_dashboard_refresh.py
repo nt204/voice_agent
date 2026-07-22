@@ -29,6 +29,6 @@ def test_dashboard_renders_call_recording_player():
     assert "/recording/" in main
     assert "<audio controls" in source
     assert ".recording-card" in styles
-    assert "layout-fix-v27" in html
+    assert "combo-qty-v28" in html
     assert "Số đã gọi" in source
     assert "Số khách cung cấp" in source

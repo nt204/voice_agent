@@ -1102,13 +1102,17 @@ function openSheetPreviewModal(data = {}) {
     }
 
     const isReady = ["ready", "ready_previously_called"].includes(lead.status_tag);
+    const resolvedOrder = lead.resolved_order || {};
+    const packageDisplay = resolvedOrder.offer_name
+      ? `${resolvedOrder.package_count} combo/gói (${resolvedOrder.total_units} hộp)`
+      : (lead.quantity || "Chưa có");
     return `
       <tr style="${!isReady ? 'opacity: 0.7;' : ''}">
         <td><strong>${index + 1}</strong></td>
         <td><strong>${escapeHtml(lead.name || "Chưa có")}</strong></td>
         <td><code style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">${escapeHtml(lead.phone || "Thiếu SĐT")}</code></td>
         <td>${escapeHtml(lead.offer || lead.product || data.product?.name || "Sản phẩm đã chọn")}</td>
-        <td>${escapeHtml(lead.quantity || "Chưa có")}</td>
+        <td>${escapeHtml(packageDisplay)}</td>
         <td>${escapeHtml(lead.address || "Chưa có")}</td>
         <td>${badgeHtml}</td>
         <td><span style="color:#64748b;">${escapeHtml(lead.notes || "—")}</span></td>

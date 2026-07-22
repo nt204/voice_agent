@@ -10,11 +10,22 @@ def test_build_outbound_sheet_prompt():
         "phone": "+95999999999",
         "product": "Venus BigOne",
         "offer": "Venus BigOne Combo 2",
-        "quantity": "2",
+        "quantity": "1",
         "address": "Mandalay",
         "notes": "Call before arrival",
     }
-    product = {"name": "Venus BigOne"}
+    product = {
+        "name": "Venus BigOne",
+        "offers": [
+            {
+                "name": "Venus BigOne Combo 2",
+                "quantity": 2,
+                "unit_price": 105000,
+                "total_price": 210000,
+                "active": True,
+            }
+        ],
+    }
     prompt = build_outbound_sheet_prompt(lead, product)
     
     assert "Thaw Zin" in prompt
@@ -35,6 +46,12 @@ def test_build_outbound_sheet_prompt():
     assert "customer's latest correction always wins" in prompt
     assert "complete keypad entry followed by #" in prompt
     assert "Pressing # completes entry but does not confirm" in prompt
+    assert "Requested Package / Combo Count: 1" in prompt
+    assert "Configured Offer: Venus BigOne Combo 2" in prompt
+    assert "Product Units per Package / Combo: 2" in prompt
+    assert "Total Product Units: 2" in prompt
+    assert "Total Order Price: 210000 MMK" in prompt
+    assert "never 1 product unit" in prompt
 
 
 def test_generic_honorific_is_not_used_as_recipient_name() -> None:
@@ -90,3 +107,56 @@ def test_missing_sheet_quantity_stays_unknown_and_must_be_asked() -> None:
 
     assert "- Quantity:" not in prompt
     assert "Never assume a missing quantity is 1" in prompt
+
+
+def test_multiple_sheet_packages_multiply_units_and_package_price() -> None:
+    prompt = build_outbound_sheet_prompt(
+        {
+            "phone": "+95999999999",
+            "offer": "Moe Collagen Duo",
+            "quantity": "3",
+        },
+        {
+            "name": "Moe Collagen",
+            "offers": [
+                {
+                    "name": "Moe Collagen Duo",
+                    "quantity": 2,
+                    "unit_price": 80000,
+                    "total_price": 160000,
+                    "active": True,
+                }
+            ],
+        },
+    )
+
+    assert "Number of Packages / Combos: 3" in prompt
+    assert "Total Product Units: 6" in prompt
+    assert "Total Order Price: 480000 MMK" in prompt
+
+
+def test_combo_name_in_generic_product_column_is_still_resolved() -> None:
+    prompt = build_outbound_sheet_prompt(
+        {
+            "phone": "0961984204",
+            "product": "Venus BigOne Combo 2",
+            "offer": "",
+            "quantity": "1",
+        },
+        {
+            "name": "Venus BigOne",
+            "offers": [
+                {
+                    "name": "Venus BigOne Combo 2",
+                    "quantity": 2,
+                    "unit_price": 105000,
+                    "total_price": 210000,
+                    "active": True,
+                }
+            ],
+        },
+    )
+
+    assert "Requested Offer / Combo: Venus BigOne Combo 2" in prompt
+    assert "Requested Package / Combo Count: 1" in prompt
+    assert "Total Product Units: 2" in prompt

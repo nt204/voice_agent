@@ -2,6 +2,7 @@ from app.call_history import (
     CallHistoryStore,
     SQLiteCallHistoryStore,
     apply_confirmed_delivery_facts,
+    apply_confirmed_order_facts,
     extract_customer_info,
 )
 import sqlite3
@@ -490,3 +491,98 @@ def test_campaign_unconfirmed_delivery_values_cannot_reappear_in_order() -> None
         "customer_phone",
         "shipping_address",
     ]
+
+
+def test_campaign_sheet_quantity_is_persisted_as_combo_count_not_box_count() -> None:
+    result = {
+        "customer": {"name": "မမ", "phone": "0961984204", "address": "Yangon"},
+        "order": {
+            # Simulate a wrong post-call extraction of raw Sheet Qty=1.
+            "product_name": "Venus BigOne",
+            "purchase_type": "single",
+            "combo": "",
+            "quantity": 1,
+            "unit_price": 120000,
+            "total_price": 120000,
+            "status": "ready_to_confirm",
+            "missing_fields": [],
+            "blocking_reasons": [],
+            "confidence": 0.9,
+        },
+    }
+
+    apply_confirmed_order_facts(
+        result,
+        {
+            "offer_name": "Venus BigOne Combo 2",
+            "package_count": 1,
+            "units_per_package": 2,
+            "total_units": 2,
+            "unit_price": 105000,
+            "package_price": 210000,
+            "total_price": 210000,
+        },
+    )
+
+    assert result["order"]["product_name"] == "Venus BigOne Combo 2"
+    assert result["order"]["package_count"] == 1
+    assert result["order"]["units_per_package"] == 2
+    assert result["order"]["quantity"] == 2
+    assert result["order"]["total_price"] == 210000
+    assert result["order"]["status"] == "ready_to_confirm"
+
+
+def test_campaign_multiple_combo_packages_multiply_packing_quantity_and_price() -> None:
+    result = {
+        "customer": {},
+        "order": {
+            "product_name": "Wrong",
+            "quantity": 3,
+            "unit_price": 1,
+            "total_price": 3,
+            "missing_fields": [],
+            "blocking_reasons": [],
+        },
+    }
+
+    apply_confirmed_order_facts(
+        result,
+        {
+            "offer_name": "Moe Collagen Duo",
+            "package_count": 3,
+            "units_per_package": 2,
+            "total_units": 6,
+            "unit_price": 80000,
+            "package_price": 160000,
+            "total_price": 480000,
+        },
+    )
+
+    assert result["order"]["package_count"] == 3
+    assert result["order"]["quantity"] == 6
+    assert result["order"]["total_price"] == 480000
+
+
+def test_campaign_unconfirmed_combo_cannot_be_saved_from_transcript_extraction() -> None:
+    result = {
+        "customer": {},
+        "order": {
+            "product_name": "Venus BigOne",
+            "purchase_type": "single",
+            "combo": "",
+            "quantity": 1,
+            "unit_price": 120000,
+            "total_price": 120000,
+            "status": "ready_to_confirm",
+            "missing_fields": [],
+            "blocking_reasons": [],
+        },
+    }
+
+    apply_confirmed_order_facts(result, {})
+
+    assert result["order"]["product_name"] == ""
+    assert result["order"]["quantity"] == 0
+    assert result["order"]["total_price"] == 0
+    assert result["order"]["status"] == "missing_info"
+    assert result["order"]["missing_fields"] == ["product_name", "quantity"]

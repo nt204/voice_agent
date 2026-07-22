@@ -70,6 +70,59 @@ def test_confirmed_address_is_retained_and_workflow_advances() -> None:
     }
 
 
+def test_campaign_qty_is_package_count_and_offer_controls_units() -> None:
+    state = LiveDeliveryState(
+        require_order_confirmation=True,
+        configured_offers=[
+            {
+                "name": "Venus BigOne Combo 2",
+                "quantity": 2,
+                "unit_price": 105000,
+                "total_price": 210000,
+                "active": True,
+            }
+        ],
+    )
+    state.apply(field="offer", action="set", value="Venus BigOne Combo 2")
+    state.apply(field="package_count", action="set", value="1")
+
+    assert state.snapshot()["units_per_package"] == 2
+    assert state.apply(field="offer", action="confirm")["ok"] is True
+    result = state.apply(field="package_count", action="confirm")
+
+    assert result["next_action"] == "ask_phone"
+    assert state.confirmed_order_facts() == {
+        "offer_name": "Venus BigOne Combo 2",
+        "package_count": 1,
+        "units_per_package": 2,
+        "total_units": 2,
+        "unit_price": 105000,
+        "package_price": 210000,
+        "total_price": 210000,
+    }
+
+
+def test_multiple_combo_packages_multiply_physical_units_and_price() -> None:
+    state = LiveDeliveryState(
+        require_order_confirmation=True,
+        configured_offers=[
+            {
+                "name": "Moe Collagen Duo",
+                "quantity": 2,
+                "unit_price": 80000,
+                "total_price": 160000,
+                "active": True,
+            }
+        ],
+    )
+    for field, value in (("offer", "Moe Collagen Duo"), ("package_count", "3")):
+        state.apply(field=field, action="set", value=value)
+        state.apply(field=field, action="confirm")
+
+    assert state.confirmed_order_facts()["total_units"] == 6
+    assert state.confirmed_order_facts()["total_price"] == 480000
+
+
 class _FakeSession:
     def __init__(self) -> None:
         self.tool_responses = []
